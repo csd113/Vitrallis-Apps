@@ -19,6 +19,8 @@ The platform owner's supplied application contract is:
 
 The rest of this guide defines recommended development conventions. It does **not** establish that the Vitrallis shell already implements them.
 
+**Verified implementation status:** the [current Vitrallis app development documentation](https://github.com/csd113/Vitrallis-Shell/blob/75c4ab7929be47c6bbfb6740adca51930290e8ea/docs/app-development.md) describes PocketHome/Marshmallow JSON menu discovery and explicitly states that no `app.toml` loader exists yet. Treat the owner's TOML package structure as the intended future contract. Apps targeting today's shell must use its documented menu/launcher adapter. Do not claim that adding `app.toml` makes an app discoverable today.
+
 Use the PocketCHIP reference as the initial hardware profile: a small 480 × 272 landscape interface and a lightweight Python/Tkinter implementation. Its documentation describes background updates, keyboard and touch controls, and RAM caching to reduce flash writes. These are useful design examples, not proof that Vitrallis supports the same GUI runtime or launch mechanism. [Reference README](https://github.com/csd113/PocketChip-Bitcoin-Display/blob/9d732e056801c8a98ee3edb60cb5bd88646ac467/README.md)
 
 Before claiming platform compatibility, verify:
@@ -215,7 +217,15 @@ Before handoff, check:
 
 Deliver the complete app directory with no required placeholders, absolute development paths, credentials, or bundled desktop virtual environments. Include a concise summary, files changed, exact validation commands and results, and remaining integration/device caveats. Distinguish tests actually run from tests merely recommended; skipped GUI tests are not passed GUI tests. Do not claim device validation from desktop checks alone.
 
-## 11. App request to append when reusing this guide
+## 11. Repository catalog and publishing versions
+
+The Vitrallis-Apps repository publishes a separate remote [`apps.json`](https://github.com/csd113/Vitrallis-Apps/blob/main/apps.json) catalog for app-manager discovery and version checks. Its [format and publishing workflow](https://github.com/csd113/Vitrallis-Apps/blob/main/docs/app-catalog.md) define the contract; validate entries with the repository's `apps.schema.json`.
+
+When asked to publish an app or update, keep its stable ID and version consistent with the catalog. Catalog version 1 supports stable `MAJOR.MINOR.PATCH` versions. Commit the tested app source first, then publish its exact commit, complete file list, byte sizes, and SHA-256 hashes in the catalog. Never advertise downloads from a moving branch. Keep installation disabled until the manager has a reviewed adapter and the app's runtime and installation path are verified.
+
+`apps.json` describes published versions; an app's proposed `app.toml` describes local application metadata. The current App Center still uses its explicit Python app list and needs an integration change to consume the JSON catalog. Do not imply that repository metadata alone implements installation or updates.
+
+## 12. App request to append when reusing this guide
 
 ```text
 Build a Vitrallis app following the attached Vitrallis app build guide.

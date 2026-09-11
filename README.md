@@ -2,6 +2,8 @@
 
 Application source code and development guidance for Vitrallis.
 
+- [App catalog](apps.json): machine-readable app versions and commit-pinned file checksums. App managers should fetch [the raw JSON](https://raw.githubusercontent.com/csd113/Vitrallis-Apps/main/apps.json).
+- [Catalog format and update workflow](docs/app-catalog.md): schema, version comparison, integrity checks, and current manager integration status.
 - [Vitrallis app build guide](VITRALLIS_APP_BUILD_GUIDE.md): reusable instructions for AI developers, including the proposed package structure, manifest, interface conventions, and validation requirements.
 - [Bitcoin Dashboard](Apps/Bitcoin-Dashboard/README.md): the PocketCHIP Bitcoin CAD dashboard, imported with its source, tests, launcher, and documentation.
 
@@ -21,3 +23,5 @@ python3 bitcoin.py
 ```
 
 It retains its original PocketCHIP launcher and storage paths. It has not yet been converted to the manifest-based Vitrallis package described in the guide; `app.toml`, `main.py`, and a packaged icon are not included upstream. Vitrallis shell integration and device compatibility remain to be verified.
+
+The catalog lists Bitcoin Dashboard at **1.2.0** with installation disabled until a reviewed Vitrallis adapter is available. The existing App Center still uses its hardcoded upstream catalog; consuming this JSON requires a manager change.
