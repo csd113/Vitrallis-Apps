@@ -1,0 +1,8 @@
+#!/bin/sh
+APP="$HOME/.local/share/pocket-bitcoin"
+RUNTIME="$APP/runtime/usr"
+export LD_LIBRARY_PATH="$RUNTIME/lib/arm-linux-gnueabihf"
+export PYTHONPATH="$RUNTIME/lib/python3.13:$RUNTIME/lib/python3.13/lib-dynload"
+export TCL_LIBRARY="$RUNTIME/share/tcltk/tcl8.6"
+export TK_LIBRARY="$RUNTIME/share/tcltk/tk8.6"
+exec /usr/bin/python3 "$APP/bitcoin.py"
