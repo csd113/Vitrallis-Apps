@@ -13,8 +13,8 @@
         "audio": false,
         "storage": true
       },
-      "installable": false,
-      "compatibility_notes": "Source snapshot with the original PocketCHIP launcher. Vitrallis installation adapter and runtime compatibility must be verified before enabling installation.",
+      "installable": true,
+      "compatibility_notes": "Requires Pocketchip-update-apps 1.6.0 or later and a compatible Python/Tk runtime. Its reviewed Bitcoin adapter supplies the launcher and icon and preserves existing PocketCHIP paths. Desktop install/update/repair checks passed; physical PocketCHIP verification of manager 1.6.0 remains pending.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
         "commit": "ab2869b2cf25818cfcf09f5d1fc7055dfbb9a218",

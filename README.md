@@ -22,6 +22,6 @@ cd Apps/Bitcoin-Dashboard
 python3 bitcoin.py
 ```
 
-It retains its original PocketCHIP launcher and storage paths. It has not yet been converted to the manifest-based Vitrallis package described in the guide; `app.toml`, `main.py`, and a packaged icon are not included upstream. Vitrallis shell integration and device compatibility remain to be verified.
+It retains its original PocketCHIP launcher and storage paths. It has not yet been converted to the manifest-based Vitrallis package described in the guide; `app.toml`, `main.py`, and a packaged icon are not included upstream. Installation uses the app manager's reviewed Bitcoin adapter, which supplies its own launcher/icon and registers the existing PocketHome entry that Vitrallis reads.
 
-The catalog lists Bitcoin Dashboard at **1.2.0** with installation disabled until a reviewed Vitrallis adapter is available. The existing App Center still uses its hardcoded upstream catalog; consuming this JSON requires a manager change.
+The catalog lists Bitcoin Dashboard at **1.2.0** with installation enabled for [Pocketchip-update-apps 1.6.0 or later](https://github.com/csd113/Pocketchip-update-apps/blob/946f69ec58fe4327f60bda6e615dbded5491b541/docs/updates.md). That manager reads this JSON for Bitcoin versions and verifies the pinned source files. It continues to update itself from its own repository. Desktop install/update/repair and layout checks passed; physical PocketCHIP verification of manager 1.6.0 remains pending.

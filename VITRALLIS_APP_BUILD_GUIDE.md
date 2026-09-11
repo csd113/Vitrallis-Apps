@@ -223,7 +223,7 @@ The Vitrallis-Apps repository publishes a separate remote [`apps.json`](https://
 
 When asked to publish an app or update, keep its stable ID and version consistent with the catalog. Catalog version 1 supports stable `MAJOR.MINOR.PATCH` versions. Commit the tested app source first, then publish its exact commit, complete file list, byte sizes, and SHA-256 hashes in the catalog. Never advertise downloads from a moving branch. Keep installation disabled until the manager has a reviewed adapter and the app's runtime and installation path are verified.
 
-`apps.json` describes published versions; an app's proposed `app.toml` describes local application metadata. The current App Center still uses its explicit Python app list and needs an integration change to consume the JSON catalog. Do not imply that repository metadata alone implements installation or updates.
+`apps.json` describes published versions; an app's proposed `app.toml` describes local application metadata. [Pocketchip-update-apps 1.6.0](https://github.com/csd113/Pocketchip-update-apps/blob/946f69ec58fe4327f60bda6e615dbded5491b541/docs/updates.md) consumes the JSON catalog through an explicit Bitcoin installation adapter. Adding another app still requires a reviewed adapter and tests; repository metadata alone does not implement installation or updates. The shell's TOML loader remains future work.
 
 ## 12. App request to append when reusing this guide
 
