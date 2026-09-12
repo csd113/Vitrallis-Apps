@@ -7,8 +7,7 @@ consumer; changing a JSON schema does not reconfigure an existing client.
 ## Choose your catalog contents
 
 1. Fork/clone into your GitHub repository, preserving history if retaining
-   upstream entries. For mixed legacy/native development use a case-sensitive
-   checkout because `Apps/` and `apps/` are distinct Git paths.
+   upstream entries.
 2. Decide whether to keep Bitcoin. To start empty, replace only `apps.json` with:
 
    ```json
@@ -16,7 +15,7 @@ consumer; changing a JSON schema does not reconfigure an existing client.
    ```
 
    If retained, leave Bitcoin's upstream repository, commit, path, ID, files and
-   permissions unchanged. Its ID continues to identify the same legacy app.
+   permissions unchanged. Its ID continues to identify the same native app.
    Retaining bytes does not automatically grant redistribution rights.
 3. Copy the [example](../examples/hello-vitrallis/README.md) into `apps/<your-slug>`.
    Change the manifest identity and app content; do not merely rename the folder.
@@ -47,14 +46,12 @@ reviewed client change:
 | Trusted source repositories | Explicit allowlist such as `your-owner/your-catalog`; add the upstream source only if you intentionally retain/trust its app. |
 | Transport policy | HTTPS, allowed hosts/redirects, bounded timeouts and body sizes. |
 | Installer mapping | Stable app ID to a reviewed installer/launcher/runtime adapter; metadata never selects arbitrary installation code. |
-| Local identity/version | A trusted installed-app record or supported legacy version reader; never guess by display name. |
+| Local identity/version | A trusted installed-app record; never guess by display name or parse app code. |
 
-**Pocketchip-update-apps 1.6.x is not a general fork-configurable client.** The
-inspected 1.6.0 implementation uses the official URL and repository checks and
-only the reviewed Bitcoin catalog adapter. It needs a reviewed code/configuration
-change to consume another publisher. Do not advertise fork compatibility merely
-because this schema accepts the new repository name. See
-[legacy compatibility](legacy-compatibility.md) for evidence and limits.
+Verify that the consuming client supports manifest v1 packages and your chosen
+catalog endpoint and repository allowlist. The schema alone does not establish
+installer or fork compatibility. See [runtime integration](runtime-integration.md)
+for the required checks before enabling installation.
 
 No authoritative repository-wide license is present. Confirm the owner's license
 choice and imported content rights before distributing or granting reuse rights.

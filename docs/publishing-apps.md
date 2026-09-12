@@ -96,21 +96,19 @@ the app. It validates all input and output before an atomic catalog replacement;
 a failed generation leaves the catalog untouched. Concurrent malicious mutation
 of the local checkout is outside the offline maintainer tool's threat model.
 
-## Existing legacy app
+## Bitcoin Dashboard
 
-The official Bitcoin entry uses its existing `VERSION` literal and reviewed
-metadata instead of a native manifest. Regenerating its current file list is:
+Bitcoin Dashboard uses the same native workflow as every other app. After its
+source is committed and pushed, use that full commit to publish:
 
 ```sh
 python3 tools/update_catalog.py \
-  --repository csd113/Vitrallis-Apps \
-  --commit ab2869b2cf25818cfcf09f5d1fc7055dfbb9a218 \
-  --path Apps/Bitcoin-Dashboard --app-id io.vitrallis.bitcoindashboard
+  --repository csd113/Vitrallis-Apps --commit "$SOURCE_COMMIT" \
+  --path apps/bitcoin-dashboard
 ```
 
-This produces the current catalog without changing the snapshot or its published
-semantics. The legacy adapter reads the new literal version without executing the app and
-preserves its reviewed ID, permissions and other metadata. For a future legacy
-release, pass its new source commit to regenerate the version/file list and
-validate before publishing. Adding arbitrary new legacy apps is intentionally not automated;
-new apps use the native package contract. See [compatibility](legacy-compatibility.md).
+Identity, version, entry and permissions come exclusively from `app.toml`.
+The application also displays its version in `main.py`; update that display
+constant with the manifest and run the package tests before committing source.
+Keep `installable: false` until the target native installer and launcher have
+been verified. See [runtime integration](runtime-integration.md).

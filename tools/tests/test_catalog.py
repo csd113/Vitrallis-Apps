@@ -69,7 +69,7 @@ class MetadataTests(unittest.TestCase):
 
     def test_invalid_repositories_and_source_paths(self):
         for key, values in {'repository': ['https://github.com/a/b', '../repo', 'a/b/c', '-a/b', 'a-/b', 'a--b/c', 'a/..', 'a/b\n'],
-                            'path': ['', 'apps/../bad', '/apps/foo', 'apps/Foo', 'apps/a--b', 'Apps/foo/bar'],
+                            'path': ['', 'apps/../bad', '/apps/foo', 'apps/Foo', 'apps/a--b', 'Apps/foo', 'Apps/Bitcoin-Dashboard', 'Apps/foo/bar'],
                             'commit': ['main', 'a'*39, 'A'*40, '0'*40+'\n']}.items():
             for value in values:
                 with self.subTest(key=key, value=value):
@@ -246,7 +246,8 @@ class PublicationTests(unittest.TestCase):
         lib.validate_sources(self.catalog, self.repo, {})
         previous = copy.deepcopy(self.catalog)
         previous['apps'][0]['files'] = lib.file_rows(files)
-        lib.validate_sources(previous, self.repo, {})
+        with self.assertRaisesRegex(lib.Invalid, 'excluding tests/'):
+            lib.validate_sources(previous, self.repo, {})
         partial = copy.deepcopy(previous)
         partial['apps'][0]['files'] = [row for row in partial['apps'][0]['files']
                                       if row['path'] != 'main.py']
@@ -259,6 +260,23 @@ class PublicationTests(unittest.TestCase):
         self.assertFalse(entry['installable'])
         self.assertEqual(entry['source']['repository'], 'other-publisher/catalog')
         self.assertEqual(entry['version'], '0.1.0')
+
+    def test_bitcoin_uses_the_native_publication_contract(self):
+        path = 'apps/bitcoin-dashboard'
+        shutil.copytree(ROOT / path, self.repo / path)
+        commit = self.commit_source()
+        catalog = self.generate(commit=commit, path=path,
+                                description='Bitcoin CAD price, chart, and network dashboard for the PocketCHIP.',
+                                compatibility_notes='Requires Python 3.8+ and Tk 8.6; native integration pending.')
+        lib.validate_sources(catalog, self.repo, {})
+        entry = catalog['apps'][0]
+        package = lib.manifest(lib.local_files(self.repo / path), path)
+        for key in ('id', 'name', 'version', 'runtime', 'entry', 'permissions'):
+            self.assertEqual(entry[key], package[key])
+        self.assertEqual(entry['source']['path'], path)
+        self.assertEqual(entry['source']['commit'], commit)
+        self.assertFalse(entry['installable'])
+        self.assertEqual(entry['files'], lib.file_rows(lib.package_files(lib.local_files(self.repo / path))))
 
     def test_dirty_and_staged_bytes_do_not_change_publication(self):
         (self.app / 'main.py').write_text('raise RuntimeError("dirty code must never run")')
@@ -408,40 +426,23 @@ class PublicationTests(unittest.TestCase):
         with self.assertRaisesRegex(lib.Invalid, 'missing package files'):
             self.generate(commit=commit)
 
-    def test_legacy_literal_versions_never_execute_code(self):
-        self.assertEqual(lib.legacy_version(b'VERSION = "1.2.3"\nraise RuntimeError()\n', 'legacy'), '1.2.3')
-        for code in [b'VERSION = get_version()', b'VERSION = "1.0.0"\nVERSION = dynamic()',
-                     b'VERSION = "v1.0.0"', b'VERSION = True']:
-            with self.subTest(code=code), self.assertRaises(lib.Invalid):
-                lib.legacy_version(code, 'legacy')
+    def test_manifest_required_even_with_literal_python_version(self):
+        (self.app / 'app.toml').unlink()
+        (self.app / 'main.py').write_text('VERSION = "0.1.0"\nraise RuntimeError()\n')
+        commit = self.commit_source()
+        with self.assertRaisesRegex(lib.Invalid, 'missing package files'):
+            self.generate(commit=commit)
+        catalog = copy.deepcopy(self.catalog)
+        catalog['apps'][0]['source']['commit'] = commit
+        files = lib.committed_files(self.repo, commit, 'apps/hello')
+        catalog['apps'][0]['files'] = lib.file_rows(lib.package_files(files))
+        with self.assertRaisesRegex(lib.Invalid, 'missing package files'):
+            lib.validate_sources(catalog, self.repo, {})
 
-    def test_legacy_upgrade_reads_committed_version(self):
-        legacy = self.repo / 'Legacy-fixture'
-        legacy.mkdir()
-        (legacy / 'legacy.py').write_text('VERSION = "1.0.0"\n')
-        self.run_git('add', 'Legacy-fixture/legacy.py')
-        blob = self.run_git('hash-object', str(legacy / 'legacy.py'))
-        self.run_git('update-index', '--add', '--cacheinfo', f'100644,{blob},Apps/Legacy/legacy.py')
-        self.run_git('commit', '-qm', 'Legacy fixture')
-        commit = self.run_git('rev-parse', 'HEAD')
-        entry = {'id': 'org.example.legacy', 'name': 'Legacy', 'version': '1.0.0',
-                 'description': 'Legacy fixture', 'runtime': 'python', 'entry': 'legacy.py',
-                 'permissions': {'network': False, 'audio': False, 'storage': False},
-                 'installable': False, 'compatibility_notes': 'Fixture adapter',
-                 'source': {'repository': 'publisher/catalog', 'commit': commit, 'path': 'Apps/Legacy'},
-                 'files': lib.file_rows(lib.committed_files(self.repo, commit, 'Apps/Legacy'))}
-        catalog = {'schema_version': 1, 'apps': [entry]}
-        (legacy / 'legacy.py').write_text('VERSION = "1.1.0"\n')
-        blob = self.run_git('hash-object', '-w', str(legacy / 'legacy.py'))
-        self.run_git('update-index', '--add', '--cacheinfo', f'100644,{blob},Apps/Legacy/legacy.py')
-        self.run_git('commit', '-qm', 'Legacy upgrade fixture')
-        commit = self.run_git('rev-parse', 'HEAD')
-        result = update_catalog.update(catalog, repo=self.repo, mappings={},
-                                       repository='publisher/catalog', commit=commit,
-                                       path='Apps/Legacy', app_id=entry['id'])
-        self.assertEqual(result['apps'][0]['version'], '1.1.0')
-        self.assertEqual(result['apps'][0]['permissions'], entry['permissions'])
-
+    def test_source_path_rejected_before_git_access(self):
+        with patch.object(lib, 'git', side_effect=AssertionError('unexpected Git access')):
+            with self.assertRaises(lib.Invalid):
+                self.generate(path='Apps/Bitcoin-Dashboard')
 
 
 if __name__ == '__main__':

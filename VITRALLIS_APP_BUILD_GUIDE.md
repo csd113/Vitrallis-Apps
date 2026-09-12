@@ -20,9 +20,8 @@ When device integration cannot be checked, label the prototype profile and repor
 what remains unverified. Do not invent SDKs, environment variables or permission APIs.
 
 The repository defines manifest v1; shell consumption is version-dependent.
-The [inspected legacy integration](docs/legacy-compatibility.md) uses PocketHome
-menu entries and explicit launcher adapters. A manifest alone does not register
-an app there. Do not change the shell just to register an app without authorization.
+[Runtime integration](docs/runtime-integration.md) must be verified against the
+target client. A manifest alone does not register an app in a shell. Do not change the shell just to register an app without authorization.
 
 ## Package and runtime
 
@@ -38,8 +37,7 @@ services, swap or system configuration as ordinary app startup behavior.
 Keep startup in `main()` behind the standard import guard. Importing modules must
 not open windows, fetch data or write files. Resolve resources relative to the
 script's directory. Installed packages are read-only; persistent settings/saves
-belong only in documented, validated storage locations. Do not copy the legacy
-Bitcoin runtime/launcher paths into generic native apps.
+belong only in documented, validated storage locations. Each app must document its own storage requirements.
 
 ## Interface and lifecycle
 

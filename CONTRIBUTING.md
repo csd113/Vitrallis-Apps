@@ -2,9 +2,17 @@
 
 Start with [the repository overview](README.md), then [create an app](docs/creating-apps.md)
 or read [the catalog format](docs/catalog-format.md). Keep changes focused and
-preserve existing IDs, publication bytes and client compatibility. New native
-apps belong in lowercase `apps/<app-slug>/`; the Bitcoin import remains in `Apps/`.
-Use a case-sensitive checkout when working with both directories.
+preserve stable application IDs. All apps belong in lowercase `apps/<app-slug>/`
+and follow the native manifest v1 contract.
+
+## Pre-release compatibility policy
+
+Vitrallis is pre-release. Do not preserve compatibility with obsolete pre-release
+layouts, APIs, manifests, paths, behaviors or implementation details unless
+compatibility is explicitly requested for the change. Update all affected code
+to the current canonical design and delete superseded code instead of adding
+compatibility layers, fallbacks, aliases, adapters, dual paths, deprecated formats
+or migration shims. This rule applies to contributors and coding agents.
 
 No repository-wide license has been established. Ask the owner to confirm licensing
 and imported content rights; do not add a guessed license or license metadata.
@@ -17,16 +25,16 @@ The file-safety checks use POSIX no-follow/nonblocking APIs. Tkinter is needed f
 GUI tests. Run from the repository root:
 
 ```sh
-python3 tools/validate_catalog.py --catalog apps.json --package examples/hello-vitrallis
+python3 tools/validate_catalog.py --catalog apps.json --package examples/hello-vitrallis --package apps/bitcoin-dashboard
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools/tests -v
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s examples/hello-vitrallis/tests -v
-PYTHONPYCACHEPREFIX=/tmp/vitrallis-pycache python3 -m compileall -q tools examples/hello-vitrallis
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s Apps/Bitcoin-Dashboard/tests -p test_bitcoin.py -v
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/bitcoin-dashboard/tests -v
+PYTHONPYCACHEPREFIX=/tmp/vitrallis-pycache python3 -m compileall -q tools examples/hello-vitrallis apps
 git diff --check
 ```
 
 Validate every new native app with `--package apps/<slug>` and run its own tests.
-The workflow also discovers native packages in the Git-cased lowercase directory.
+The workflow discovers, validates and runs tests for every native package.
 For display tests, use a graphical desktop or Linux `xvfb-run -a`; with
 `VITRALLIS_REQUIRE_GUI=1` the example tests fail rather than skip if Tk/display is
 missing. CI sets this flag and uses Xvfb. Desktop tests are not device validation.
@@ -46,7 +54,6 @@ runtime/adapter support. Do not republish changed bytes under the same version.
 The example is a template and does not belong in the production catalog.
 
 A review should state what changed, files affected, validation results and any
-remaining integration/device limits. Preserve legacy source and production metadata
-unless the requested change actually requires changing them. Never claim a shell
+remaining integration/device limits. Never claim a shell
 loader, permission sandbox or generalized installer exists because the package
 specification defines metadata for it.

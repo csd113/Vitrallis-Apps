@@ -8,32 +8,21 @@ import subprocess
 import sys
 
 from catalog_lib import (Invalid, ROOT, REPOSITORY, catalog_metadata, committed_files,
-                         file_rows, package_files, legacy_version, load_json, manifest, match, require,
+                         file_rows, package_files, load_json, manifest, match, require,
                          source_repositories, validate_sources, write_catalog)
 
 
-def update(catalog, *, repo, mappings, repository, commit, path, app_id=None,
+def update(catalog, *, repo, mappings, repository, commit, path,
            description=None, compatibility_notes=None, installable=None):
     catalog_metadata(catalog)
     match(repository, REPOSITORY, 'source.repository')
     source_repo = mappings.get(repository, repo)
     files = committed_files(source_repo, commit, path)
-    package = manifest(files, path) if path.startswith('apps/') or 'app.toml' in files else None
-    if package:
-        require(app_id is None or app_id == package['id'], path, '--app-id disagrees with manifest')
-        app_id = package['id']
-    require(app_id is not None, path, 'legacy packages require --app-id for an existing entry')
+    package = manifest(files, path)
+    app_id = package['id']
     previous = next((app for app in catalog['apps'] if app['id'] == app_id), None)
-    require(package is not None or previous is not None, path,
-            'new legacy entries need a reviewed adapter and manually reviewed metadata')
     entry = copy.deepcopy(previous) if previous else {'id': app_id, 'installable': False}
-    if package:
-        entry.update({key: package[key] for key in ('id', 'name', 'version', 'runtime', 'entry', 'permissions')})
-    else:
-        # Preserve reviewed adapter metadata; read only the literal version.
-        require(previous['source']['path'] == path, path, 'legacy source path cannot change')
-        require(entry['entry'] in files, path, 'legacy entry missing from committed files')
-        entry['version'] = legacy_version(files[entry['entry']], path)
+    entry.update({key: package[key] for key in ('id', 'name', 'version', 'runtime', 'entry', 'permissions')})
     for key, value in (('description', description), ('compatibility_notes', compatibility_notes),
                        ('installable', installable)):
         if value is not None:
@@ -62,8 +51,7 @@ def main(argv=None):
     parser.add_argument('--source-repo', action='append', default=[], metavar='OWNER/REPO=PATH')
     parser.add_argument('--repository', required=True, help='GitHub owner/repository (publisher chosen)')
     parser.add_argument('--commit', required=True, help='full 40-character lowercase source commit SHA')
-    parser.add_argument('--path', required=True, help='apps/slug or existing Apps/Legacy-Name')
-    parser.add_argument('--app-id', help='required for an existing legacy entry; native IDs come from app.toml')
+    parser.add_argument('--path', required=True, help='canonical apps/<app-slug> package path')
     parser.add_argument('--description', help='required when adding an app')
     parser.add_argument('--compatibility-notes', help='required when adding an app')
     availability = parser.add_mutually_exclusive_group()
@@ -75,7 +63,7 @@ def main(argv=None):
         catalog = load_json(args.catalog)
         result = update(catalog, repo=args.repo, mappings=source_repositories(args.source_repo),
                         repository=args.repository, commit=args.commit, path=args.path,
-                        app_id=args.app_id, description=args.description,
+                        description=args.description,
                         compatibility_notes=args.compatibility_notes, installable=args.installable)
         if args.write:
             write_catalog(args.catalog, result)

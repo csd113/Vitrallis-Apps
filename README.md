@@ -16,8 +16,7 @@ separate requirements.
    [forking a catalog](docs/forking-a-catalog.md) to choose its source and trust policy.
 2. **Create an app:** copy `examples/hello-vitrallis/` to `apps/your-app/` and
    change its identity, version, artwork and behavior. See
-   [creating apps](docs/creating-apps.md). Use a case-sensitive checkout when
-   keeping both `Apps/` and `apps/` (Linux, or a case-sensitive macOS volume).
+   [creating apps](docs/creating-apps.md).
 3. **Validate** the working package, then run its tests:
 
    ```sh
@@ -35,9 +34,10 @@ separate requirements.
 Check this repository itself:
 
 ```sh
-python3 tools/validate_catalog.py --catalog apps.json --package examples/hello-vitrallis
+python3 tools/validate_catalog.py --catalog apps.json --package examples/hello-vitrallis --package apps/bitcoin-dashboard
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools/tests -v
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s examples/hello-vitrallis/tests -v
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/bitcoin-dashboard/tests -v
 ```
 
 ## What is defined, and what is implemented?
@@ -48,34 +48,37 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s examples/hello-vitrall
 | [Catalog schema v1](docs/catalog-format.md) | Publisher-neutral JSON metadata with full Git commit pins and file sizes/SHA-256 values. Trust is client configuration. |
 | Official catalog | [`apps.json`](apps.json) in `csd113/Vitrallis-Apps`; [raw JSON](https://raw.githubusercontent.com/csd113/Vitrallis-Apps/main/apps.json) is its default distribution endpoint. |
 | Shell integration | Manifest consumption is version-dependent. The inspected shell uses PocketHome menu entries; a package manifest alone does not register an app. |
-| Legacy Bitcoin installation | Pocketchip-update-apps 1.6.x has a reviewed Bitcoin adapter. It is not a general native-package installer or a configurable multi-publisher client. |
+| Native Bitcoin package | Manifest v1 package; installation remains disabled pending native client verification. |
 
 ## Repository map
 
 ```text
 apps.json                     Official production catalog (Bitcoin only)
 apps.schema.json              Generic catalog schema v1
-apps/<app-slug>/               Canonical new native packages (created as needed)
-Apps/Bitcoin-Dashboard/       Unchanged legacy source snapshot; keep its casing
+apps/bitcoin-dashboard/       Native Bitcoin Dashboard package
+apps/<app-slug>/               Canonical location for all applications
 examples/hello-vitrallis/      Copyable manifest v1 app, not in production catalog
 tools/                        Offline validator and commit-based catalog updater
   tests/                      Adversarial and publication workflow regression tests
-docs/                         Format, creation, publication, forking, compatibility
+docs/                         Format, creation, publication, forking, runtime integration
 .github/workflows/validate.yml  Push/PR repository checks
 CONTRIBUTING.md                Review and validation checklist
 VITRALLIS_APP_BUILD_GUIDE.md   Developer guidance linked to the package contract
 ```
 
-## Official Bitcoin compatibility
+## Bitcoin Dashboard
 
-The catalog retains `io.vitrallis.bitcoindashboard` **1.2.0**, its exact source
-commit, nine files, permissions and installation flag. `Apps/Bitcoin-Dashboard`
-is an unchanged import from
-[csd113/PocketChip-Bitcoin-Display at 9d732e0](https://github.com/csd113/PocketChip-Bitcoin-Display/tree/9d732e056801c8a98ee3edb60cb5bd88646ac467).
-It has no native manifest. Its legacy launcher/storage paths and original docs
-are preserved. See [legacy compatibility](docs/legacy-compatibility.md) for the
-manager and shell boundaries. Desktop validation does not establish device
-compatibility; physical verification remains separate.
+[Bitcoin Dashboard](apps/bitcoin-dashboard/README.md) is a native manifest v1
+package at `apps/bitcoin-dashboard`, with stable ID
+`io.vitrallis.bitcoindashboard` and version **1.2.2**. It preserves the CAD quote,
+chart, network cards, detail views, settings and keyboard/touch controls of the
+PocketCHIP dashboard. Python 3.8+ and Tkinter with Tk 8.6 are required.
+
+The package declares network and storage requirements and no audio. It includes
+its own icon and runs through `main.py` with system Python. Installation is
+currently disabled in the catalog until native installation and launcher
+integration are verified. See [runtime integration](docs/runtime-integration.md).
+Desktop validation does not establish physical device compatibility.
 
 ## Contributing and licensing
 

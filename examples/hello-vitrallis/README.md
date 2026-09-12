@@ -25,8 +25,8 @@ It does not force fullscreen or install a menu entry.
 
 ## Copy and customize
 
-Copy this entire directory to `apps/<your-slug>/` in your catalog checkout (use a
-case-sensitive volume when `Apps/` also exists). Change the manifest `name`, `id`
+Copy this entire directory to `apps/<your-slug>/` in your catalog checkout.
+Change the manifest `name`, `id`
 and `version`, window title in `main.py`, greeting asset, icon, README and tests.
 Choose a stable reverse-domain ID you control; do not reuse `io.vitrallis.hello`.
 Keep `manifest_version = 1` and declare only permissions you actually use.

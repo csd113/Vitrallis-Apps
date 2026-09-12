@@ -7,17 +7,12 @@ your target before marking a catalog entry installable.
 
 ## Copy the known-good package
 
-From the repository root, on a case-sensitive filesystem:
+From the repository root:
 
 ```sh
 mkdir -p apps
 cp -R examples/hello-vitrallis apps/my-app
 ```
-
-If you keep legacy `Apps/`, a default case-insensitive macOS filesystem cannot
-represent `apps/` as a separate directory. Use a case-sensitive volume or Linux
-checkout to create new native packages; do not rename the Bitcoin import.
-The example itself can be run and validated on ordinary macOS volumes.
 
 ```text
 apps/my-app/
@@ -53,7 +48,7 @@ audio = false
 storage = false
 ```
 
-All eight top-level keys are required, including integer `manifest_version = 1`.
+All seven top-level keys are required, including integer `manifest_version = 1`.
 Only the shown keys are accepted in v1; reject unknown keys/versions, duplicate
 TOML assignments, extra permission keys and incorrect types. Future extensions
 require an explicit contract revision; do not add speculative SDK fields.

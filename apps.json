@@ -3,58 +3,68 @@
   "apps": [
     {
       "id": "io.vitrallis.bitcoindashboard",
+      "installable": false,
       "name": "Bitcoin Dashboard",
-      "version": "1.2.1",
-      "description": "Bitcoin CAD price, chart, and network dashboard for the PocketCHIP.",
+      "version": "1.2.2",
       "runtime": "python",
-      "entry": "bitcoin.py",
+      "entry": "main.py",
       "permissions": {
         "network": true,
         "audio": false,
         "storage": true
       },
-      "installable": true,
-      "compatibility_notes": "Requires Pocketchip-update-apps 1.6.0 or later and a compatible Python/Tk runtime. Its reviewed Bitcoin adapter supplies the launcher and icon and preserves existing PocketCHIP paths. Desktop install/update/repair checks passed; physical PocketCHIP verification of manager 1.6.0 remains pending.",
+      "description": "Bitcoin CAD price, chart, and network dashboard for the PocketCHIP.",
+      "compatibility_notes": "Requires Python 3.8+ and system Tkinter with Tk 8.6. Native manifest v1 package; installation, update, repair and launcher integration require verification before enabling installation. Physical PocketCHIP verification remains pending.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "e5e72b8c811b72c8e1a10f61fd1316d8eea22cee",
-        "path": "Apps/Bitcoin-Dashboard"
+        "commit": "c45e941396adc42f5aee5ddaa6342b171a3d3734",
+        "path": "apps/bitcoin-dashboard"
       },
       "files": [
         {
-          "path": ".gitignore",
-          "size": 49,
-          "sha256": "455c26aa093bcd128237fcaeeccfae53616ded322221aade5afd23cc1fd3212e"
-        },
-        {
           "path": "CHANGELOG.md",
-          "size": 4356,
-          "sha256": "7883ffa5db2138741b88374331ab2cbaefaec8ce6542e962526fa1c4d743b98f"
+          "size": 4831,
+          "sha256": "7089c81e845a89ba6793bf13999f0b4f8eea140195022f1231539a5e65f671db"
         },
         {
           "path": "README.md",
-          "size": 4549,
-          "sha256": "02926e009b6731f15e47db9226432821e5f336a36ed8e1aefcc7edb274000048"
+          "size": 4925,
+          "sha256": "214a17c8cd505266b0ea15892f61292819c7004ae17ba047c886c48d2ae162eb"
         },
         {
-          "path": "bitcoin.py",
-          "size": 43039,
-          "sha256": "a41efd06c0da4f545bdfcab2cc4a54db603e29187a0cccf120f5c081e80134c5"
+          "path": "app.toml",
+          "size": 199,
+          "sha256": "ce5a30e580b8ffad8ef0dc437843f839e554085a8b4156f9caef12f7867fe777"
         },
         {
-          "path": "docs/dashboard.png",
+          "path": "assets/README.md",
+          "size": 478,
+          "sha256": "222404366dcbb9a860d296e9879c3c0307147644f0ea59e634e334b2143953a0"
+        },
+        {
+          "path": "assets/dashboard.png",
           "size": 40594,
           "sha256": "91aba850f575e3698caaffa1577c3b561553d6c130b1705cd172851af0cb805a"
         },
         {
           "path": "docs/development.md",
-          "size": 11375,
-          "sha256": "7451a48bdf333e3cd70935d74480b69a5d6316fe6a38708b9006e5f08886c085"
+          "size": 11230,
+          "sha256": "4441dd9bbea6a694670af71e687314878c7e87b569e0c36b8ba31fa20dc06b45"
         },
         {
-          "path": "launch",
-          "size": 351,
-          "sha256": "61d7f238468029765e3c5fb193e7f7705f6d09d12fcadef31bab1a56ff386fde"
+          "path": "icon.png",
+          "size": 688,
+          "sha256": "bdaeaee34bf4f6140c1e6fc996c845af15e0ee5945b98bd8fac45830271758ea"
+        },
+        {
+          "path": "main.py",
+          "size": 42524,
+          "sha256": "2341191c928bb084282ba3ca46830b3fdcd36389741c031c1c67ed89e25069ce"
+        },
+        {
+          "path": "requirements.txt",
+          "size": 76,
+          "sha256": "0cee70ab425b69d50a4b23207ed958015db6faea15aa64ba50c81f88792aa662"
         }
       ]
     }

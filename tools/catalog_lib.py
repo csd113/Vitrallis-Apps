@@ -1,5 +1,4 @@
 """Shared, offline catalog/package checks. Python 3.11+, Git, no pip dependencies."""
-import ast
 import hashlib
 import json
 import os
@@ -20,7 +19,7 @@ FILE_COUNT = 256
 ID = r"[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)+"
 VERSION = r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
 REPOSITORY = r"[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}/(?!\.{1,2}$)[A-Za-z0-9_.-]{1,100}"
-SOURCE_PATH = r"(?:Apps/[A-Za-z0-9_-]+|apps/[a-z0-9]+(?:-[a-z0-9]+)*)"
+SOURCE_PATH = r"apps/[a-z0-9]+(?:-[a-z0-9]+)*"
 COMMIT = r"[0-9a-f]{40}"
 
 
@@ -377,46 +376,18 @@ def file_rows(files):
             for path, data in sorted(files.items())]
 
 
-def legacy_version(data, where):
-    """Read a single literal VERSION without importing or executing legacy code."""
-    try:
-        tree = ast.parse(data, filename=str(where))
-    except (SyntaxError, ValueError) as error:
-        raise Invalid(f'{where}: invalid legacy Python entry') from error
-    assignments = []
-    for node in tree.body:
-        if isinstance(node, ast.Assign):
-            if any(isinstance(target, ast.Name) and target.id == 'VERSION' for target in node.targets):
-                assignments.append(node.value)
-        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == 'VERSION':
-            assignments.append(node.value)
-    require(len(assignments) == 1 and isinstance(assignments[0], ast.Constant),
-            where, 'legacy entry requires one literal VERSION assignment')
-    version = assignments[0].value
-    match(version, VERSION, f'{where}.VERSION', 32)
-    return version
-
-
 def check_app_source(app, repo):
     where = f"{app['id']} ({app['source']['path']})"
     try:
         files = committed_files(repo, app['source']['commit'], app['source']['path'])
         expected = file_rows(package_files(files))
-        # Continue verifying previously published complete-directory catalogs.
-        # New catalog generation always excludes tests/.
-        if app['files'] == file_rows(files):
-            expected = file_rows(files)
         require([row['path'] for row in expected] == [row['path'] for row in app['files']],
                 where, 'files must enumerate the committed package (excluding tests/)')
         for actual, published in zip(expected, app['files']):
             require(actual == published, f"{where}/{actual['path']}", 'size or SHA-256 mismatch')
-        if app['source']['path'].startswith('apps/') or 'app.toml' in files:
-            package = manifest(files, where)
-            for key in ('id', 'name', 'version', 'runtime', 'entry', 'permissions'):
-                require(app[key] == package[key], f'{where}.{key}', 'catalog/manifest mismatch')
-        else:
-            require(legacy_version(files[app['entry']], where) == app['version'],
-                    where, 'legacy entry requires matching literal VERSION')
+        package = manifest(files, where)
+        for key in ('id', 'name', 'version', 'runtime', 'entry', 'permissions'):
+            require(app[key] == package[key], f'{where}.{key}', 'catalog/manifest mismatch')
     except (Invalid, SyntaxError, ValueError) as error:
         raise Invalid(f'{where}: {error}') from error
 

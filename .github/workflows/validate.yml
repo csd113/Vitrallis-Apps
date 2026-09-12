@@ -28,9 +28,9 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb
       - name: Validate schema, catalog, pinned hashes and example manifest
         run: python tools/validate_catalog.py --catalog apps.json --package examples/hello-vitrallis
-      - name: Validate every unpublished native package
+      - name: Validate and test every native package (GUI required)
         run: |
-          python - <<'PY'
+          xvfb-run -a python - <<'PY'
           from pathlib import Path
           import subprocess
           import sys
@@ -43,20 +43,17 @@ jobs:
               for package in sorted(root.iterdir()):
                   match(package.as_posix(), SOURCE_PATH, package)
                   subprocess.run([sys.executable, 'tools/validate_catalog.py', '--package', str(package)], check=True)
+                  subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', str(package / 'tests'), '-v'], check=True)
           PY
       - name: Tooling regression tests
         run: python -m unittest discover -s tools/tests -v
       - name: Example desktop tests (GUI required)
         run: xvfb-run -a python -m unittest discover -s examples/hello-vitrallis/tests -v
-      - name: Legacy Bitcoin data regressions
-        if: hashFiles('Apps/Bitcoin-Dashboard/tests/test_bitcoin.py') != ''
-        run: python -m unittest discover -s Apps/Bitcoin-Dashboard/tests -p test_bitcoin.py -v
       - name: Compile Python outside packages
         env:
           PYTHONPYCACHEPREFIX: ${{ runner.temp }}/vitrallis-pycache
         run: |
           python -m compileall -q tools examples/hello-vitrallis
           if [ -d apps ]; then python -m compileall -q apps; fi
-          if [ -d Apps/Bitcoin-Dashboard ]; then python -m compileall -q Apps/Bitcoin-Dashboard; fi
       - name: Whitespace checks
         run: git diff --check

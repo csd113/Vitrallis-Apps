@@ -22,12 +22,11 @@ Each entry contains exactly these fields:
 | `installable` | Publisher readiness flag. False forbids catalog-driven installation/update/repair. True still needs a compatible runtime, trusted source and reviewed client adapter. |
 | `source.repository` | A GitHub `owner/repository` value. Owner: 1–39 ASCII letters/digits/hyphens, starts/ends with a letter or digit, no consecutive hyphens. Repository: 1–100 ASCII letters/digits/underscore/dot/hyphen, excluding `.` and `..`. No URL, credentials, port, path or `.git` suffix convention; use the actual repository name. The syntax check does not establish existence or trust. |
 | `source.commit` | Exactly 40 lowercase hexadecimal characters identifying a Git commit (SHA-1 object format). A branch, abbreviated hash, tag object or tree is not a source pin. |
-| `source.path` | `apps/<app-slug>` for native packages, where the slug is lowercase letters/digits separated by single hyphens; also accepts legacy `Apps/<name>` with ASCII letters/digits/underscore/hyphen. |
+| `source.path` | `apps/<app-slug>` for native packages, where the slug is lowercase letters/digits separated by single hyphens. |
 | `files` | Complete package at that commit, excluding app-local `tests/`, sorted by ASCII path. Each row has exactly `path`, integer `size`, lowercase 64-hex `sha256`. Includes docs and assets. |
 
-Catalog schema remains **1**: allowing other repository names and native source
-paths is additive. Older clients may retain a narrower trust policy and path
-support. Format acceptance does not imply installer support.
+Catalog schema is **1**. Only the current native package contract is accepted.
+Format acceptance does not imply installer support.
 
 ## Cross-field and byte rules
 
@@ -42,16 +41,13 @@ support. Format acceptance does not imply installer support.
 - Catalog size is at most 8 MiB. A bundle has 1–256 files, each at most 2 MiB and
   together at most 16 MiB. Reject symlinks, submodules and nonregular files.
 - Every file must exist in the pinned source directory with exactly the advertised
-  byte count and SHA-256. New lists enumerate the directory **excluding `tests/`**. Previously published
-  complete-directory lists remain valid when every byte matches the pinned source.
+  byte count and SHA-256. Lists enumerate the directory **excluding `tests/`**; including development tests
+  is invalid.
   Keep caches, secrets and build artifacts out.
-- Native `apps/` directories require the complete [manifest v1 package](creating-apps.md).
-  A legacy directory containing `app.toml` is also validated as native. Catalog
-  ID, name, version, runtime, entry and permissions must equal the manifest.
-- Legacy directories without a manifest require a single top-level literal
-  `VERSION = "x.y.z"` in the Python entry matching the catalog. Validation parses
-  its AST without importing app code. The Bitcoin snapshot satisfies this adapter
-  convention; it is not an exemption from hash or path checks.
+- Every source directory must use `apps/<app-slug>` and contain the complete
+  [manifest v1 package](creating-apps.md). Catalog ID, name, version, runtime,
+  entry and permissions must equal the manifest. Packages without a manifest
+  are invalid; Python code is never inspected to infer publication metadata.
 
 The standard-library validator applies the vocabulary used by the bundled JSON
 schema, then these semantic checks. It is deliberately not a general JSON Schema
@@ -88,4 +84,4 @@ A catalog error means “could not check,” not “up to date.”
 A hash served by the publisher is integrity metadata, not an independent
 signature. Signed catalogs, runtime permission enforcement, generalized receipts
 and dynamic installer discovery are outside v1. See
-[legacy compatibility](legacy-compatibility.md) for shipped client limitations.
+[runtime integration](runtime-integration.md) for client verification requirements.
