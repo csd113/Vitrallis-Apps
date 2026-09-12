@@ -1,0 +1,1 @@
+# No third-party Python dependencies. Python 3.8+ and system Tkinter are required.

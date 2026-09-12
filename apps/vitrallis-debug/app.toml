@@ -1,0 +1,11 @@
+manifest_version = 1
+name = "Vitrallis Debug"
+id = "io.vitrallis.debug"
+version = "0.1.0"
+runtime = "python"
+entry = "main.py"
+
+[permissions]
+network = false
+audio = false
+storage = false
