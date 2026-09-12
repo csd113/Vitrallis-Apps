@@ -3,7 +3,7 @@
   "apps": [
     {
       "id": "io.vitrallis.bitcoindashboard",
-      "installable": false,
+      "installable": true,
       "name": "Bitcoin Dashboard",
       "version": "1.2.2",
       "runtime": "python",
@@ -14,7 +14,7 @@
         "storage": true
       },
       "description": "Bitcoin CAD price, chart, and network dashboard for the PocketCHIP.",
-      "compatibility_notes": "Requires Python 3.8+ and system Tkinter with Tk 8.6. Native manifest v1 package; installation, update, repair and launcher integration require verification before enabling installation. Physical PocketCHIP verification remains pending.",
+      "compatibility_notes": "Requires Python 3.8+ and system Tkinter with Tk 8.6. Native manifest v1 package for the Vitrallis Shell App Center. Physical PocketCHIP verification remains pending.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
         "commit": "c45e941396adc42f5aee5ddaa6342b171a3d3734",
