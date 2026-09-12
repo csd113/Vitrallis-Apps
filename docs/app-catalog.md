@@ -2,6 +2,9 @@
 
 Use these documents for the current package and publication contracts:
 
+- [Catalog changelog](../CHANGELOG.md)
+- [Required changelogs and merge checks](changelog-policy.md)
+
 - [Generic catalog format v1](catalog-format.md)
 - [Creating native manifest v1 apps](creating-apps.md)
 - [Publishing versions and generating checksums](publishing-apps.md)

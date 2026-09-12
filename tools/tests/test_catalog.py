@@ -146,7 +146,7 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(lib.manifest(self.files, 'hello')['manifest_version'], 1)
 
     def test_missing_required_files_and_directories(self):
-        for path in ['app.toml', 'main.py', 'icon.png', 'requirements.txt', 'README.md', 'assets/greeting.txt', 'tests/test_main.py']:
+        for path in ['app.toml', 'main.py', 'icon.png', 'requirements.txt', 'README.md', 'CHANGELOG.md', 'assets/greeting.txt', 'tests/test_main.py']:
             files = dict(self.files)
             del files[path]
             with self.subTest(path=path), self.assertRaises(lib.Invalid):
@@ -382,10 +382,12 @@ class PublicationTests(unittest.TestCase):
             self.generate(commit=new_commit)
         manifest = self.app / 'app.toml'
         manifest.write_text(manifest.read_text().replace('0.1.0', '0.0.9'))
+        (self.app / 'CHANGELOG.md').write_text('# Changelog\n\n## 0.0.9 — 2026-09-12\n\n- Test the refused version downgrade.\n')
         new_commit = self.commit_source()
         with self.assertRaisesRegex(lib.Invalid, 'downgrade'):
             self.generate(commit=new_commit)
         manifest.write_text(manifest.read_text().replace('0.0.9', '0.2.0'))
+        (self.app / 'CHANGELOG.md').write_text('# Changelog\n\n## 0.2.0 — 2026-09-12\n\n- Change the greeting asset in this release.\n')
         new_commit = self.commit_source()
         result = self.generate(commit=new_commit)
         self.assertEqual(result['apps'][0]['version'], '0.2.0')

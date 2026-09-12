@@ -1,0 +1,37 @@
+name: Changelog policy
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  changelog-policy:
+    name: Changelog policy
+    runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Require dated release notes and matching publication
+        env:
+          CHANGELOG_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          python - <<'PY'
+          import os
+          import subprocess
+          import sys
+          command = [sys.executable, 'tools/validate_changelogs.py']
+          base = os.environ.get('CHANGELOG_BASE', '')
+          if base and base != '0' * 40:
+              command.extend(['--base', base])
+          subprocess.run(command, check=True)
+          PY

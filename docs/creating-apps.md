@@ -21,6 +21,7 @@ apps/my-app/
 ├── main.py
 ├── requirements.txt
 ├── README.md
+├── CHANGELOG.md
 ├── assets/
 │   └── greeting.txt
 └── tests/
@@ -28,7 +29,9 @@ apps/my-app/
 ```
 
 Change `name`, `id` and `version` in the manifest, the window title and greeting
-in code/assets, the icon, README and tests. Choose an ID under a namespace you
+in code/assets, the icon, README, changelog and tests. Replace the example's
+changelog with your app's dated initial release; follow the
+[changelog and merge policy](changelog-policy.md). Choose an ID under a namespace you
 control, such as `org.yourproject.myapp`; do not publish the example's ID as your
 own app. Keep the ID stable on future releases. The directory slug is not the ID.
 
@@ -72,6 +75,9 @@ The canonical layout requires all shown files and both populated directories.
 An otherwise empty `assets/` should contain a README so Git retains it; `tests/`
 should contain meaningful app tests. `requirements.txt` may state that no pip
 dependencies are needed. Tkinter is a system prerequisite, not a pip dependency.
+`CHANGELOG.md` is required and shipped with the app. Its newest dated version
+must match `app.toml`, with concrete change bullets; package validation rejects
+missing, stale, empty or placeholder release entries.
 
 `icon.png` is the conventional icon. The repository publication profile accepts
 noninterlaced PNGs from 1×1 through 512×512 pixels, validates chunk CRCs and bounded

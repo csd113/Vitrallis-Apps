@@ -6,6 +6,12 @@ catalog, not the schema. A publisher selects a HTTPS catalog endpoint; a client
 configures that endpoint and an explicit allowlist of GitHub source repositories.
 The official endpoint is an example/default, not a requirement of this format.
 
+The root [CHANGELOG.md](../CHANGELOG.md) is the companion release history for
+`apps.json`, recording dated additions and version updates. Each package's
+`CHANGELOG.md` is included in its pinned `files` inventory. The
+[changelog policy](changelog-policy.md) defines submission and merge checks;
+no additional JSON fields are needed to read or install this catalog.
+
 ## Fields
 
 The root contains exactly `schema_version: 1` and `apps` (up to 1,000 entries).
