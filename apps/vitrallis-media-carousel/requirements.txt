@@ -1,0 +1,2 @@
+# Tk 8.6 and optional ffmpeg/ffprobe are system prerequisites, not pip packages.
+Pillow>=10.4,<13

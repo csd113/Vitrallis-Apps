@@ -1,0 +1,161 @@
+import os
+import signal
+import threading
+import time
+import tkinter as tk
+from unittest.mock import patch
+
+from support import StorageCase, gif_bytes
+from settings import DEFAULTS
+from ui import App, Services
+from main import install_shutdown_handlers
+
+
+class NativeTests(StorageCase):
+    def setUp(self):
+        super().setUp()
+        try:
+            self.root = tk.Tk()
+        except tk.TclError as error:
+            if os.environ.get("VITRALLIS_REQUIRE_GUI") == "1":
+                raise
+            self.skipTest("Graphical Tk unavailable: " + str(error))
+        self.app = App(self.root, lambda: Services(self.paths, "127.0.0.1", 0))
+        self.errors = []
+        self.root.report_callback_exception = lambda *args: self.errors.append(args)
+        self.addCleanup(self.cleanup_app)
+        self.wait_for(lambda: self.app.services is not None)
+
+    def wait_for(self, predicate, timeout=6):
+        deadline = time.monotonic() + timeout
+        while not predicate() and time.monotonic() < deadline:
+            self.root.update()
+            time.sleep(.01)
+        self.assertTrue(predicate(), "GUI operation timed out")
+        self.assertEqual(self.errors, [])
+
+    def cleanup_app(self):
+        if not self.app.finished:
+            self.app.close()
+            self.wait_for(lambda: self.app.finished)
+        self.app.finish()
+
+    def test_home_480_layout_large_touch_targets_and_keyboard_focus(self):
+        self.root.update_idletasks()
+        self.assertEqual((self.root.winfo_width(), self.root.winfo_height()), (480, 272))
+        self.assertIn("http://127.0.0.1:", self.app.url_label.cget("text"))
+        for button in self.app.folder_buttons:
+            self.assertGreaterEqual(button.winfo_height(), 36)
+            self.assertLessEqual(button.winfo_rooty() + button.winfo_height(), self.root.winfo_rooty() + 272)
+        self.app.services.library.create("Long collection " + "W" * 40)
+        self.app.services.library.create("Third collection")
+        self.app.draw_folders()
+        self.root.update()
+        self.app.folder_buttons[0].focus_force()
+        self.root.update()
+        self.app.move_focus(1)
+        self.assertEqual(self.root.focus_get(), self.app.folder_buttons[1])
+        self.app.move_focus(1)
+        self.assertEqual(self.app.page, 1)
+
+    def test_settings_fit_and_persist_and_invalid_input(self):
+        self.app.settings_screen()
+        self.root.update()
+        self.assertLessEqual(self.app.save_button.winfo_rooty() + self.app.save_button.winfo_height(), self.root.winfo_rooty() + 272)
+        self.app.seconds.set("invalid")
+        self.app.save_settings()
+        self.assertIsNone(self.app.pending)
+        self.app.seconds.set("9")
+        self.app.repeats.set("4")
+        self.app.order.set("Shuffle")
+        self.app.loop.set("Return to Main Menu")
+        self.app.save_settings()
+        self.wait_for(lambda: self.app.pending is None)
+        self.assertEqual(self.app.services.settings.snapshot(), {"image_seconds": 9, "repeats": 4, "order": "shuffle", "loop": False})
+        self.app.escape()
+        self.assertEqual(self.app.screen, "home")
+
+    def test_empty_and_all_bad_playlists_return_with_explanation(self):
+        self.app.play(self.cid)
+        self.assertEqual(self.app.screen, "home")
+        self.assertIn("Empty", self.app.home_notice)
+        stream, staged = self.app.services.library.temporary_upload()
+        with stream:
+            stream.write(b"corrupt")
+        self.app.services.library.add_upload(self.cid, "broken.png", staged, {"kind": "png"})
+        self.app.play(self.cid)
+        self.wait_for(lambda: self.app.screen == "home")
+        self.assertIn("No playable media", self.app.home_notice)
+
+    def upload_to_services(self, name, raw, kind):
+        stream, staged = self.app.services.library.temporary_upload()
+        with stream:
+            stream.write(raw)
+        return self.app.services.library.add_upload(self.cid, name, staged, {"kind": kind})
+
+    def test_native_gif_return_pause_previous_next_and_close(self):
+        self.upload_to_services("animation.gif", gif_bytes(), "gif")
+        self.app.services.settings.save(dict(DEFAULTS, repeats=1, loop=False))
+        self.app.play(self.cid)
+        self.wait_for(lambda: self.app.photo is not None)
+        self.app.pause()
+        photo = self.app.photo
+        for _ in range(15):
+            self.root.update()
+            time.sleep(.02)
+        self.assertIs(self.app.photo, photo)
+        self.assertTrue(self.app.clock.paused)
+        self.app.pause()
+        self.wait_for(lambda: self.app.screen == "home")
+        self.app.services.settings.save(dict(DEFAULTS, repeats=1, loop=True))
+        self.app.play(self.cid)
+        self.wait_for(lambda: self.app.photo is not None)
+        first_generation = self.app.generation
+        self.wait_for(lambda: self.app.generation > first_generation)
+        self.assertEqual(self.app.screen, "playback")
+        self.app.navigate(-1)
+        self.assertGreater(self.app.generation, first_generation)
+        self.app.navigate(1)
+        self.app.escape()
+        self.assertEqual(self.app.screen, "home")
+
+    def test_close_during_startup_and_no_owned_threads(self):
+        self.cleanup_app()
+        root = tk.Tk()
+        def slow_start():
+            time.sleep(.2)
+            return Services(self.paths, "127.0.0.1", 0)
+        app = App(root, slow_start)
+        app.close()
+        deadline = time.monotonic() + 6
+        while not app.finished and time.monotonic() < deadline:
+            root.update()
+            time.sleep(.01)
+        self.assertTrue(app.finished)
+        app.finish()
+        self.assertFalse([thread.name for thread in threading.enumerate() if thread.name.startswith("carousel-")])
+
+    def test_missing_server_bind_keeps_native_library_usable(self):
+        self.cleanup_app()
+        with patch("web_server.BoundedServer", side_effect=OSError("Denied bind")):
+            services = Services(self.paths, "127.0.0.1", 0)
+        try:
+            self.assertIn("unavailable", services.server.state)
+            self.assertEqual(services.library.snapshot()[0]["name"], "Unsorted")
+        finally:
+            services.close()
+
+    def test_shell_sigterm_requests_clean_shutdown(self):
+        self.upload_to_services("animation.gif", gif_bytes(), "gif")
+        self.app.play(self.cid)
+        self.wait_for(lambda: self.app.photo is not None)
+        previous = install_shutdown_handlers(self.app)
+        try:
+            signal.raise_signal(signal.SIGTERM)
+            self.wait_for(lambda: self.app.finished)
+            self.app.finish()
+            self.assertFalse(self.app.services.decoder.thread.is_alive())
+            self.assertFalse(self.app.services.server.thread.is_alive())
+        finally:
+            for signum, handler in previous.items():
+                signal.signal(signum, handler)
