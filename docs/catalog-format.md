@@ -1,16 +1,40 @@
 # Catalog format v1
 
+[Documentation](README.md) · [Creating apps](creating-apps.md) · [Publishing](publishing-apps.md)
+
 The generic contract is [`apps.schema.json`](../apps.schema.json) plus the
 cross-field rules below. [`apps.json`](../apps.json) is one publisher's production
-catalog, not the schema. A publisher selects a HTTPS catalog endpoint; a client
+catalog, not the schema. A publisher selects an HTTPS catalog endpoint; a client
 configures that endpoint and an explicit allowlist of GitHub source repositories.
 The official endpoint is an example/default, not a requirement of this format.
+The current Shell configures GitHub repositories in Sources and resolves their
+default branches; see [hosting a catalog](forking-a-catalog.md) for that client workflow.
 
 The root [CHANGELOG.md](../CHANGELOG.md) is the companion release history for
 `apps.json`, recording dated additions and version updates. Each package's
 `CHANGELOG.md` is included in its pinned `files` inventory. The
 [changelog policy](changelog-policy.md) defines submission and merge checks;
 no additional JSON fields are needed to read or install this catalog.
+
+## Inspect a real entry
+
+Use the current catalog rather than copying an illustrative checksum or stale
+version. From the repository root, print one complete entry:
+
+```sh
+python3 - <<'PYTHON'
+import json
+from pathlib import Path
+catalog = json.loads(Path("apps.json").read_text(encoding="utf-8"))
+print(json.dumps(catalog["apps"][0], indent=2))
+PYTHON
+```
+
+Generate new entries with [the updater](publishing-apps.md), which derives
+manifest fields and file inventories from committed source. An empty catalog is
+valid at the format level: `{"schema_version": 1, "apps": []}`. A repository's
+[submission policy](changelog-policy.md) adds requirements for its local app
+packages and release history.
 
 ## Fields
 

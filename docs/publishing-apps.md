@@ -1,6 +1,8 @@
 # Publishing apps
 
-Publication has two commits: **source first, catalog second**. Hashes describe
+[Documentation](README.md) · [Testing](testing.md) · [Changelog policy](changelog-policy.md)
+
+The usual publication has two commits: **source first, catalog second**. Hashes describe
 committed source bytes and never a dirty working directory. The updater does not
 commit, push, install apps or contact GitHub; each of those is a maintainer action.
 Use Python 3.11+ and Git on Linux, macOS or WSL. No additional Python
@@ -60,15 +62,24 @@ after merge so a fresh clone can verify its published files.
    sufficient. Equal-version changed bytes and version downgrades are refused.
 5. Validate and review:
 
-   Add the matching `Added` or `Updated` entry to the root `CHANGELOG.md`, then
-   commit the catalog and root history before the committed-state policy check.
+   Add the matching `Added` or `Updated` entry to root `CHANGELOG.md`. Review
+   the working catalog and history before committing them:
 
    ```sh
    python3 tools/validate_catalog.py
-   python3 tools/validate_changelogs.py --base "$(git rev-parse origin/main)"
    git diff --check
-   git diff -- apps.json
+   git diff -- apps.json CHANGELOG.md
    ```
+
+   Commit the catalog and root history on the same feature branch, then run:
+
+   ```sh
+   python3 tools/validate_changelogs.py --base "$(git rev-parse origin/main)"
+   ```
+
+   This policy check reads committed objects, not working edits. Its base must
+   be an ancestor of the checked head; bring the branch up to date if necessary.
+   Run the [complete test suite](testing.md) before submitting the release.
 
    Before publishing, verify GitHub serves the advertised commit from the named
    repository. One independent check is a fresh clone into a temporary directory:
@@ -123,5 +134,7 @@ python3 tools/update_catalog.py \
 Identity, version, entry and permissions come exclusively from `app.toml`.
 The application also displays its version in `main.py`; update that display
 constant with the manifest and run the package tests before committing source.
-Keep `installable: false` until the target native installer and launcher have
-been verified. See [runtime integration](runtime-integration.md).
+The existing Bitcoin entry is enabled, and the updater preserves that flag unless
+explicitly overridden. For a new target or an unverified integration, keep
+installation disabled until the required checks pass. See
+[runtime integration](runtime-integration.md) for current catalog status.
