@@ -236,6 +236,23 @@ class PublicationTests(unittest.TestCase):
         arguments.update(overrides)
         return update_catalog.update(self.empty, **arguments)
 
+    def test_packages_exclude_tests_but_validate_complete_source(self):
+        files = lib.committed_files(self.repo, self.commit, 'apps/hello')
+        self.assertIn('tests/test_main.py', files)
+        paths = [row['path'] for row in self.catalog['apps'][0]['files']]
+        self.assertNotIn('tests/test_main.py', paths)
+        self.assertIn('main.py', paths)
+        self.assertIn('assets/greeting.txt', paths)
+        lib.validate_sources(self.catalog, self.repo, {})
+        previous = copy.deepcopy(self.catalog)
+        previous['apps'][0]['files'] = lib.file_rows(files)
+        lib.validate_sources(previous, self.repo, {})
+        partial = copy.deepcopy(previous)
+        partial['apps'][0]['files'] = [row for row in partial['apps'][0]['files']
+                                      if row['path'] != 'main.py']
+        with self.assertRaises(lib.Invalid):
+            lib.validate_sources(partial, self.repo, {})
+
     def test_generated_catalog_valid_and_not_installable(self):
         lib.validate_sources(self.catalog, self.repo, {})
         entry = self.catalog['apps'][0]

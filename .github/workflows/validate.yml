@@ -49,8 +49,8 @@ jobs:
       - name: Example desktop tests (GUI required)
         run: xvfb-run -a python -m unittest discover -s examples/hello-vitrallis/tests -v
       - name: Legacy Bitcoin data regressions
-        if: hashFiles('Apps/Bitcoin-Dashboard/test_bitcoin.py') != ''
-        run: python -m unittest discover -s Apps/Bitcoin-Dashboard -p test_bitcoin.py -v
+        if: hashFiles('Apps/Bitcoin-Dashboard/tests/test_bitcoin.py') != ''
+        run: python -m unittest discover -s Apps/Bitcoin-Dashboard/tests -p test_bitcoin.py -v
       - name: Compile Python outside packages
         env:
           PYTHONPYCACHEPREFIX: ${{ runner.temp }}/vitrallis-pycache

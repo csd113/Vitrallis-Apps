@@ -21,7 +21,7 @@ python3 tools/validate_catalog.py --catalog apps.json --package examples/hello-v
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools/tests -v
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s examples/hello-vitrallis/tests -v
 PYTHONPYCACHEPREFIX=/tmp/vitrallis-pycache python3 -m compileall -q tools examples/hello-vitrallis
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s Apps/Bitcoin-Dashboard -p test_bitcoin.py -v
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s Apps/Bitcoin-Dashboard/tests -p test_bitcoin.py -v
 git diff --check
 ```
 

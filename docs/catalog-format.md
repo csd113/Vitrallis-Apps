@@ -23,7 +23,7 @@ Each entry contains exactly these fields:
 | `source.repository` | A GitHub `owner/repository` value. Owner: 1–39 ASCII letters/digits/hyphens, starts/ends with a letter or digit, no consecutive hyphens. Repository: 1–100 ASCII letters/digits/underscore/dot/hyphen, excluding `.` and `..`. No URL, credentials, port, path or `.git` suffix convention; use the actual repository name. The syntax check does not establish existence or trust. |
 | `source.commit` | Exactly 40 lowercase hexadecimal characters identifying a Git commit (SHA-1 object format). A branch, abbreviated hash, tag object or tree is not a source pin. |
 | `source.path` | `apps/<app-slug>` for native packages, where the slug is lowercase letters/digits separated by single hyphens; also accepts legacy `Apps/<name>` with ASCII letters/digits/underscore/hyphen. |
-| `files` | Complete source directory at that commit, sorted by ASCII path. Each row has exactly `path`, integer `size`, lowercase 64-hex `sha256`. Includes docs, tests and assets. |
+| `files` | Complete package at that commit, excluding app-local `tests/`, sorted by ASCII path. Each row has exactly `path`, integer `size`, lowercase 64-hex `sha256`. Includes docs and assets. |
 
 Catalog schema remains **1**: allowing other repository names and native source
 paths is additive. Older clients may retain a narrower trust policy and path
@@ -42,8 +42,9 @@ support. Format acceptance does not imply installer support.
 - Catalog size is at most 8 MiB. A bundle has 1–256 files, each at most 2 MiB and
   together at most 16 MiB. Reject symlinks, submodules and nonregular files.
 - Every file must exist in the pinned source directory with exactly the advertised
-  byte count and SHA-256. The list must enumerate the **entire** directory; there
-  are no publishing ignore rules. Keep caches, secrets and build artifacts out.
+  byte count and SHA-256. New lists enumerate the directory **excluding `tests/`**. Previously published
+  complete-directory lists remain valid when every byte matches the pinned source.
+  Keep caches, secrets and build artifacts out.
 - Native `apps/` directories require the complete [manifest v1 package](creating-apps.md).
   A legacy directory containing `app.toml` is also validated as native. Catalog
   ID, name, version, runtime, entry and permissions must equal the manifest.

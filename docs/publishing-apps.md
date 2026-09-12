@@ -9,9 +9,10 @@ dependencies are needed.
 ## New native app or version
 
 1. Follow [creating apps](creating-apps.md). For an update, increment the manifest
-   version whenever package bytes change, including docs/tests/artwork. Validate
+   version whenever package bytes change, including docs/artwork. Validate
    and test the exact files you intend to publish. Keep caches, credentials and
-   build artifacts outside the app directory: every committed file is published.
+   build artifacts outside the app directory: every committed file outside the app-local `tests/` folder is published.
+   Keep all app test files in `tests/`; this folder is excluded from device packages.
 2. Review and commit source, then push it. For example, replacing repository,
    branch and app names with your own:
 

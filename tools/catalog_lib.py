@@ -264,7 +264,7 @@ def local_files(directory):
     require(directory.is_dir(), directory, 'expected package directory')
     result = {}
     total = 0
-    # No ignore rules: publication includes the entire committed directory.
+    # Validate the complete source, including development-only tests.
     # Keep build caches outside packages when checking the working tree.
     for base, directories, files in os.walk(directory, followlinks=False):
         for name in sorted(directories):
@@ -367,6 +367,11 @@ def manifest(files, where):
     return data
 
 
+def package_files(files):
+    """Exclude app-local development tests from device packages."""
+    return {path: data for path, data in files.items() if not path.startswith('tests/')}
+
+
 def file_rows(files):
     return [{'path': path, 'size': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
             for path, data in sorted(files.items())]
@@ -396,9 +401,13 @@ def check_app_source(app, repo):
     where = f"{app['id']} ({app['source']['path']})"
     try:
         files = committed_files(repo, app['source']['commit'], app['source']['path'])
-        expected = file_rows(files)
+        expected = file_rows(package_files(files))
+        # Continue verifying previously published complete-directory catalogs.
+        # New catalog generation always excludes tests/.
+        if app['files'] == file_rows(files):
+            expected = file_rows(files)
         require([row['path'] for row in expected] == [row['path'] for row in app['files']],
-                where, 'files must enumerate the complete committed source directory')
+                where, 'files must enumerate the committed package (excluding tests/)')
         for actual, published in zip(expected, app['files']):
             require(actual == published, f"{where}/{actual['path']}", 'size or SHA-256 mismatch')
         if app['source']['path'].startswith('apps/') or 'app.toml' in files:

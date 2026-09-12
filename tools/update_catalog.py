@@ -8,7 +8,7 @@ import subprocess
 import sys
 
 from catalog_lib import (Invalid, ROOT, REPOSITORY, catalog_metadata, committed_files,
-                         file_rows, legacy_version, load_json, manifest, match, require,
+                         file_rows, package_files, legacy_version, load_json, manifest, match, require,
                          source_repositories, validate_sources, write_catalog)
 
 
@@ -41,7 +41,7 @@ def update(catalog, *, repo, mappings, repository, commit, path, app_id=None,
     for key in ('description', 'compatibility_notes'):
         require(key in entry, app_id, f'new entries require --{key.replace("_", "-")}')
     entry['source'] = {'repository': repository, 'commit': commit, 'path': path}
-    entry['files'] = file_rows(files)
+    entry['files'] = file_rows(package_files(files))
     if previous:
         old_version = tuple(map(int, previous['version'].split('.')))
         new_version = tuple(map(int, entry['version'].split('.')))

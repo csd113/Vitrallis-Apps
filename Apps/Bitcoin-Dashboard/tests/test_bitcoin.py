@@ -11,6 +11,9 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, HTTPRedirectHandler
 from http.client import IncompleteRead, BadStatusLine
 from contextlib import redirect_stderr
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import bitcoin
 
 

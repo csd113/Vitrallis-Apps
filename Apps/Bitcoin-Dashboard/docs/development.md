@@ -112,14 +112,14 @@ installation; certificate verification must stay enabled.
 Data and failure-handling tests, without a display:
 
 ```sh
-python3 -m unittest test_bitcoin -v
+python3 -m unittest discover -s tests -p test_bitcoin.py -v
 ```
 
 All tests, including real Tk text bounds at 480 × 272:
 
 ```sh
-python3 -m unittest discover -s . -v
-python3 -m py_compile bitcoin.py test_bitcoin.py test_layout.py
+python3 -m unittest discover -s tests -v
+python3 -m py_compile bitcoin.py tests/test_bitcoin.py tests/test_layout.py
 sh -n launch
 git diff --check
 ```
@@ -127,7 +127,7 @@ git diff --check
 Optional developer-only static checks (Ruff is not an application dependency):
 
 ```sh
-uvx ruff check --select F,B bitcoin.py test_bitcoin.py test_layout.py
+uvx ruff check --select F,B bitcoin.py tests/test_bitcoin.py tests/test_layout.py
 ```
 
 Version 1.2.0 passes 51 tests locally on macOS / Tk 8.6. It expands the original
@@ -147,6 +147,6 @@ Version 1.0.0 passed all **16 tests** on the PocketCHIP, including malformed dat
 
 - `bitcoin.py` — dashboard, fetching, validation, caching, and refresh scheduling.
 - `launch` — existing installation's app-local ARM runtime launcher.
-- `test_bitcoin.py` — data, failure-handling, block-indicator, and settings tests.
-- `test_layout.py` — real Tk layout, toolbar, settings, and highlight-expiry tests.
+- `tests/test_bitcoin.py` — data, failure-handling, block-indicator, and settings tests.
+- `tests/test_layout.py` — real Tk layout, toolbar, settings, and highlight-expiry tests.
 - `docs/dashboard.png` — version 1.0.0 screenshot from the PocketCHIP.

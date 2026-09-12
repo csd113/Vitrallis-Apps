@@ -5,6 +5,9 @@ import unittest
 from unittest.mock import patch
 import tkinter as tk
 import threading
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import bitcoin
 
 class LayoutTests(unittest.TestCase):

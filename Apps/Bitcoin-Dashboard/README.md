@@ -1,7 +1,7 @@
 # Bitcoin CAD for PocketCHIP
 
 A lightweight Bitcoin dashboard for the PocketCHIP's **480 × 272** display,
-built with Python and Tkinter. Current version: **1.2.0**.
+built with Python and Tkinter. Current version: **1.2.1**.
 
 [Latest release](https://github.com/csd113/PocketChip-Bitcoin-Display/releases/latest)
 · [Changelog](CHANGELOG.md)
@@ -61,7 +61,7 @@ run these commands from the downloaded source directory:
 
 ```sh
 install -d "$HOME/.local/share/pocket-bitcoin"
-install -m 644 bitcoin.py test_bitcoin.py test_layout.py README.md "$HOME/.local/share/pocket-bitcoin/"
+install -m 644 bitcoin.py README.md "$HOME/.local/share/pocket-bitcoin/"
 ```
 
 The existing launcher and Home shortcut can remain in place.

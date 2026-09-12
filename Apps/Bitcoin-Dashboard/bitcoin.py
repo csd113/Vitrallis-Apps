@@ -21,7 +21,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-VERSION = '1.2.0'
+VERSION = '1.2.1'
 BLOCK_HIGHLIGHT_SECONDS = 10
 SATOSHIS_PER_BTC = 100_000_000
 MAX_SUPPLY = 21_000_000 * SATOSHIS_PER_BTC

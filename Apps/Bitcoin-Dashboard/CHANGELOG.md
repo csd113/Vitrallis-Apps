@@ -2,6 +2,11 @@
 
 Changes are listed newest first. Dates use America/Vancouver time.
 
+## 1.2.1 — 2026-09-11
+
+- Move developer tests into `tests/` and exclude them from new catalog packages.
+- Update manual installation and test commands for the separated tests.
+
 ## 1.2.0 — 2026-09-10
 
 - Extend the green **NEW BLOCK** highlight to 10 seconds, with an explicit expiry
