@@ -1,4 +1,4 @@
-"""Offline Linux diagnostic collection for Vitrallis Debug.
+"""Linux hardware identity and offline diagnostic collection for Vitrallis Debug.
 
 Imports are deliberately side-effect free.  All filesystem and command access is
 performed only when a collector method is called, making the parsing code usable
@@ -8,18 +8,22 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass, field
+import csv
 import json
 import math
 from pathlib import Path
 import platform
 import socket
+import shutil
 import subprocess
 import time
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable, List, Optional
+
+from hardware import HardwareCollector, HardwareInfo
 
 
 MAX_HISTORY = 60
-CommandRunner = Callable[[list[str]], Optional[str]]
+CommandRunner = Callable[[List[str]], Optional[str]]
 ReadText = Callable[[Path], Optional[str]]
 
 
@@ -358,6 +362,61 @@ def parse_network(addresses: Optional[str], routes: Optional[str], hostname: Opt
     return Network(hostname or socket.gethostname() or "unavailable", tuple(interfaces), default_interface, gateway)
 
 
+@dataclass(frozen=True)
+class GpuReading:
+    name: str
+    percent: float
+    source: str
+
+
+class GpuCollector:
+    """Read documented GPU counters; never infer load from frequency or FPS.
+
+    Discovery is cached for 30 seconds. No recursive /sys walk, debugfs access,
+    privileged commands, or per-process /proc scan is needed on small devices.
+    """
+    def __init__(self, sys_root: Path, read_text: ReadText = _read_text,
+                 runner: CommandRunner = _local_command,
+                 clock: Callable[[], float] = time.monotonic) -> None:
+        self.sys_root, self.read_text, self.runner, self.clock = sys_root, read_text, runner, clock
+        self.sources: list[tuple[str, Path]] = []
+        self.next_discovery = 0.0
+        self.nvidia: Optional[str] = None
+
+    def collect(self) -> Optional[GpuReading]:
+        now = self.clock()
+        if now >= self.next_discovery:
+            self.sources = []
+            try:
+                cards = sorted((self.sys_root / "class/drm").glob("card[0-9]*"))
+                for card in cards:
+                    if not card.name[4:].isdigit():
+                        continue
+                    path = card / "device/gpu_busy_percent"
+                    if path.is_file():
+                        self.sources.append((card.name, path))
+            except OSError:
+                pass
+            self.nvidia = shutil.which("nvidia-smi")
+            self.next_discovery = now + 30.0
+        for name, path in self.sources:
+            percent = _number(self.read_text(path))
+            if percent is not None and 0 <= percent <= 100:
+                return GpuReading(name, percent, str(path))
+        if self.nvidia:
+            output = self.runner([self.nvidia, "--query-gpu=name,utilization.gpu",
+                                  "--format=csv,noheader,nounits", "--id=0"])
+            try:
+                row = next(csv.reader((output or "").splitlines()), [])
+            except csv.Error:
+                row = []
+            if len(row) == 2:
+                percent = _number(row[1])
+                if percent is not None and 0 <= percent <= 100:
+                    return GpuReading(row[0].strip()[:160], percent, "nvidia-smi / GPU 0")
+        return None
+
+
 @dataclass
 class Snapshot:
     sampled_at: float
@@ -375,17 +434,21 @@ class Snapshot:
     governors: list[str] = field(default_factory=list)
     load_averages: Optional[tuple[float, float, float]] = None
     uptime_seconds: Optional[float] = None
+    gpu: Optional[GpuReading] = None
+    hardware: HardwareInfo = field(default_factory=HardwareInfo)
 
 
 class SystemCollector:
     """Single-cycle collector. It does not create threads or GUI resources."""
     def __init__(self, proc_root: Path = Path("/proc"), sys_root: Path = Path("/sys"),
                  runner: CommandRunner = _local_command, read_text: ReadText = _read_text,
-                 clock: Callable[[], float] = time.monotonic) -> None:
+                 clock: Callable[[], float] = time.monotonic,
+                 hardware_collector: Optional[HardwareCollector] = None) -> None:
         self.proc_root, self.sys_root = proc_root, sys_root
         self.runner, self.read_text, self.clock = runner, read_text, clock
+        self.gpu = GpuCollector(sys_root, read_text, runner, clock)
         self.cpu = CpuTracker()
-        self.cpu_model = ""
+        self.hardware = hardware_collector or HardwareCollector(proc_root=proc_root, sys_root=sys_root)
 
     def collect(self, include_network: bool = True) -> Snapshot:
         errors: dict[str, str] = {}
@@ -394,11 +457,15 @@ class SystemCollector:
         if stat is None:
             errors["cpu"] = "Cannot read /proc/stat"
         cpuinfo = self.read_text(self.proc_root / "cpuinfo")
-        model = self._cpu_model(cpuinfo)
+        hardware = self.hardware.collect()
+        model = hardware.cpu_name
         frequency, _ = discover_frequency(self.sys_root, cpuinfo, self.read_text)
         memory = parse_meminfo(self.read_text(self.proc_root / "meminfo"))
         if memory is None:
             errors["memory"] = "Memory data unavailable"
+        gpu = self.gpu.collect()
+        if gpu is None:
+            errors["gpu"] = "This driver exposes no supported GPU utilization counter"
         sensors = discover_sensors(self.sys_root, self.read_text)
         network = None
         if include_network:
@@ -412,18 +479,7 @@ class SystemCollector:
                         read_frequency_limits(self.sys_root, self.read_text), memory, sensors, network, errors,
                         platform.machine() or "unknown", read_governors(self.sys_root, self.read_text),
                         parse_load_averages(self.read_text(self.proc_root / "loadavg")),
-                        parse_uptime(self.read_text(self.proc_root / "uptime")))
-
-    def _cpu_model(self, cpuinfo: Optional[str]) -> str:
-        if self.cpu_model:
-            return self.cpu_model
-        for line in (cpuinfo or "").splitlines():
-            key, colon, value = line.partition(":")
-            if colon and key.strip().lower() in {"model name", "hardware", "processor"} and value.strip():
-                self.cpu_model = value.strip()
-                return self.cpu_model
-        self.cpu_model = platform.processor() or platform.machine() or "Unknown CPU"
-        return self.cpu_model
+                        parse_uptime(self.read_text(self.proc_root / "uptime")), gpu, hardware)
 
 
 def os_cpu_count() -> Optional[int]:
@@ -464,11 +520,10 @@ def parse_uptime(text: Optional[str]) -> Optional[float]:
 
 class History:
     def __init__(self, limit: int = MAX_HISTORY) -> None:
-        self.values: deque[float] = deque(maxlen=limit)
+        self.values: deque[Optional[float]] = deque(maxlen=limit)
 
     def add(self, value: Optional[float]) -> None:
-        if value is not None and math.isfinite(value):
-            self.values.append(value)
+        self.values.append(value if value is not None and math.isfinite(value) else None)
 
-    def items(self) -> tuple[float, ...]:
+    def items(self) -> tuple[Optional[float], ...]:
         return tuple(self.values)

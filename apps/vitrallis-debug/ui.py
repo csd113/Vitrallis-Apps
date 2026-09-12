@@ -2,16 +2,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import math
+import tkinter.font as tkfont
 import queue
 import threading
 import time
 from typing import Callable, Optional
 
 from diagnostics import History, Snapshot, SystemCollector
+from gpu import GpuUnavailable, PulseRenderer
 
 
-PANELS = ("Network", "CPU", "Temperature", "Memory")
+PANELS = ("Network", "CPU", "Temperature", "Memory", "GPU")
+PULSE_FOCUS, EXIT_FOCUS, BACK_FOCUS = 5, 6, 7
+COLORS = {"Network": "#7ea9ef", "CPU": "#63d5c5", "GPU": "#a69aee",
+          "Temperature": "#e2b75a", "Memory": "#6fb8e9"}
 BACKGROUND = "#11161d"
 CARD = "#1b2430"
 CARD_FOCUS = "#24405b"
@@ -26,7 +30,7 @@ ERROR = "#d97979"
 class PulseState:
     active: bool = False
     started: float = 0.0
-    duration: float = 2.0
+    duration: float = 8.0
 
     def start(self, now: float) -> bool:
         if self.active:
@@ -55,7 +59,7 @@ class InteractionModel:
 
     def open(self, index: int) -> None:
         self.origin_focus = index
-        self.focus = 6
+        self.focus = BACK_FOCUS
         self.expanded = index
         self.scroll = 0
 
@@ -70,12 +74,14 @@ class InteractionModel:
             if direction == "up": self.scroll = max(0, self.scroll - 36)
             if direction == "down": self.scroll += 36
             return
-        row, column = divmod(min(self.focus, 3), 2)
-        if direction == "left": column = max(0, column - 1)
-        elif direction == "right": column = min(1, column + 1)
-        elif direction == "up": row = max(0, row - 1)
-        elif direction == "down": row = min(1, row + 1)
-        self.focus = row * 2 + column if self.focus < 4 else self.focus
+        neighbors = {
+            0: {"down": 1},
+            1: {"up": 0, "right": 4, "down": 2},
+            4: {"up": 0, "left": 1, "down": 3},
+            2: {"up": 1, "right": 3},
+            3: {"up": 4, "left": 2},
+        }
+        self.focus = neighbors.get(self.focus, {}).get(direction, self.focus)
 
     def press(self, target: str) -> None:
         self.pressed = target
@@ -88,7 +94,8 @@ class InteractionModel:
 
 class Dashboard:
     def __init__(self, root, tk, collector: Optional[SystemCollector] = None,
-                 clock: Callable[[], float] = time.monotonic, demo: bool = False) -> None:
+                 clock: Callable[[], float] = time.monotonic, demo: bool = False,
+                 renderer_factory=PulseRenderer) -> None:
         self.root, self.tk, self.collector, self.clock = root, tk, collector or SystemCollector(), clock
         self.canvas = tk.Canvas(root, background=BACKGROUND, highlightthickness=0, takefocus=True)
         self.canvas.pack(fill="both", expand=True)
@@ -105,7 +112,26 @@ class Dashboard:
         self.accept_results = True
         self.closed = False
         self.after_ids: set[str] = set()
-        self.pulse_items: list[int] = []
+        self.renderer_factory = renderer_factory
+        self.renderer = None
+        self.pulse_after = None
+        self.pulse_error = ""
+        self.renderer_name = "Not checked — select Pulse"
+        self.renderer_api = "Not checked — select Pulse"
+        self.gpu_history = History()
+        self.gpu_source = None
+        self.fonts = {}
+        self.detail_canvas = tk.Canvas(root, background=BACKGROUND, highlightthickness=0)
+        self.detail_canvas.bind("<MouseWheel>", self._wheel)
+        self.detail_canvas.bind("<Button-4>", lambda event: self._scroll(-36))
+        self.detail_canvas.bind("<Button-5>", lambda event: self._scroll(36))
+        self.detail_canvas.bind("<Button-1>", lambda event: self.canvas.focus_set())
+        self.pulse_layer = tk.Frame(root, background=BACKGROUND)
+        self.pulse_surface = tk.Frame(self.pulse_layer, background=BACKGROUND)
+        self.pulse_surface.pack(fill="both", expand=True)
+        self.pulse_caption = tk.Label(self.pulse_layer, background=BACKGROUND, foreground=MUTED,
+                                     font=("TkDefaultFont", -11))
+        self.pulse_caption.pack(fill="x", pady=(6, 0))
         self.demo = demo
         self._bind()
         self._render()
@@ -121,8 +147,13 @@ class Dashboard:
         self.canvas.bind("<Button-5>", lambda event: self._scroll(36))
         self.canvas.bind("<Key>", self._key)
         self.canvas.focus_set()
+        self.root.bind("<Unmap>", self._hidden, add="+")
 
-    def _schedule(self, delay: int, callback) -> None:
+    def _hidden(self, event) -> None:
+        if event.widget == self.root and self.model.pulse.cancel():
+            self._clear_pulse()
+
+    def _schedule(self, delay: int, callback) -> Optional[str]:
         if not self.closed:
             holder: list[str] = []
             def run() -> None:
@@ -132,14 +163,18 @@ class Dashboard:
             ident = self.root.after(delay, run)
             holder.append(ident)
             self.after_ids.add(ident)
+            return ident
 
     def _tick(self) -> None:
         if self.closed:
             return
-        self._drain_results()
+        if not self._drain_results() and self.snapshot is not None:
+            for history in (self.cpu_history, self.gpu_history, self.temp_history, self.memory_history):
+                history.add(None)
         if self.worker is None or not self.worker.is_alive():
             self.worker = threading.Thread(target=self._collect_once, name="vitrallis-metrics", daemon=True)
             self.worker.start()
+        self._render()
         self._schedule(1000, self._tick)
 
     def _collect_once(self) -> None:
@@ -156,7 +191,7 @@ class Dashboard:
         except Exception:  # A category failure must never take down the display.
             pass
 
-    def _drain_results(self) -> None:
+    def _drain_results(self) -> bool:
         newest = None
         while True:
             try: newest = self.results.get_nowait()
@@ -181,19 +216,27 @@ class Dashboard:
                 self.temp_min = current_temp if self.temp_min is None else min(self.temp_min, current_temp)
                 self.temp_max = current_temp if self.temp_max is None else max(self.temp_max, current_temp)
                 self.temp_last_valid_at = self.clock()
-            self.memory_history.add(newest.memory.percent if newest.memory else None)
-            self._render()
+            self.memory_history.add(newest.memory.percent if newest.memory and "memory" not in self.stale_categories else None)
+            source = (newest.gpu.name, newest.gpu.source) if newest.gpu else self.gpu_source
+            if source != self.gpu_source:
+                self.gpu_history = History()
+                self.gpu_source = source
+            self.gpu_history.add(newest.gpu.percent if newest.gpu else None)
+        return newest is not None
 
     def _bounds(self) -> dict[str, tuple[float, float, float, float]]:
-        width, height = max(1, self.canvas.winfo_width()), max(1, self.canvas.winfo_height())
-        pad, gap, controls = 10, 8, 42
-        content_top, content_bottom = pad, height - controls - pad
-        card_w, card_h = (width - 2 * pad - gap) / 2, (content_bottom - content_top - gap) / 2
-        bounds = {"exit": (pad, height - controls, 100, height - 8),
-                  "pulse": (width - 110, height - controls, width - pad, height - 8)}
-        for index, name in enumerate(PANELS):
+        width, height = max(400, self.canvas.winfo_width()), max(240, self.canvas.winfo_height())
+        pad, gap = 10, 8
+        bottom = height - 50
+        network_h = 42
+        top = 34 + network_h + gap
+        card_w, card_h = (width - 2 * pad - gap) / 2, (bottom - top - gap) / 2
+        bounds = {"exit": (pad, height - 42, 112, height - 6),
+                  "pulse": (width - 116, height - 42, width - pad, height - 6),
+                  "Network": (pad, 34, width - pad, 34 + network_h)}
+        for index, name in enumerate(("CPU", "GPU", "Temperature", "Memory")):
             row, col = divmod(index, 2)
-            x = pad + col * (card_w + gap); y = content_top + row * (card_h + gap)
+            x, y = pad + col * (card_w + gap), top + row * (card_h + gap)
             bounds[name] = (x, y, x + card_w, y + card_h)
         return bounds
 
@@ -203,6 +246,8 @@ class Dashboard:
 
     def _target(self, x, y) -> Optional[str]:
         bounds = self._bounds()
+        if self.model.pulse.active:
+            return next((name for name in ("exit", "pulse") if self._inside(bounds[name], x, y)), None)
         if self.model.expanded is not None:
             return "back" if self._inside((10, 8, 90, 42), x, y) else "exit" if self._inside(bounds["exit"], x, y) else "pulse" if self._inside(bounds["pulse"], x, y) else None
         for name in (*PANELS, "exit", "pulse"):
@@ -211,6 +256,7 @@ class Dashboard:
 
     def _press(self, event) -> None:
         target = self._target(event.x, event.y)
+        self.canvas.focus_set()
         if target: self.model.press(target)
 
     def _release(self, event) -> None:
@@ -222,7 +268,11 @@ class Dashboard:
         if target in PANELS: self.model.open(PANELS.index(target))
         elif target == "back": self.model.close()
         elif target == "exit": self.close()
-        elif target == "pulse" and self.model.pulse.start(self.clock()): self._begin_pulse()
+        elif target == "pulse":
+            if self.model.pulse.cancel():
+                self._clear_pulse()
+            elif self.model.pulse.start(self.clock()):
+                self._begin_pulse()
         self._render()
 
     def _key(self, event) -> str | None:
@@ -236,16 +286,20 @@ class Dashboard:
             self.model.move(key.lower()); self._render(); return "break"
         if key in ("Prior",): self._scroll(-108); return "break"
         if key in ("Next",): self._scroll(108); return "break"
-        if key == "Tab":
-            if self.model.expanded is None:
-                self.model.focus = (self.model.focus + (-1 if event.state & 1 else 1)) % 6
-                self._render()
+        if key in ("Tab", "ISO_Left_Tab"):
+            choices = ([PULSE_FOCUS, EXIT_FOCUS] if self.model.pulse.active else
+                       [BACK_FOCUS, PULSE_FOCUS, EXIT_FOCUS] if self.model.expanded is not None else
+                       [0, 1, 4, 2, 3, PULSE_FOCUS, EXIT_FOCUS])
+            index = choices.index(self.model.focus) if self.model.focus in choices else 0
+            self.model.focus = choices[(index + (-1 if event.state & 1 or key == "ISO_Left_Tab" else 1)) % len(choices)]
+            self._render()
             return "break"
         if key in ("Return", "KP_Enter", "space"):
-            if self.model.expanded is not None: self._activate("back" if self.model.focus == 6 else "pulse")
-            elif self.model.focus < 4: self._activate(PANELS[self.model.focus])
-            elif self.model.focus == 4: self._activate("pulse")
-            else: self._activate("exit")
+            if self.model.focus == EXIT_FOCUS: self._activate("exit")
+            elif self.model.focus == PULSE_FOCUS: self._activate("pulse")
+            elif self.model.pulse.active: return "break"
+            elif self.model.expanded is not None: self._activate("back")
+            elif self.model.focus < len(PANELS): self._activate(PANELS[self.model.focus])
             return "break"
         return None
 
@@ -256,36 +310,92 @@ class Dashboard:
         if self.model.expanded is not None:
             self.model.scroll = max(0, self.model.scroll + amount); self._render()
 
-    def _button(self, box, label, focused=False, enabled=True) -> None:
-        fill = CARD_FOCUS if focused else "#263342"
-        if not enabled: fill = "#29313b"
-        self.canvas.create_rectangle(*box, tags="dashboard", fill=fill, outline=ACCENT if focused else "#405164", width=2 if focused else 1)
-        self.canvas.create_text((box[0]+box[2])/2, (box[1]+box[3])/2, tags="dashboard", text=label, fill=TEXT, font=("TkDefaultFont", 12, "bold"))
+    def _font(self, size, bold=False):
+        key = size, bold
+        if key not in self.fonts:
+            self.fonts[key] = tkfont.Font(root=self.root, family="DejaVu Sans", size=-size,
+                                          weight="bold" if bold else "normal")
+        return self.fonts[key]
+
+    def _text(self, x, y, text, width, size=12, color=TEXT, bold=False, anchor="nw", canvas=None):
+        target = canvas if canvas is not None else self.canvas
+        font = self._font(size, bold)
+        text = " ".join(str(text).split())
+        if font.measure(text) > width:
+            low, high = 0, len(text)
+            while low < high:
+                middle = (low + high + 1) // 2
+                if font.measure(text[:middle] + "…") <= width: low = middle
+                else: high = middle - 1
+            text = text[:low] + "…"
+        return target.create_text(x, y, tags="dashboard", text=text, font=font,
+                                  fill=color, anchor=anchor)
+
+    def _button(self, box, label, focused=False) -> None:
+        self.canvas.create_rectangle(*box, tags="dashboard", fill=CARD_FOCUS if focused else CARD,
+                                     outline=ACCENT if focused else "#344253", width=2 if focused else 1)
+        self._text((box[0]+box[2])/2, (box[1]+box[3])/2, label, box[2]-box[0]-12,
+                   size=12, bold=True, anchor="center")
 
     def _render(self) -> None:
         if self.closed: return
         self.canvas.delete("dashboard")
-        if self.model.expanded is None: self._overview()
-        else: self._details()
+        if self.model.pulse.active:
+            self.detail_canvas.place_forget()
+            self._text(10, 10, "GPU PULSE", 200, size=13, color=ACCENT, bold=True)
+            self._text(self.canvas.winfo_width()-10, 10, "DEMO" if self.demo else "HARDWARE", 120,
+                       size=10, color=WARN if self.demo else MUTED, anchor="ne")
+            self.pulse_layer.place(x=10, y=34, width=max(1, self.canvas.winfo_width()-20),
+                                   height=max(1, self.canvas.winfo_height()-84))
+            self.pulse_layer.lift()
+        elif self.model.expanded is None:
+            self.detail_canvas.place_forget()
+            self._overview()
+        else:
+            self._details()
         self._draw_controls()
-        if self.model.pulse.active and self.pulse_items: self._update_pulse()
 
     def _draw_controls(self) -> None:
         bounds = self._bounds()
-        self._button(bounds["exit"], "Home / Exit", self.model.focus == 5)
-        self._button(bounds["pulse"], "Pulse" if not self.model.pulse.active else "Pulsing…", self.model.focus == 4, not self.model.pulse.active)
+        self._button(bounds["exit"], "Home / Exit", self.model.focus == EXIT_FOCUS)
+        self._button(bounds["pulse"], "Stop Pulse" if self.model.pulse.active else "GPU Pulse",
+                     self.model.focus == PULSE_FOCUS)
+        status = "8 s · Esc to stop" if self.model.pulse.active else "↑ / ↓ to scroll" if self.model.expanded is not None else "Select a card for details"
+        if self.pulse_error: status = "Pulse unavailable"
+        self._text(self.canvas.winfo_width()/2, self.canvas.winfo_height()-24, status,
+                   self.canvas.winfo_width()-250, size=11, color=MUTED, anchor="center")
 
     def _overview(self) -> None:
-        if self.demo:
-            self.canvas.create_text(self.canvas.winfo_width() / 2, 5, tags="dashboard", anchor="n", text="DEMO DATA — not live diagnostics", fill=WARN, font=("TkDefaultFont", 9, "bold"))
+        width = max(400, self.canvas.winfo_width())
+        self._text(10, 9, "VITRALLIS  /  DEBUG", width-175, size=13, bold=True)
+        stale = self.last_snapshot_at is not None and self.clock()-self.last_snapshot_at >= 3
+        status = "DEMO · FIXTURE DATA" if self.demo else "STALE" if stale else "LOCAL · LIVE" if self.snapshot else "COLLECTING"
+        self._text(width-10, 10, status, 155, size=10, color=WARN if self.demo or stale else ACCENT, anchor="ne")
         for index, name in enumerate(PANELS):
-            box = self._bounds()[name]
-            self.canvas.create_rectangle(*box, tags="dashboard", fill=CARD_FOCUS if self.model.focus == index else CARD, outline=ACCENT if self.model.focus == index else "#304152", width=2 if self.model.focus == index else 1)
-            self.canvas.create_text(box[0]+12, box[1]+13, tags="dashboard", anchor="w", text=name.upper(), fill=ACCENT, font=("TkDefaultFont", 10, "bold"))
+            x1, y1, x2, y2 = self._bounds()[name]
+            color = COLORS[name]
+            self.canvas.create_rectangle(x1, y1, x2, y2, tags="dashboard",
+                                         fill=CARD_FOCUS if self.model.focus == index else CARD,
+                                         outline=color if self.model.focus == index else "#2c3949",
+                                         width=2 if self.model.focus == index else 1)
             value, detail = self._panel_summary(name)
-            self.canvas.create_text(box[0]+12, box[1]+41, tags="dashboard", anchor="w", text=value, fill=TEXT, font=("TkDefaultFont", 17, "bold"))
-            self.canvas.create_text(box[0]+12, box[1]+69, tags="dashboard", anchor="w", width=max(80, box[2]-box[0]-24), text=detail, fill=MUTED, font=("TkDefaultFont", 10))
-            self._sparkline(box[0]+12, box[3]-24, box[2]-12, box[3]-9, self._history(name), ACCENT)
+            if name.lower() in self.stale_categories:
+                detail = "STALE · " + detail.replace(" • STALE", "")
+            if name == "Network":
+                self._text(x1+12, y1+14, "NETWORK", 78, size=10, color=color, bold=True)
+                self._text(x1+102, y1+5, value, x2-x1-122, size=14, bold=True)
+                self._text(x1+102, y1+24, detail, x2-x1-122, size=10, color=MUTED)
+                continue
+            compact = y2-y1 < 80
+            tiny = y2-y1 < 60
+            graph_w = min(150, (x2-x1)*.34)
+            value_w = x2-x1-graph_w-36
+            self._text(x1+12, y1+(4 if tiny else 7), name.upper(), x2-x1-40, size=9 if tiny else 10, color=color, bold=True)
+            self._text(x2-10, y1+6, "›", 12, size=14, color=MUTED, anchor="ne")
+            self._text(x1+12, y1+(17 if tiny else 22), value, value_w, size=16 if tiny else 20 if compact else 26, bold=True)
+            self._text(x1+12, y2-(12 if tiny else 17), detail, x2-x1-24, size=9 if tiny else 10 if compact else 12, color=MUTED)
+            self._sparkline(x2-graph_w-12, y1+(21 if tiny else 25), x2-12, y2-(18 if tiny else 24),
+                            self._history(name), color, percent=name != "Temperature")
 
     def _panel_summary(self, name: str) -> tuple[str, str]:
         sample = self.snapshot
@@ -293,47 +403,113 @@ class Dashboard:
         if not sample: return "Collecting…", "Initial data collection" + stale
         if name == "Network":
             item = sample.network.primary if sample.network else None
-            if not item: return "Unavailable", sample.errors.get("network", "No usable non-loopback address") + stale
+            if not item: return "No local address", "Open details for network status" + stale
             address = (item.addresses_v4 + item.addresses_v6)[0]
             return address, f"{item.name} • {item.state}" + stale + (" • STALE" if "network" in self.stale_categories else "")
         if name == "CPU":
-            usage = "Collecting…" if sample.cpu_percent is None else f"{sample.cpu_percent:.1f}%"
-            freq = f"{sample.frequency.mhz:.0f} MHz" if sample.frequency else "Clock unavailable"
-            return usage, f"{sample.cpu_model[:28]} • {freq}" + stale
+            usage = ("—" if "cpu" in sample.errors else "Collecting…") if sample.cpu_percent is None else f"{sample.cpu_percent:.1f}%"
+            return usage, sample.cpu_model + stale
+        if name == "GPU":
+            model = sample.hardware.gpu_name(sample.gpu.name if sample.gpu else None)
+            return (f"{sample.gpu.percent:.1f}%" if sample.gpu else "—", model + stale)
         if name == "Temperature":
             sensor = next((item for item in sample.sensors if item.selected), None)
-            return (f"{sensor.celsius:.1f} °C", f"{sensor.label} • {sensor.kind}" + stale) if sensor else ("Unavailable", "No identified local sensor" + stale)
+            return (f"{sensor.celsius:.1f} °C", sensor.label + stale) if sensor else ("—", "No readable sensor" + stale)
         memory = sample.memory
-        return (f"{memory.used_kib / 1024:.0f} / {memory.total_kib / 1024:.0f} MiB", f"{memory.percent:.1f}% used" + (" • estimated" if memory.estimated else "") + stale + (" • STALE" if "memory" in self.stale_categories else "")) if memory else ("Unavailable", sample.errors.get("memory", "Memory data unavailable") + stale)
+        return (f"{memory.percent:.1f}%", f"{memory.used_kib/1024:.0f} / {memory.total_kib/1024:.0f} MiB" + (" • estimated" if memory.estimated else "") + stale + (" • STALE" if "memory" in self.stale_categories else "")) if memory else ("—", sample.errors.get("memory", "Memory data unavailable") + stale)
 
-    def _history(self, name: str) -> tuple[float, ...]:
-        return {"CPU": self.cpu_history.items(), "Temperature": self.temp_history.items(), "Memory": self.memory_history.items()}.get(name, ())
+    def _history(self, name: str) -> tuple[Optional[float], ...]:
+        return {"GPU": self.gpu_history.items(), "CPU": self.cpu_history.items(), "Temperature": self.temp_history.items(), "Memory": self.memory_history.items()}.get(name, ())
 
-    def _sparkline(self, x1, y1, x2, y2, values, color) -> None:
-        if len(values) < 2: return
-        low, high = min(values), max(values)
-        span = max(1.0, high-low)
+    def _sparkline(self, x1, y1, x2, y2, values, color, percent=True, canvas=None) -> None:
+        target = canvas if canvas is not None else self.canvas
+        for fraction in (0, .5, 1):
+            y = y2 - (y2-y1)*fraction
+            target.create_line(x1, y, x2, y, fill="#2e3e4f", tags="dashboard")
+        valid = [value for value in values if value is not None]
+        if not valid: return
+        low, high = (0, 100) if percent else (min(valid)-1, max(valid)+1)
         points = []
         for index, value in enumerate(values):
-            points.extend((x1+(x2-x1)*index/(len(values)-1), y2-(y2-y1)*(value-low)/span))
-        self.canvas.create_line(*points, tags="dashboard", fill=color, width=2, smooth=True)
+            if value is None:
+                if len(points) >= 4: target.create_line(*points, fill=color, width=2, tags="dashboard")
+                points = []
+                continue
+            # Fixed 60-sample window, newest at the right; gaps retain their place.
+            x = x2 - (x2-x1)*(len(values)-1-index)/59
+            y = y2 - (y2-y1)*(max(low, min(high, value))-low)/(high-low)
+            points.extend((x, y))
+            if index == len(values)-1:
+                target.create_oval(x-2, y-2, x+2, y+2, fill=color, outline="", tags="dashboard")
+        if len(points) >= 4: target.create_line(*points, fill=color, width=2, tags="dashboard")
 
     def _details(self) -> None:
         name = PANELS[self.model.expanded or 0]
-        self.canvas.create_text(102, 24, tags="dashboard", anchor="w", text=f"{name} details", fill=TEXT, font=("TkDefaultFont", 17, "bold"))
-        self._button((10, 8, 90, 42), "Back", True)
+        self._button((10, 8, 90, 42), "‹ Back", self.model.focus == BACK_FOCUS)
+        self._text(104, 17, name, self.canvas.winfo_width()-240, size=18, bold=True)
+        self._text(self.canvas.winfo_width()-12, 22, "DEMO" if self.demo else "DETAILS", 100,
+                   size=10, color=WARN if self.demo else MUTED, anchor="e")
+        width, height = max(360, self.canvas.winfo_width()-20), max(120, self.canvas.winfo_height()-102)
+        target = self.detail_canvas
+        target.place(x=10, y=48, width=width, height=height)
+        target.delete("all")
+        y = 8
+        if name in ("CPU", "GPU", "Memory", "Temperature") and not (name == "GPU" and self.pulse_error):
+            self._text(10, y, "RECENT UTILIZATION · 0–100%" if name != "Temperature" else "RECENT TEMPERATURE · °C",
+                       width-24, size=10, color=COLORS[name], bold=True, canvas=target)
+            self._sparkline(12, y+26, width-18, y+82, self._history(name), COLORS[name],
+                            percent=name != "Temperature", canvas=target)
+            y += 92
+            self._text(12, y, "60 samples", width/2, size=10, color=MUTED, canvas=target)
+            self._text(width-18, y, "latest", width/2, size=10, color=MUTED, anchor="ne", canvas=target)
+            y += 30
         lines = self._detail_lines(name)
-        y = 58 - self.model.scroll
-        width = max(100, self.canvas.winfo_width()-28)
+        if name == "GPU" and self.pulse_error:
+            lines.insert(0, ("Pulse unavailable", self.pulse_error))
+        if name.lower() in self.stale_categories or (self.last_snapshot_at is not None and self.clock()-self.last_snapshot_at >= 3):
+            lines.insert(0, ("STALE DATA", "The latest refresh failed. Values below may be out of date."))
         for heading, content in lines:
-            if y > 40 and y < self.canvas.winfo_height()-52:
-                self.canvas.create_text(14, y, tags="dashboard", anchor="nw", text=heading, fill=ACCENT, font=("TkDefaultFont", 11, "bold"))
-                self.canvas.create_text(14, y+17, tags="dashboard", anchor="nw", width=width, text=content, fill=TEXT, font=("TkDefaultFont", 11), justify="left")
-            y += 44 + min(56, 12 * (len(content) // max(16, int(width/7))))
-        if self.model.scroll: self.canvas.create_text(self.canvas.winfo_width()-12, 48, tags="dashboard", anchor="ne", text="↑/↓ scroll", fill=MUTED, font=("TkDefaultFont", 9))
+            item = target.create_text(12, y, anchor="nw", width=width-36, text=heading,
+                                      fill=COLORS[name], font=self._font(12, True))
+            y = target.bbox(item)[3] + 5
+            item = target.create_text(12, y, anchor="nw", width=width-36, text=content,
+                                      fill=TEXT, font=self._font(14), justify="left")
+            y = target.bbox(item)[3] + 14
+            target.create_line(12, y-5, width-18, y-5, fill="#293746")
+        total = max(height, y+4)
+        self.model.scroll = min(max(0, self.model.scroll), max(0, total-height))
+        target.configure(scrollregion=(0, 0, width, total))
+        target.yview_moveto(self.model.scroll/total)
+        if total > height:
+            bar_y = 48 + (height-4)*self.model.scroll/total
+            self.canvas.create_rectangle(self.canvas.winfo_width()-6, bar_y,
+                                         self.canvas.winfo_width()-3, bar_y+(height-4)*height/total,
+                                         fill="#637c94", outline="", tags="dashboard")
+
+    @staticmethod
+    def _driver_text(driver) -> str:
+        if driver is None:
+            return "No readable bound driver link"
+        return (f"{driver.name}\nSource: {driver.source}\nModule: {driver.module or 'not exported'}"
+                f"\nModule version: {driver.version or 'not exported'}" +
+                (f"\nSource version ID: {driver.srcversion}" if driver.srcversion else ""))
+
+    def _device_lines(self, label, devices) -> list[tuple[str, str]]:
+        lines = []
+        for index, device in enumerate(devices, start=1):
+            prefix = f"{label} {index}"
+            lines.append((prefix, device.name))
+            lines.append((f"{prefix} driver", self._driver_text(device.driver)))
+            lines.append((f"{prefix} identity", f"Source: {device.source}\nDevice: {device.identifier or 'unavailable'}" +
+                          ("\nNodes: " + ", ".join(device.aliases) if device.aliases else "") +
+                          ("\nCompatible: " + ", ".join(device.compatibles) if device.compatibles else "")))
+        return lines
 
     def _detail_lines(self, name: str) -> list[tuple[str, str]]:
         sample = self.snapshot
+        if name == "GPU" and sample is None:
+            return [("Pulse status", self.pulse_error or "Select GPU Pulse to check hardware acceleration."),
+                    ("Utilization", "Collecting initial diagnostics")]
         if not sample: return [("Status", "Collecting initial diagnostics. Values will appear when a complete local sample is available.")]
         if name == "Network":
             network = sample.network
@@ -344,13 +520,35 @@ class Dashboard:
                 counts = f" • RX {item.rx_bytes} B / TX {item.tx_bytes} B" if item.rx_bytes is not None and item.tx_bytes is not None else ""
                 lines.append((f"{item.name} ({item.state})", addresses + counts))
             return lines or [("Status", "No interfaces reported")]
+        if name == "GPU":
+            reading = sample.gpu
+            identities = self._device_lines("GPU", sample.hardware.gpus)
+            identities += self._device_lines("Display", sample.hardware.displays)
+            modules = "\n".join(self._driver_text(item) for item in sample.hardware.graphics_modules)
+            return (identities or [("GPU model", "Hardware name unavailable")]) + [
+                    ("Kernel", sample.hardware.kernel_release or "Unavailable"),
+                    ("Graphics modules present", (modules + "\nPresence alone does not prove a device is bound.") if modules else "No module metadata exported"),
+                    ("Utilization", f"{reading.percent:.1f}%" if reading else "Unavailable — this driver has no supported utilization counter."),
+                    ("Sampled device", sample.hardware.gpu_name(reading.name) if reading else "No counter selected"),
+                    ("Counter source", reading.source if reading else sample.errors.get("gpu", "No readable GPU counter")),
+                    ("Pulse renderer", self.renderer_name),
+                    ("OpenGL ES / userspace driver", self.renderer_api),
+                    ("Pulse status", self.pulse_error or "Eight-second hardware pulse. Select GPU Pulse to run; Esc or Stop Pulse cancels."),
+                    ("Measurement", "The graph shows device utilization, not animation FPS. GPU acceleration and utilization counters are separate driver capabilities.")]
         if name == "CPU":
-            lines = [("Model", sample.cpu_model), ("Architecture / logical CPUs", f"{sample.architecture or 'unavailable'} • {sample.cpu_count} logical CPUs"),
+            lines = [("Model", sample.cpu_model),
+                     ("Identification source", "\n".join(dict.fromkeys(device.source for device in sample.hardware.cpus)) or "Unavailable"), ("Architecture / logical CPUs", f"{sample.architecture or 'unavailable'} • {sample.cpu_count} logical CPUs"),
                      ("Utilization", "Collecting initial delta" if sample.cpu_percent is None else f"{sample.cpu_percent:.1f}%"),
                      ("Live frequency", "Unavailable" if not sample.frequency else f"{sample.frequency.mhz:.1f} MHz ({sample.frequency.source}, {sample.frequency.path})"),
                      ("Per-core utilization", ", ".join(f"{key}: {'—' if value is None else f'{value:.1f}%'}" for key, value in sample.per_core.items()) or "Unavailable"),
                      ("Governor", ", ".join(sample.governors) or "Unavailable"),
                      ("Load / uptime", (f"load {sample.load_averages[0]:.2f}, {sample.load_averages[1]:.2f}, {sample.load_averages[2]:.2f}" if sample.load_averages else "load unavailable") + (f" • uptime {sample.uptime_seconds/3600:.1f} h" if sample.uptime_seconds is not None else ""))]
+            for label, device in (("Board", sample.hardware.board), ("SoC", sample.hardware.soc)):
+                lines.append((label, f"{device.name}\nSource: {device.source}" +
+                              ("\nCompatible: " + ", ".join(device.compatibles) if device.compatibles else "")
+                              if device else "Unavailable"))
+            lines.append(("Kernel", sample.hardware.kernel_release or "Unavailable"))
+            lines.append(("CPU frequency driver", "\n".join(f"{item.name} ({item.source})" for item in sample.hardware.cpu_drivers) or "Unavailable"))
             lines.extend((f"{policy} limits", f"min {low if low else '—'} MHz • max {high if high else '—'} MHz") for policy, low, high in sample.frequency_limits)
             return lines
         if name == "Temperature":
@@ -364,36 +562,59 @@ class Dashboard:
         return [("RAM", f"used {memory.used_kib/1024:.1f} MiB • total {memory.total_kib/1024:.1f} MiB • {memory.percent:.1f}%"), ("Availability", f"available {memory.available_kib/1024:.1f} MiB" + (" (estimated fallback)" if memory.estimated else "")), ("Components", f"free {memory.free_kib or 0} KiB • buffers {memory.buffers_kib or 0} KiB • cache {memory.cache_kib or 0} KiB"), ("Swap", f"used {swap_used/1024:.1f} MiB • total {(memory.swap_total_kib or 0)/1024:.1f} MiB • free {(memory.swap_free_kib or 0)/1024:.1f} MiB")]
 
     def _begin_pulse(self) -> None:
+        self.pulse_error = ""
+        self.model.focus = PULSE_FOCUS
+        self._render()
+        self.root.update_idletasks()
+        try:
+            if self.renderer is None:
+                self.renderer = self.renderer_factory(self.pulse_surface)
+                self.renderer_name = self.renderer.renderer
+                self.renderer_api = getattr(self.renderer, "api_version", "Not exported")
+            self.model.pulse.started = self.clock()
+            self.pulse_caption.configure(text="8 SECOND PULSE  ·  HARDWARE GLES2  ·  ESC TO STOP")
+            self._pulse_frame()
+        except GpuUnavailable as error:
+            self._pulse_failed(error)
+
+    def _pulse_failed(self, error) -> None:
+        self.pulse_error = str(error)
+        self.model.pulse.cancel()
         self._clear_pulse()
-        width, height = self.canvas.winfo_width(), self.canvas.winfo_height()
-        cx, cy = width / 2, height / 2
-        for _ in range(3): self.pulse_items.append(self.canvas.create_oval(cx, cy, cx, cy, outline=ACCENT, width=2))
-        for _ in range(10): self.pulse_items.append(self.canvas.create_oval(cx, cy, cx+3, cy+3, fill=ACCENT, outline=""))
-        self._pulse_frame()
+        if self.renderer is not None:
+            self.renderer.close()
+            self.renderer = None
+        self.model.open(PANELS.index("GPU"))
+        self._render()
 
     def _pulse_frame(self) -> None:
+        self.pulse_after = None
         if self.closed or not self.model.pulse.active: return
         if self.model.pulse.progress(self.clock()) >= 1.0:
-            self.model.pulse.cancel(); self._clear_pulse(); self._render(); return
-        self._update_pulse(); self._schedule(42, self._pulse_frame)
-
-    def _update_pulse(self) -> None:
-        if not self.pulse_items: return
-        progress = self.model.pulse.progress(self.clock()); width, height = self.canvas.winfo_width(), self.canvas.winfo_height(); cx, cy = width/2, height/2
-        max_radius = max(width, height) * .55
-        for index, item in enumerate(self.pulse_items[:3]):
-            radius = max_radius * max(0.0, progress - index*.14)
-            self.canvas.coords(item, cx-radius, cy-radius, cx+radius, cy+radius)
-            self.canvas.itemconfigure(item, outline=ACCENT if progress < .72 else "#3c756f")
-        for index, item in enumerate(self.pulse_items[3:]):
-            angle = index * math.tau / 10 + progress * 4
-            radius = 24 + progress * max_radius * (0.35 + (index % 3) * .1)
-            x, y = cx + math.cos(angle)*radius, cy + math.sin(angle)*radius
-            self.canvas.coords(item, x-2, y-2, x+2, y+2)
+            self.model.pulse.cancel()
+            self._clear_pulse()
+            self._render()
+            return
+        if self.root.state() == "iconic":
+            self.model.pulse.cancel()
+            self._clear_pulse()
+            return
+        try:
+            if self.renderer is not None:
+                self.renderer.draw(self.clock()-self.model.pulse.started,
+                                   self.pulse_surface.winfo_width(), self.pulse_surface.winfo_height())
+        except GpuUnavailable as error:
+            self._pulse_failed(error)
+            return
+        # At most 30 FPS. Schedule after submission, never catch up in a busy loop.
+        self.pulse_after = self._schedule(34, self._pulse_frame)
 
     def _clear_pulse(self) -> None:
-        for item in self.pulse_items: self.canvas.delete(item)
-        self.pulse_items.clear()
+        if self.pulse_after is not None:
+            self.root.after_cancel(self.pulse_after)
+            self.after_ids.discard(self.pulse_after)
+            self.pulse_after = None
+        self.pulse_layer.place_forget()
 
     def close(self) -> None:
         if self.closed: return
@@ -403,4 +624,7 @@ class Dashboard:
             try: self.root.after_cancel(ident)
             except Exception: pass
         self.after_ids.clear()
+        if self.renderer is not None:
+            self.renderer.close()
+            self.renderer = None
         self.root.destroy()
