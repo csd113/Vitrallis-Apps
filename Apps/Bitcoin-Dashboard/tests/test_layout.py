@@ -484,7 +484,7 @@ class LayoutTests(unittest.TestCase):
                     self.assertFalse(app.canvas.find_withtag('block-highlight'))
                 labels = [app.canvas.itemcget(i, 'text') for i in app.canvas.find_all()
                           if app.canvas.type(i) == 'text']
-                self.assertIn('app version 1.2.0', labels)
+                self.assertIn('app version ' + bitcoin.VERSION, labels)
                 app.settings_button.invoke()
                 root.update()
                 panel = app.settings_panel
