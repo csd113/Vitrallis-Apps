@@ -14,7 +14,7 @@ from contextlib import redirect_stderr
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import bitcoin
+import main as bitcoin
 
 
 class DataTests(unittest.TestCase):
@@ -247,7 +247,7 @@ class DataTests(unittest.TestCase):
             with self.subTest(row=row), self.assertRaises(ValueError):
                 bitcoin.quote({'bitcoin': row})
 
-    def test_supply_is_exact_through_cache_and_legacy_migration(self):
+    def test_supply_is_exact_through_cache(self):
         sats = 2008210312500002  # The former BTC float round trip became ...001.8.
         app = self.make_app()
         app.data.update(bitcoin.chain_stats(dict(self.stats(), totalbc=sats)))
@@ -260,12 +260,6 @@ class DataTests(unittest.TestCase):
             cache = Path(directory) / 'data.json'
             with patch.object(bitcoin, 'CACHE', cache):
                 app.save_cache()
-                restored = self.make_app()
-                restored.load_cache()
-                self.assertEqual(restored.data['supply_sats'], sats)
-                legacy = dict(app.data, supply=sats / bitcoin.SATOSHIS_PER_BTC)
-                del legacy['supply_sats']
-                cache.write_text(json.dumps(legacy))
                 restored = self.make_app()
                 restored.load_cache()
                 self.assertEqual(restored.data['supply_sats'], sats)
@@ -283,12 +277,30 @@ class DataTests(unittest.TestCase):
                 os.mkfifo(cache)
                 app.load_cache()
                 self.assertEqual(app.data, {'price': 12})
+
                 cache.unlink()
                 target = Path(directory) / 'target'
                 target.write_text('{}')
                 cache.symlink_to(target)
                 app.load_cache()
                 self.assertEqual(app.data, {'price': 12})
+
+    def test_missing_session_cache_does_not_read_another_location(self):
+        app = self.make_app()
+        with patch.object(bitcoin, 'read_json', side_effect=FileNotFoundError) as read:
+            app.load_cache()
+        read.assert_called_once_with(bitcoin.CACHE, 1_000_000)
+        self.assertEqual(app.data, {'price': 12})
+
+    def test_cache_requires_satoshi_supply_without_discarding_valid_quote(self):
+        app = self.make_app()
+        raw = {'price': 100000, 'updated': time.time(), 'height': 966271,
+               'chain_updated': time.time(), 'supply': 20082100.0}
+        with patch.object(bitcoin, 'read_json', return_value=raw):
+            app.load_cache()
+        self.assertEqual(app.data['price'], 100000)
+        self.assertNotIn('supply_sats', app.data)
+        self.assertNotIn('height', app.data)
 
     def test_cache_write_rejects_symlink_directory_and_survives_cleanup_error(self):
         app = self.make_app()

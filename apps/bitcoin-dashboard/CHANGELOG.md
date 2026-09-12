@@ -2,6 +2,17 @@
 
 Changes are listed newest first. Dates use America/Vancouver time.
 
+## 1.2.2
+
+- Package Bitcoin Dashboard as a native manifest v1 app with `main.py`, a bundled
+  icon, declared requirements, assets and tests.
+- Remove the installation launcher and obsolete cache location/format fallbacks.
+- Keep dashboard features, controls, settings storage and refresh behavior.
+- Use the native catalog publication workflow; installation awaits native client
+  verification.
+
+Earlier entries record upstream release history, not current package support.
+
 ## 1.2.1 — 2026-09-11
 
 - Move developer tests into `tests/` and exclude them from new catalog packages.

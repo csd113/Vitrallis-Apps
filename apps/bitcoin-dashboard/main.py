@@ -21,7 +21,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-VERSION = '1.2.1'
+# Display and HTTP user-agent version; publication metadata comes from app.toml.
+VERSION = '1.2.2'
 BLOCK_HIGHLIGHT_SECONDS = 10
 SATOSHIS_PER_BTC = 100_000_000
 MAX_SUPPLY = 21_000_000 * SATOSHIS_PER_BTC
@@ -33,7 +34,6 @@ DATA_ERRORS = (OSError, HTTPException, ValueError, KeyError, TypeError,
 SETTINGS = Path.home() / '.config/pocket-bitcoin/settings.json'
 
 BASE = 'https://api.coingecko.com/api/v3/'
-LEGACY_CACHE = Path.home() / '.cache/pocket-bitcoin/data.json'
 # Session cache is in RAM, preserving the PocketCHIP's NAND flash.
 RUNTIME = Path('/run/user') / str(os.getuid())
 CACHE = RUNTIME / 'pocket-bitcoin.json'
@@ -115,17 +115,6 @@ def integer(value, maximum):
             or not 0 < value <= maximum or int(value) != value):
         raise ValueError('Invalid integer')
     return int(value)
-
-
-def cached_supply(raw):
-    if 'supply_sats' in raw:
-        return integer(raw['supply_sats'], MAX_SUPPLY)
-    # Old caches stored BTC floats. Decimal avoids a second binary rounding step.
-    value = number(raw['supply'], True)
-    sats = Decimal(str(value)) * SATOSHIS_PER_BTC
-    if not 0 < sats <= MAX_SUPPLY or sats != sats.to_integral_value():
-        raise ValueError('Invalid cached supply')
-    return int(sats)
 
 
 def format_supply(satoshis):
@@ -301,7 +290,7 @@ class App:
         self.settings_button.place(relx=1, x=-148, y=6, width=76, height=36)
         self.home_button = self.button(root, 'Home', self.back)
         self.home_button.place(relx=1, x=-66, y=6, width=58, height=36)
-        icon = Path(__file__).with_name('bitcoin.png')
+        icon = Path(__file__).resolve().with_name('icon.png')
         try:
             if icon.is_file() and icon.stat().st_size <= 1_000_000:
                 self.icon = tk.PhotoImage(file=str(icon))
@@ -582,10 +571,7 @@ class App:
 
     def load_cache(self):
         try:
-            try:
-                raw = read_json(CACHE, 1_000_000)
-            except FileNotFoundError:
-                raw = read_json(LEGACY_CACHE, 1_000_000)
+            raw = read_json(CACHE, 1_000_000)
             if not isinstance(raw, dict):
                 return
         except (OSError, ValueError, RecursionError):
@@ -597,7 +583,7 @@ class App:
             lambda: {'points': history({'prices': [[t * 1000, p] for t, p in raw['points']]}),
                      'chart_fetched': timestamp(raw['chart_fetched'])},
             lambda: chain_stats({'n_blocks_total': number(raw['height']) + 1,
-                'totalbc': cached_supply(raw),
+                'totalbc': raw['supply_sats'],
                 'timestamp': number(raw['chain_updated']) * 1000}),
             lambda: dict(blockchain_size({'status': 'ok', 'unit': 'MB',
                 'values': [{'x': raw['size_updated'], 'y': number(raw['chain_gb']) * 1000}]}),

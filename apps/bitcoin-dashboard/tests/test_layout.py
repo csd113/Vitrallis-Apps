@@ -1,4 +1,5 @@
 import time
+import os
 import tempfile
 from pathlib import Path
 import unittest
@@ -8,13 +9,13 @@ import threading
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import bitcoin
+import main as bitcoin
 
 class LayoutTests(unittest.TestCase):
     def setUp(self):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
-        for name in ('SETTINGS', 'CACHE', 'LEGACY_CACHE'):
+        for name in ('SETTINGS', 'CACHE'):
             patcher = patch.object(bitcoin, name, Path(directory.name) / (name + '.json'))
             patcher.start()
             self.addCleanup(patcher.stop)
@@ -33,6 +34,16 @@ class LayoutTests(unittest.TestCase):
     def labels(self, app):
         return [app.canvas.itemcget(item, 'text') for item in app.canvas.find_all()
                 if app.canvas.type(item) == 'text']
+
+    def test_packaged_icon_loads_from_another_working_directory(self):
+        previous = Path.cwd()
+        with tempfile.TemporaryDirectory() as directory:
+            try:
+                os.chdir(directory)
+                app = self.make_app()
+                self.assertEqual((app.icon.width(), app.icon.height()), (128, 128))
+            finally:
+                os.chdir(previous)
 
     def assert_text_bounds(self, app):
         boxes = []

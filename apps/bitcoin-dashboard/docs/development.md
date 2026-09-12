@@ -55,7 +55,7 @@ dragging outside cancels the action and repeated taps cannot stack detail views.
 
 [CoinGecko](https://docs.coingecko.com/reference/simple-price) provides the CAD quote and [24-hour chart](https://docs.coingecko.com/reference/coins-id-market-chart). Public endpoints work without a key, subject to provider availability and rate limits. An optional `COINGECKO_DEMO_API_KEY` environment variable is supported and is sent only to CoinGecko.
 
-[Blockchain.com statistics](https://www.blockchain.com/explorer/api/charts_api) provides `n_blocks_total` and `totalbc`. Its block count includes genesis, so the displayed height is count minus one. This conversion was checked against `latestblock.height`. Supply is kept as integer satoshis (`supply_sats`) in memory and in the session cache. Only presentation converts it to BTC using Decimal, rounded to three decimal places with ties to even. Legacy caches storing BTC are still read. Reported circulating issuance includes coins whose keys may be lost; it is not the quantity available for sale.
+[Blockchain.com statistics](https://www.blockchain.com/explorer/api/charts_api) provides `n_blocks_total` and `totalbc`. Its block count includes genesis, so the displayed height is count minus one. This conversion was checked against `latestblock.height`. Supply is kept as integer satoshis (`supply_sats`) in memory and in the session cache. Only presentation converts it to BTC using Decimal, rounded to three decimal places with ties to even. Reported circulating issuance includes coins whose keys may be lost; it is not the quantity available for sale.
 
 [Blockchain size](https://www.blockchain.com/explorer/charts/blocks-size) measures block headers and transactions, excluding database indexes. Source MB is converted to decimal GB (1 GB = 1,000 MB). It is a daily published sample, not a measurement of the PocketCHIP's storage. A full archival node needs additional space for chainstate, undo data, indexes, and future growth. Exact requirements depend on configuration. **This dashboard does not download the blockchain.**
 
@@ -82,7 +82,7 @@ preserve other successful updates.
 
 ## Cache and resource use
 
-The session cache is `/run/user/<uid>/pocket-bitcoin.json`, with private, atomic writes. On the tested device this directory is a RAM filesystem. Writes are skipped if the runtime directory is absent or has unsafe ownership/permissions. The old `~/.cache/pocket-bitcoin/data.json` can seed startup when no session cache exists, but is no longer rewritten. RAM-cached updates are lost on reboot, and the app fetches fresh data at launch.
+The session cache is `/run/user/<uid>/pocket-bitcoin.json`, with private, atomic writes. On the tested device this directory is a RAM filesystem. Writes are skipped if the runtime directory is absent or has unsafe ownership/permissions. No alternate cache location is read; cached supply must use integer satoshis. RAM-cached updates are lost on reboot, and the app fetches fresh data at launch.
 Cache/settings reads are bounded and reject nonregular files and final symlinks,
 including FIFOs that would otherwise freeze startup. Cache writes reject a
 symlinked runtime directory and batch updates drained in one poll into one
@@ -100,10 +100,9 @@ normalization handles very large and very small finite prices safely. Extreme
 numeric labels use scientific notation to stay inside their display areas.
 Shutdown cancels the polling callback; daemon workers never call Tk.
 
-The optional `bitcoin.png` is not included in this repository. Missing, oversized,
-or unreadable icon files do not prevent startup. The existing dashboard artwork
-and visual identity are preserved. The `launch` script's runtime contract is
-unchanged. Missing Tkinter or a missing graphical session now produces a short
+The packaged `icon.png` is loaded relative to `main.py`. Missing, oversized or
+unreadable artwork does not prevent startup. The dashboard runs with system
+Python 3.8+ and Tk 8.6. Missing Tkinter or a graphical session produces a short
 setup message. For certificate errors, check the device clock and trusted CA
 installation; certificate verification must stay enabled.
 
@@ -119,34 +118,36 @@ All tests, including real Tk text bounds at 480 × 272:
 
 ```sh
 python3 -m unittest discover -s tests -v
-python3 -m py_compile bitcoin.py tests/test_bitcoin.py tests/test_layout.py
-sh -n launch
+PYTHONPYCACHEPREFIX=/tmp/vitrallis-pycache python3 -m compileall -q .
 git diff --check
 ```
 
 Optional developer-only static checks (Ruff is not an application dependency):
 
 ```sh
-uvx ruff check --select F,B bitcoin.py tests/test_bitcoin.py tests/test_layout.py
+uvx ruff check --select F,B main.py tests
 ```
 
-Version 1.2.0 passes 51 tests locally on macOS / Tk 8.6. It expands the original
-23 tests with regression coverage
-for exact supply/cache migration, extreme chart values, response and file limits,
-redirect/key isolation, worker completion, independent backoff, repeated input,
-out-of-order samples, keyboard focus, configuration errors, slow workers, and
-shutdown, all three card detail views, touch/arrow-key navigation, ten-second
-expiry across navigation, and halving boundary calculations. Tests use temporary settings/cache files and mocked network data.
-Physical PocketCHIP verification of this pass is still pending.
+Tests cover exact supply caching, response and file limits, redirect/key
+isolation, independent backoff, repeated input, out-of-order samples, settings,
+shutdown, card details, keyboard/touch navigation, highlight expiry, layout
+bounds and halving calculations. Native package tests check manifest/version
+agreement and import behavior from a different working directory. Tests use
+temporary settings/cache files and mocked network data. Run them with Python
+3.11+ (the tooling minimum); the application itself requires Python 3.8+.
 
-The layout test requires a graphical display and briefly creates a window. On the PocketCHIP use `DISPLAY=:0` and, if using the app-local runtime, the library environment from `launch`. The pixel-layout checks were validated with the device's DejaVu Sans fonts and Linux Tk; other platforms may have different font metrics.
+The layout test requires a graphical display and briefly creates a window. On the PocketCHIP use `DISPLAY=:0`; on headless Linux use `xvfb-run -a`. The pixel-layout checks were validated with the device's DejaVu Sans fonts and Linux Tk; other platforms may have different font metrics.
 
 Version 1.0.0 passed all **16 tests** on the PocketCHIP, including malformed data, partial outages, cache handling, API-key isolation, and loading/stale/large-number/flat-chart layouts. Live data fetching, the PocketHome shortcut, and the on-screen Home button were also checked on the device.
 
 ## Files
 
-- `bitcoin.py` — dashboard, fetching, validation, caching, and refresh scheduling.
-- `launch` — existing installation's app-local ARM runtime launcher.
-- `tests/test_bitcoin.py` — data, failure-handling, block-indicator, and settings tests.
-- `tests/test_layout.py` — real Tk layout, toolbar, settings, and highlight-expiry tests.
-- `docs/dashboard.png` — version 1.0.0 screenshot from the PocketCHIP.
+- `app.toml` — native identity, version, runtime, entry and permissions.
+- `main.py` — dashboard, fetching, validation, caching and refresh scheduling.
+- `icon.png` — original native package icon.
+- `requirements.txt` — system runtime requirements; no pip dependencies.
+- `README.md` and `CHANGELOG.md` — operation and release history.
+- `assets/dashboard.png` — original version 1.0.0 PocketCHIP screenshot.
+- `assets/README.md` — artwork provenance.
+- `docs/development.md` — data sources and implementation details.
+- `tests/` — data, layout and native package regressions; excluded from publication.
