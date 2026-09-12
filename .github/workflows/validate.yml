@@ -1,0 +1,62 @@
+name: Validate catalog and packages
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      VITRALLIS_REQUIRE_GUI: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install desktop test prerequisites
+        run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb
+      - name: Validate schema, catalog, pinned hashes and example manifest
+        run: python tools/validate_catalog.py --catalog apps.json --package examples/hello-vitrallis
+      - name: Validate every unpublished native package
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          import sys
+          sys.path.insert(0, 'tools')
+          from catalog_lib import match, SOURCE_PATH
+          root = Path('apps')
+          if root.exists() or root.is_symlink():
+              if root.is_symlink() or not root.is_dir():
+                  sys.exit('apps: expected a regular directory')
+              for package in sorted(root.iterdir()):
+                  match(package.as_posix(), SOURCE_PATH, package)
+                  subprocess.run([sys.executable, 'tools/validate_catalog.py', '--package', str(package)], check=True)
+          PY
+      - name: Tooling regression tests
+        run: python -m unittest discover -s tools/tests -v
+      - name: Example desktop tests (GUI required)
+        run: xvfb-run -a python -m unittest discover -s examples/hello-vitrallis/tests -v
+      - name: Legacy Bitcoin data regressions
+        if: hashFiles('Apps/Bitcoin-Dashboard/test_bitcoin.py') != ''
+        run: python -m unittest discover -s Apps/Bitcoin-Dashboard -p test_bitcoin.py -v
+      - name: Compile Python outside packages
+        env:
+          PYTHONPYCACHEPREFIX: ${{ runner.temp }}/vitrallis-pycache
+        run: |
+          python -m compileall -q tools examples/hello-vitrallis
+          if [ -d apps ]; then python -m compileall -q apps; fi
+          if [ -d Apps/Bitcoin-Dashboard ]; then python -m compileall -q Apps/Bitcoin-Dashboard; fi
+      - name: Whitespace checks
+        run: git diff --check

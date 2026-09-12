@@ -98,7 +98,9 @@
             ],
             "properties": {
               "repository": {
-                "const": "csd113/Vitrallis-Apps"
+                "type": "string",
+                "maxLength": 140,
+                "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}/(?!\\.{1,2}$)[A-Za-z0-9_.-]{1,100}$"
               },
               "commit": {
                 "type": "string",
@@ -107,7 +109,7 @@
               "path": {
                 "type": "string",
                 "maxLength": 240,
-                "pattern": "^Apps/[A-Za-z0-9_-]+$"
+                "pattern": "^(?:Apps/[A-Za-z0-9_-]+|apps/[a-z0-9]+(?:-[a-z0-9]+)*)$"
               }
             }
           },

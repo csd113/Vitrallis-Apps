@@ -1,0 +1,1 @@
+# No third-party Python dependencies. Tkinter is a system prerequisite.
