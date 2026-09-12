@@ -67,6 +67,73 @@
           "sha256": "0cee70ab425b69d50a4b23207ed958015db6faea15aa64ba50c81f88792aa662"
         }
       ]
+    },
+    {
+      "id": "io.vitrallis.debug",
+      "installable": true,
+      "name": "Vitrallis Debug",
+      "version": "0.1.0",
+      "runtime": "python",
+      "entry": "main.py",
+      "permissions": {
+        "network": false,
+        "audio": false,
+        "storage": false
+      },
+      "description": "Offline network, CPU, temperature, and memory diagnostics for the PocketCHIP.",
+      "compatibility_notes": "Requires Python 3.8+ and system Tkinter with a graphical desktop. Native manifest v1 package for the Vitrallis Shell App Center. Physical PocketCHIP verification remains pending.",
+      "source": {
+        "repository": "csd113/Vitrallis-Apps",
+        "commit": "40b70fbc75c375371321728f953175215058fc34",
+        "path": "apps/vitrallis-debug"
+      },
+      "files": [
+        {
+          "path": "README.md",
+          "size": 4967,
+          "sha256": "b04e35e41972dabb9f51dc035a2aaa80d92dac6f7fad1ab17b5b03cce73a0c84"
+        },
+        {
+          "path": "app.toml",
+          "size": 188,
+          "sha256": "750eb7bf1415d30c0baf914526f48338022224f1bcba2af5dd0cc8629fff1e3c"
+        },
+        {
+          "path": "assets/README.md",
+          "size": 313,
+          "sha256": "0e81f3c13cc7630f00a405e01e3b646d43bca002501c0847ba89d4b7da110501"
+        },
+        {
+          "path": "demo.py",
+          "size": 1397,
+          "sha256": "0979a743c2b03c1307da9d0b5022c574f9f70c55b23f37832f8f3ef3785dc4ac"
+        },
+        {
+          "path": "diagnostics.py",
+          "size": 18466,
+          "sha256": "078fd50665906a19e00d936d3ceb3755713706a0c35d0212f9d84c63f1ffb3d8"
+        },
+        {
+          "path": "icon.png",
+          "size": 772,
+          "sha256": "f91e0c367f4b4d4de2cc91e7e49a40c41e679e3cbb6c52b5886e2170781839e8"
+        },
+        {
+          "path": "main.py",
+          "size": 1406,
+          "sha256": "a05447e744d67f6a9b384895a8eb781fd053a60e1d9f57169f4c1d877ea27029"
+        },
+        {
+          "path": "requirements.txt",
+          "size": 83,
+          "sha256": "6d16deaa372d5d7f5ccaf72fb6811ec3e104881aaba22b8b658234f66e2c664d"
+        },
+        {
+          "path": "ui.py",
+          "size": 22067,
+          "sha256": "5d624b04eae2c8ce24912c0362e61fb13944cecddd501f60071f724b99d45ba6"
+        }
+      ]
     }
   ]
 }
