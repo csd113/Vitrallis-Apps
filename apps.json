@@ -5,7 +5,7 @@
       "id": "io.vitrallis.bitcoindashboard",
       "installable": true,
       "name": "Bitcoin Dashboard",
-      "version": "1.2.2",
+      "version": "1.2.3",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -14,27 +14,27 @@
         "storage": true
       },
       "description": "Bitcoin CAD price, chart, and network dashboard for the PocketCHIP.",
-      "compatibility_notes": "Requires Python 3.8+ and system Tkinter with Tk 8.6. Native manifest v1 package for the Vitrallis Shell App Center. Physical PocketCHIP verification remains pending.",
+      "compatibility_notes": "Requires Python 3.8+ and system Tkinter with Tk 8.6. Native installation and process-based window focus verified on the Debian 13 PocketCHIP with Vitrallis Shell.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "c45e941396adc42f5aee5ddaa6342b171a3d3734",
+        "commit": "81db6d2c1c59ae2ca8fefcde374c3a749cc0f8a8",
         "path": "apps/bitcoin-dashboard"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 4831,
-          "sha256": "7089c81e845a89ba6793bf13999f0b4f8eea140195022f1231539a5e65f671db"
+          "size": 5009,
+          "sha256": "95e6071bb4c7ffcf438a259a030da1097c6b9dc90e4713f2964a24545d4687a7"
         },
         {
           "path": "README.md",
           "size": 4925,
-          "sha256": "214a17c8cd505266b0ea15892f61292819c7004ae17ba047c886c48d2ae162eb"
+          "sha256": "f200081ffa23ccbe36805c8b8876a376374eed72cac26c57c71f43f086f36606"
         },
         {
           "path": "app.toml",
           "size": 199,
-          "sha256": "ce5a30e580b8ffad8ef0dc437843f839e554085a8b4156f9caef12f7867fe777"
+          "sha256": "38f02482b41b6c11efb2a4c1c705178a89034f820850735c52758e4fe5cc48d5"
         },
         {
           "path": "assets/README.md",
@@ -58,8 +58,8 @@
         },
         {
           "path": "main.py",
-          "size": 42524,
-          "sha256": "2341191c928bb084282ba3ca46830b3fdcd36389741c031c1c67ed89e25069ce"
+          "size": 42716,
+          "sha256": "13dfed96888345da9da3269e2dbd1d6c2beff40530f5470935ed51f31b7a2f2d"
         },
         {
           "path": "requirements.txt",
@@ -72,7 +72,7 @@
       "id": "io.vitrallis.debug",
       "installable": true,
       "name": "Vitrallis Debug",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -81,22 +81,22 @@
         "storage": false
       },
       "description": "Offline network, CPU, temperature, and memory diagnostics for the PocketCHIP.",
-      "compatibility_notes": "Requires Python 3.8+ and system Tkinter with a graphical desktop. Native manifest v1 package for the Vitrallis Shell App Center. Physical PocketCHIP verification remains pending.",
+      "compatibility_notes": "Requires Python 3.8+ and system Tkinter with Tk 8.6. Native installation and process-based window focus verified on the Debian 13 PocketCHIP with Vitrallis Shell.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "40b70fbc75c375371321728f953175215058fc34",
+        "commit": "81db6d2c1c59ae2ca8fefcde374c3a749cc0f8a8",
         "path": "apps/vitrallis-debug"
       },
       "files": [
         {
           "path": "README.md",
-          "size": 4967,
-          "sha256": "b04e35e41972dabb9f51dc035a2aaa80d92dac6f7fad1ab17b5b03cce73a0c84"
+          "size": 5068,
+          "sha256": "2e7028bc17d7bfad0152e5a2d4fa437e7a76de642a08fbbde009c4740a034b92"
         },
         {
           "path": "app.toml",
           "size": 188,
-          "sha256": "750eb7bf1415d30c0baf914526f48338022224f1bcba2af5dd0cc8629fff1e3c"
+          "sha256": "08e54e731a9df2f8b356164b8ad92d49e2f10576f152e4da0718869d7d39a4da"
         },
         {
           "path": "assets/README.md",
@@ -120,8 +120,8 @@
         },
         {
           "path": "main.py",
-          "size": 1406,
-          "sha256": "a05447e744d67f6a9b384895a8eb781fd053a60e1d9f57169f4c1d877ea27029"
+          "size": 1586,
+          "sha256": "343dea18030ba802d8190bf3ba2b31802327db453d16d23f54d86610852f06f6"
         },
         {
           "path": "requirements.txt",
