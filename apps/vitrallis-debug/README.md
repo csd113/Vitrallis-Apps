@@ -1,5 +1,7 @@
 # Vitrallis Debug
 
+Current package: **0.1.2** · [Changelog](CHANGELOG.md).
+
 Vitrallis Debug is an offline instrument panel for a 480×272 Vitrallis/PocketCHIP
 profile. Version 0.1.1 announces its X11 process identity so Vitrallis Shell can
 focus and resume its window. It presents expandable Network, CPU, Temperature and Memory cards using

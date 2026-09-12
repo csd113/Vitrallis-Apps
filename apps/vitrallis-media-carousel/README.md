@@ -4,7 +4,9 @@ A locally managed slideshow for the screen running Vitrallis. Upload from your
 phone/computer, organize collections, then select one in the native Python app.
 Playback does not open a browser.
 
-**0.1.1** · `io.vitrallis.mediacarousel` · manifest v1.
+**0.1.2** · `io.vitrallis.mediacarousel` · manifest v1.
+
+[Changelog](CHANGELOG.md).
 
 ## Runtime and installation
 
