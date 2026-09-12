@@ -137,9 +137,9 @@
     },
     {
       "id": "io.vitrallis.mediacarousel",
-      "installable": false,
+      "installable": true,
       "name": "Vitrallis Media Carousel",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -148,22 +148,22 @@
         "storage": true
       },
       "description": "Native media slideshow with LAN uploads, named collections and shared settings.",
-      "compatibility_notes": "Requires Python 3.9+, Tk 8.6 and Pillow >=10.4,<13; optional system ffmpeg/ffprobe for muted WebM. ARMv7 PocketCHIP source-run playback, LAN uploads and physical touch/keyboard tested on Debian 13.6. App Center install/update/repair, manifest launch and launcher icon remain unverified: the current Shell reads default branch main, while this release is on image-carrossel. Installation remains disabled.",
+      "compatibility_notes": "Requires Python 3.9+, Tk 8.6, Pillow >=10.4,<13 and installed packaging for App Center dependency checks. Optional system ffmpeg/ffprobe enables muted WebM. Available through the official main catalog. Version 0.1.1 adds X11 process identity for Shell focus/resume. Source-run playback, LAN uploads and physical touch/keyboard were tested on an ARMv7 PocketCHIP with Debian 13.6; device App Center install/update/repair verification remains pending.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "331a9612895e0fb725564c116cae291ef22fa537",
+        "commit": "1387743c4a3d2394cf6c7873cf60e98aa2cb0704",
         "path": "apps/vitrallis-media-carousel"
       },
       "files": [
         {
           "path": "README.md",
-          "size": 15183,
-          "sha256": "a8c62ac5490b7a992e57ad502c7696b0b6ced4147ed7f1a2f5de76691fa46b82"
+          "size": 15230,
+          "sha256": "cc9f6070d7e8032ff4435c2f434bce0d21407251d8f0daaf20ffbb7f97ac494c"
         },
         {
           "path": "app.toml",
           "size": 203,
-          "sha256": "2823821ec54805687b80a95560d848a294d004235e6bebe064a243adfbbcf753"
+          "sha256": "ab09575bbecacfcdb13ad5c2e0e065c9da36db5bba2d0bef938acc3a2c09542b"
         },
         {
           "path": "assets/README.md",
@@ -188,7 +188,7 @@
         {
           "path": "main.py",
           "size": 1321,
-          "sha256": "b9dd98883ff1cb2e34d9f76eb80ec7367cc9e020ede296e968d41acd00162f5f"
+          "sha256": "261345c53407af2111a530c89c173d7ab905f88d6819d344a0d0c889f575c69f"
         },
         {
           "path": "media.py",
@@ -217,8 +217,8 @@
         },
         {
           "path": "ui.py",
-          "size": 19921,
-          "sha256": "292a82d82e353c055f3c18d9a0975e169a50fc86d787ce2ccfd6358c3eed4981"
+          "size": 20128,
+          "sha256": "3d39129b43207b9c7bc7ac266a4afa92558f98d64ff90c805c9c117124095c46"
         },
         {
           "path": "web/app.js",
