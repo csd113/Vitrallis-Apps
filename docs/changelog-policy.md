@@ -1,5 +1,7 @@
 # Changelogs and merge requirements
 
+[Documentation](README.md) · [Contributing](../CONTRIBUTING.md) · [Publishing](publishing-apps.md)
+
 Every submitted app must ship `apps/<slug>/CHANGELOG.md`. The main catalog's
 companion [CHANGELOG.md](../CHANGELOG.md) records when apps are added and when
 their published versions change. `apps.json` remains catalog schema v1; its
@@ -54,6 +56,13 @@ concrete summary; a relative link to the app changelog is encouraged. Do not edi
 or delete previous release records or announce an unpublished future version.
 Metadata-only notes such as changes in installation readiness can be ordinary
 paragraphs within the date section, without inventing a new app release.
+
+## Changes outside shipped packages
+
+Root documentation, files under root `docs/`, and community files under `.github/`
+are outside app packages. Changes confined to them do not require an app version
+bump or a new catalog release record. Keep existing history intact. App-local
+READMEs and docs do ship, so their edits require a new version and publication.
 
 ## Submission sequence
 

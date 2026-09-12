@@ -1,23 +1,116 @@
-# Contributing
+# Contributing to Vitrallis Apps
 
-Start with [the repository overview](README.md), then [create an app](docs/creating-apps.md)
-or read [the catalog format](docs/catalog-format.md). Keep changes focused and
-preserve stable application IDs. All apps belong in lowercase `apps/<app-slug>/`
-and follow the native manifest v1 contract.
+Help make small-screen apps useful and pleasant to use. Documentation fixes,
+reproducible bug reports, app improvements, and device verification reports are
+all welcome. Start with the [overview](README.md) and [documentation index](docs/README.md).
+For usage help see [Support](SUPPORT.md); report vulnerabilities using
+[Security](SECURITY.md). Follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
-## Required changelogs
+## Choose the right place
 
-Follow the [changelog and merge policy](docs/changelog-policy.md). Every submitted
-app must include `CHANGELOG.md` with a dated entry matching its version and
-concrete change bullets. Record app additions and published version updates in
-the root [catalog changelog](CHANGELOG.md), and preserve previous release entries.
-Shipped-file changes require a higher version, including changes to app docs or
-changelogs. Test-only changes are excluded from installed packages.
+| Change | Location |
+| --- | --- |
+| New app or app fix | `apps/<app-slug>/`, with its own README, changelog, assets, and tests |
+| App template | `examples/hello-vitrallis/`; keep it small and outside the production catalog |
+| Format, publication, or onboarding docs | `docs/` and the root documentation |
+| Catalog entry | `apps.json`, generated through `tools/update_catalog.py` |
+| Validator or publication tooling | `tools/`, with regression tests in `tools/tests/` |
+| Shell launcher, App Center, or installer behavior | [Vitrallis Shell](https://github.com/csd113/Vitrallis-Shell) |
 
-App additions or updates without matching changelogs and catalog inventories
-must not merge into `main`. The required **Changelog policy** check enforces these
-rules alongside both existing Python validation jobs. Reviewers must confirm
-the release notes describe the actual changes, not just satisfy the format.
+For larger features or new dependencies, describe the use case in an issue first
+so scope and device constraints can be discussed. Small fixes can go straight to
+a pull request. Keep changes focused and do not overwrite another contributor's work.
+
+## Create or update an app
+
+1. Work on a feature branch. Copy `examples/hello-vitrallis/` into lowercase
+   `apps/<app-slug>/` for a new app; use an ID in a namespace you control.
+2. Follow the [manifest v1 contract](docs/creating-apps.md). Include `app.toml`,
+   `main.py`, `icon.png`, `requirements.txt`, `README.md`, `CHANGELOG.md`, and
+   populated `assets/` and `tests/`. Preserve an existing app's stable ID.
+3. Document Python/toolkit requirements, controls, storage locations, declared
+   permissions, and known device limits in the app README. Prefer existing
+   dependencies or the standard library. Do not install system dependencies at
+   app startup or treat permission flags as a sandbox.
+4. Validate and test the working package using [the testing guide](docs/testing.md).
+   Exercise relevant failure modes and launch from another working directory.
+5. Complete release notes and publication before submitting an app release.
+
+Do not commit credentials, caches, device runtimes, or generated build artifacts.
+All committed app files outside `tests/` are published, including documentation.
+No repository-wide license has been established; ask the owner to confirm
+licensing and imported content rights, and do not add guessed license metadata.
+
+## Version and changelog requirements
+
+Follow the [changelog and merge policy](docs/changelog-policy.md):
+
+- Every app and the example need dated, concrete release notes whose newest
+  version matches `app.toml`. Preserve existing release history.
+- Increase the app version for **any shipped-file change**, including app READMEs,
+  artwork, requirements, and changelogs. Keep versions displayed in code aligned.
+- App-local test-only changes do not alter installed packages and do not require
+  a release. Root/docs/community changes outside packages also do not require an
+  app version bump or a fabricated catalog release entry.
+- Record each newly added or updated catalog version in root `CHANGELOG.md`.
+  Keep the README's available-app table aligned with catalog membership and link
+  each production app to its README; avoid duplicating version numbers there.
+
+The **Changelog policy** check verifies committed package/catalog agreement and
+release history. Reviewers must also check that the notes explain the real change.
+
+## Validation before review
+
+Use Python **3.11+** and Git on Linux, macOS, or WSL. The tools use only the standard
+library and POSIX file-safety APIs; native Windows is not supported. App tests
+add Tkinter, a graphical session, and the dependencies described in
+[testing](docs/testing.md). That guide contains the complete commands for every
+package, tooling and example tests, compilation, and whitespace checks.
+
+For one package, start with:
+
+```sh
+python3 tools/validate_catalog.py --package apps/my-app
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/my-app/tests -v
+```
+
+Then run the full repository checks. CI uses Python 3.11 and 3.13, Linux/Xvfb,
+Tkinter, Pillow, and FFmpeg. Report skipped tests and host-specific failures;
+desktop success does not establish device compatibility.
+
+When changing validators, add malformed-metadata and path/file-hazard cases for
+the changed invariant, plus a successful publishing flow. Keep schema and
+validator vocabulary synchronized; unsupported schema keywords must fail closed.
+Tooling tests create commits only in disposable fixture repositories and do not
+use the network.
+
+## Publish the catalog entry
+
+Follow [publishing apps](docs/publishing-apps.md): commit and push the tested app
+source first, then generate the catalog entry from that full commit. Review its
+inventory, verify remote availability, add the root release record, and commit
+the catalog on the same feature branch. The updater previews by default and does
+not commit, push, install, or fetch source.
+
+Enable installation only after checking the target runtime, installer, launcher,
+update, and repair paths. Submit source and catalog together in a pull request.
+Keep the source commits when merging so a fresh clone can resolve every pin.
+Do not republish different bytes under the same version.
+
+## Pull request expectations
+
+Explain the problem, resulting behavior, affected apps or documents, and commands
+run with their results. For UI changes include useful screenshots and the tested
+display size; for device claims include OS/runtime, app and Shell versions, and
+what was actually exercised. Remove secrets and private information from evidence.
+Mark release-only checklist items as not applicable for documentation-only PRs.
+
+App releases must include matching changelogs and catalog inventories before
+merge. Required checks are **Changelog policy**, **validate (3.11)**, and
+**validate (3.13)**, with an up-to-date branch and a pull request. See the
+[merge policy](docs/changelog-policy.md) for details. Coding agents must also read
+[AGENTS.md](AGENTS.md); submission instructions do not authorize commits or
+publication beyond the user's request.
 
 ## Pre-release compatibility policy
 
@@ -27,50 +120,3 @@ compatibility is explicitly requested for the change. Update all affected code
 to the current canonical design and delete superseded code instead of adding
 compatibility layers, fallbacks, aliases, adapters, dual paths, deprecated formats
 or migration shims. This rule applies to contributors and coding agents.
-
-No repository-wide license has been established. Ask the owner to confirm licensing
-and imported content rights; do not add a guessed license or license metadata.
-Do not commit credentials, caches, device runtimes or generated build artifacts.
-
-## Checks before review
-
-Use Python 3.11+ and Git on Linux, macOS or WSL for tools (standard library only).
-The file-safety checks use POSIX no-follow/nonblocking APIs. Tkinter is needed for
-GUI tests. Run from the repository root:
-
-```sh
-python3 tools/validate_catalog.py --catalog apps.json --package examples/hello-vitrallis --package apps/bitcoin-dashboard
-python3 tools/validate_changelogs.py --base "$(git rev-parse origin/main)"
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools/tests -v
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s examples/hello-vitrallis/tests -v
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/bitcoin-dashboard/tests -v
-PYTHONPYCACHEPREFIX=/tmp/vitrallis-pycache python3 -m compileall -q tools examples/hello-vitrallis apps
-git diff --check
-```
-
-Validate every new native app with `--package apps/<slug>` and run its own tests.
-The workflow discovers, validates and runs tests for every native package.
-For display tests, use a graphical desktop or Linux `xvfb-run -a`; with
-`VITRALLIS_REQUIRE_GUI=1` the example tests fail rather than skip if Tk/display is
-missing. CI sets this flag and uses Xvfb. Desktop tests are not device validation.
-
-When changing validators, add failing cases for malformed metadata, path/file
-hazards and the changed invariant, plus a successful publishing flow. The tooling
-tests create disposable Git repositories and commits as fixtures; they never
-commit to the working repository or use the network. Keep schema and validator
-vocabulary synchronized; unknown schema keywords must fail closed.
-
-## Publication review
-
-Use [the two-commit publication workflow](docs/publishing-apps.md). Source must be
-committed and pushed before the catalog advertises it. Review generated metadata,
-check remote availability, and enable installation only after verifying client
-runtime/adapter support. Do not republish changed bytes under the same version.
-The example is a template and does not belong in the production catalog.
-Publish source and catalog commits on a feature branch, then submit a pull
-request with the completed release notes. Keep source commits when merging.
-
-A review should state what changed, files affected, validation results and any
-remaining integration/device limits. Never claim a shell
-loader, permission sandbox or generalized installer exists because the package
-specification defines metadata for it.

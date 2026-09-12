@@ -1,0 +1,40 @@
+name: Feature or app idea
+description: Suggest an app, improvement, or better developer workflow.
+title: "[Idea]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Start with the problem you want to solve. Small screens, modest CPU/RAM, and keyboard/touch input shape Vitrallis apps.
+        Search existing requests first. Shell and App Center features belong in [Vitrallis Shell](https://github.com/csd113/Vitrallis-Shell/issues).
+  - type: input
+    id: scope
+    attributes:
+      label: App or area
+      placeholder: New app idea, Media Carousel, documentation, or catalog tooling
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would this help you do?
+      description: Describe the current limitation and who would benefit.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe a concrete workflow or example. A complete design is not required.
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Device and requirements
+      description: If relevant, include target hardware/display, input methods, network/storage/audio needs, and new dependencies.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and contribution
+      description: Optional workarounds, related ideas, or ways you could help test or implement it.

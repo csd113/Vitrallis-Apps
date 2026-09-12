@@ -1,5 +1,7 @@
 # Catalog changelog
 
+[Repository overview](README.md) · [Documentation](docs/README.md)
+
 This is the release history for the main [apps.json](apps.json) catalog. Dates
 use America/Vancouver time. App IDs remain stable; each app ships its own
 `CHANGELOG.md` with detailed release notes. Keep existing release records intact

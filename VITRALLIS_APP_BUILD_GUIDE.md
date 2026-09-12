@@ -1,5 +1,7 @@
 # Vitrallis app build guide for developers
 
+[Documentation](docs/README.md) · [Create an app](docs/creating-apps.md) · [Testing](docs/testing.md)
+
 Build against the official [manifest v1 package contract](docs/creating-apps.md)
 and [catalog v1 contract](docs/catalog-format.md). These are the normative field,
 layout, validation and publication definitions. Start by copying

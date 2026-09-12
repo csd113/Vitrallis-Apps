@@ -1,0 +1,58 @@
+name: Bug report
+description: Report an app, catalog, documentation, or tooling problem.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Vitrallis Apps. Search existing issues first.
+        For App Center or Shell failures, see [Shell issues](https://github.com/csd113/Vitrallis-Shell/issues).
+        For vulnerabilities, follow [SECURITY.md](https://github.com/csd113/Vitrallis-Apps/blob/main/SECURITY.md) without posting details here.
+        Redact access codes, API keys, network addresses, private paths, and personal media.
+  - type: input
+    id: component
+    attributes:
+      label: Affected app or component
+      description: App name/ID, catalog, document path, or tool name.
+      placeholder: io.vitrallis.debug, docs/creating-apps.md, or validate_catalog.py
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Version and environment
+      description: Include app version or repository commit, device/OS, Python/Tk, display size, Shell version, and catalog source where relevant. Say unknown or not applicable when needed.
+    validations:
+      required: true
+  - type: dropdown
+    id: context
+    attributes:
+      label: Where does it happen?
+      options:
+        - App launched through Vitrallis Shell
+        - App launched directly from source
+        - Catalog check or installation
+        - Repository tooling or tests
+        - Documentation
+        - Another context (explain below)
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Give the smallest repeatable example, including a command or synthetic fixture if useful.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected and actual results
+      description: Describe both, including the exact error and whether it happens every time.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs, screenshots, or additional context
+      description: Optional, redacted evidence. Do not upload personal media, full diagnostic dumps, or malicious payloads.
