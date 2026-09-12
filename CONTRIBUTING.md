@@ -38,8 +38,8 @@ a pull request. Keep changes focused and do not overwrite another contributor's 
 
 Do not commit credentials, caches, device runtimes, or generated build artifacts.
 All committed app files outside `tests/` are published, including documentation.
-No repository-wide license has been established; ask the owner to confirm
-licensing and imported content rights, and do not add guessed license metadata.
+No repository-wide license has been established. Confirm licensing and imported
+content rights with the owner before distributing repository content.
 
 ## Version and changelog requirements
 
@@ -51,7 +51,7 @@ Follow the [changelog and merge policy](docs/changelog-policy.md):
   artwork, requirements, and changelogs. Keep versions displayed in code aligned.
 - App-local test-only changes do not alter installed packages and do not require
   a release. Root/docs/community changes outside packages also do not require an
-  app version bump or a fabricated catalog release entry.
+  app version bump or a catalog release entry.
 - Record each newly added or updated catalog version in root `CHANGELOG.md`.
   Keep the README's available-app table aligned with catalog membership and link
   each production app to its README; avoid duplicating version numbers there.
@@ -108,15 +108,11 @@ Mark release-only checklist items as not applicable for documentation-only PRs.
 App releases must include matching changelogs and catalog inventories before
 merge. Required checks are **Changelog policy**, **validate (3.11)**, and
 **validate (3.13)**, with an up-to-date branch and a pull request. See the
-[merge policy](docs/changelog-policy.md) for details. Coding agents must also follow
-any local agent instructions; submission instructions do not authorize commits or
-publication beyond the user's request.
+[merge policy](docs/changelog-policy.md) for details.
 
 ## Pre-release compatibility policy
 
-Vitrallis is pre-release. Do not preserve compatibility with obsolete pre-release
-layouts, APIs, manifests, paths, behaviors or implementation details unless
-compatibility is explicitly requested for the change. Update all affected code
-to the current canonical design and delete superseded code instead of adding
-compatibility layers, fallbacks, aliases, adapters, dual paths, deprecated formats
-or migration shims. This rule applies to contributors and coding agents.
+Vitrallis is pre-release. Target the current layouts, APIs, manifests, and paths.
+When replacing an obsolete design, update affected code and remove superseded
+implementations. Compatibility layers or migration support need an explicit
+requirement agreed as part of the change.
