@@ -108,8 +108,8 @@ Mark release-only checklist items as not applicable for documentation-only PRs.
 App releases must include matching changelogs and catalog inventories before
 merge. Required checks are **Changelog policy**, **validate (3.11)**, and
 **validate (3.13)**, with an up-to-date branch and a pull request. See the
-[merge policy](docs/changelog-policy.md) for details. Coding agents must also read
-[AGENTS.md](AGENTS.md); submission instructions do not authorize commits or
+[merge policy](docs/changelog-policy.md) for details. Coding agents must also follow
+any local agent instructions; submission instructions do not authorize commits or
 publication beyond the user's request.
 
 ## Pre-release compatibility policy

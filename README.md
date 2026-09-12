@@ -158,7 +158,7 @@ redistribution rights.
 | [`docs/verification/`](docs/verification/) | Dated device evidence and its limits |
 | [`.github/`](.github/) | CI workflows, issue forms, and pull request guidance |
 | [`CHANGELOG.md`](CHANGELOG.md) | Published app additions and version updates |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) / [`AGENTS.md`](AGENTS.md) | Contribution and coding-agent submission rules |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Contribution and submission rules |
 
 ## App and package format
 
