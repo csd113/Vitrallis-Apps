@@ -12,8 +12,11 @@ requirements; they do not establish sandboxing or consent.
 
 Bitcoin Dashboard is packaged with `main.py` and `icon.png`, and runs with system
 Python 3.8+ and Tk 8.6. It has no bundled runtime or installation launcher.
-Its catalog entry remains `installable: false` until native client integration
-has been verified. Desktop tests do not certify PocketCHIP installation.
+Bitcoin Dashboard and Vitrallis Debug are enabled in the official catalog.
+Open Vitrallis Shell App Center, choose Check, select one app, then Install.
+On Debian, both need the system `python3-tk` package; App Center reports missing
+Python/Tk prerequisites and does not install system packages automatically.
+Desktop tests do not certify PocketCHIP installation.
 
 Client implementation changes belong in the consuming client's repository and
 must be reviewed there. Do not infer native support from an older client's

@@ -47,15 +47,16 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/bitcoin-dashboard
 | [Package manifest v1](docs/creating-apps.md) | This repository defines the official `app.toml` package specification, including `manifest_version = 1`. |
 | [Catalog schema v1](docs/catalog-format.md) | Publisher-neutral JSON metadata with full Git commit pins and file sizes/SHA-256 values. Trust is client configuration. |
 | Official catalog | [`apps.json`](apps.json) in `csd113/Vitrallis-Apps`; [raw JSON](https://raw.githubusercontent.com/csd113/Vitrallis-Apps/main/apps.json) is its default distribution endpoint. |
-| Shell integration | Manifest consumption is version-dependent. The inspected shell uses PocketHome menu entries; a package manifest alone does not register an app. |
-| Native Bitcoin package | Manifest v1 package; installation remains disabled pending native client verification. |
+| Shell integration | Vitrallis Shell App Center reads this catalog, verifies pinned packages, and registers native launchers after installation. |
+| Native packages | Bitcoin Dashboard and Vitrallis Debug are listed and enabled for installation through App Center. |
 
 ## Repository map
 
 ```text
-apps.json                     Official production catalog (Bitcoin only)
+apps.json                     Official production catalog (Bitcoin Dashboard and Vitrallis Debug)
 apps.schema.json              Generic catalog schema v1
 apps/bitcoin-dashboard/       Native Bitcoin Dashboard package
+apps/vitrallis-debug/          Native offline diagnostics package
 apps/<app-slug>/               Canonical location for all applications
 examples/hello-vitrallis/      Copyable manifest v1 app, not in production catalog
 tools/                        Offline validator and commit-based catalog updater
@@ -75,9 +76,9 @@ chart, network cards, detail views, settings and keyboard/touch controls of the
 PocketCHIP dashboard. Python 3.8+ and Tkinter with Tk 8.6 are required.
 
 The package declares network and storage requirements and no audio. It includes
-its own icon and runs through `main.py` with system Python. Installation is
-currently disabled in the catalog until native installation and launcher
-integration are verified. See [runtime integration](docs/runtime-integration.md).
+its own icon and runs through `main.py` with system Python. Install it through
+Vitrallis Shell App Center: Check, select the app, then Install.
+See [runtime integration](docs/runtime-integration.md).
 Desktop validation does not establish physical device compatibility.
 
 ## Contributing and licensing

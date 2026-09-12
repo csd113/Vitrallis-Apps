@@ -1,4 +1,5 @@
 import time
+import gc
 import os
 import tempfile
 from pathlib import Path
@@ -19,6 +20,9 @@ class LayoutTests(unittest.TestCase):
             patcher = patch.object(bitcoin, name, Path(directory.name) / (name + '.json'))
             patcher.start()
             self.addCleanup(patcher.stop)
+        # Reclaim closed Tk objects on the UI thread before the next test can
+        # start a worker whose allocations would otherwise trigger collection.
+        self.addCleanup(gc.collect)
 
     def make_app(self):
         root = tk.Tk()
@@ -219,6 +223,7 @@ class LayoutTests(unittest.TestCase):
 
     def test_screen_bounds_and_no_overlapping_text(self):
         root = tk.Tk()
+        app = None
         try:
             with patch.object(bitcoin.App, 'refresh_all'), patch.object(bitcoin.App, 'poll'):
                 app = bitcoin.App(root)
@@ -258,7 +263,10 @@ class LayoutTests(unittest.TestCase):
                         boxes.append((box,label))
                 self.assertEqual(app.refresh_button.winfo_height(), 36)
         finally:
-            root.destroy()
+            if app is None:
+                root.destroy()
+            else:
+                app.close()
 
     def test_keyboard_focus_enter_space_back_and_rapid_navigation(self):
         app = self.make_app()
@@ -477,6 +485,7 @@ class LayoutTests(unittest.TestCase):
 
     def test_highlight_expiry_settings_and_toolbar(self):
         root = tk.Tk()
+        app = None
         try:
             with tempfile.TemporaryDirectory() as directory, \
                  patch.object(bitcoin, 'SETTINGS', Path(directory) / 'settings.json'), \
@@ -531,6 +540,9 @@ class LayoutTests(unittest.TestCase):
                 self.assertIn('could not save', app.settings_status.cget('text'))
                 app.toggle_settings()
         finally:
-            root.destroy()
+            if app is None:
+                root.destroy()
+            else:
+                app.close()
 
 if __name__ == '__main__':unittest.main()
