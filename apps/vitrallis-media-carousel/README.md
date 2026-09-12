@@ -177,8 +177,12 @@ to save user content.
   hardlinks. POSIX no-follow/nonblocking opens verify regular files. Completed,
   validated uploads atomically move into the media directory.
 - Pillow validation is isolated in a subprocess with a wall deadline; Linux also
-  adds CPU/address-space limits. Allowlisted formats are identified from actual
-  bytes. Playback rechecks file size/type/dimensions. Keep decoders patched.
+  adds a 30-second CPU limit and 256 MiB virtual-address-space limit. WebM inspection
+  on 64-bit Linux allows 1 GiB of virtual mappings for distro decoder libraries;
+  ARMv7 keeps the 256 MiB limit. Numerical-library/probe threads are capped at one.
+  These are virtual-memory ceilings, not resident-memory usage targets. Allowlisted
+  formats are identified from actual bytes. Playback rechecks file size/type/dimensions.
+  Keep decoders patched.
 - IPv4 listener accepts private/loopback peers. Per-launch 64-bit random code,
   invalid-code rate limits, explicit IP Host validation, same-origin checks, no
   CORS/cookies, and CSP/no-sniff/no-referrer headers constrain browser attacks.

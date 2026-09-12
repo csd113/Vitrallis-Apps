@@ -57,9 +57,11 @@ class Processes:
         with self.lock:
             if self.closed:
                 raise MediaError("Application is stopping")
+            # Distro decoders can link numerical libraries with independent pools.
+            environment = dict(os.environ, OPENBLAS_NUM_THREADS="1", OMP_NUM_THREADS="1")
             process = subprocess.Popen(args, start_new_session=True,
                                        stdin=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                       **kwargs)
+                                       env=environment, **kwargs)
             self.active.add(process)
             return process
 
@@ -140,7 +142,7 @@ def video_info(stream):
     if not capabilities()["webm"]:
         raise MediaError("WebM unavailable: install system ffmpeg and ffprobe")
     stream.seek(0)
-    args = [shutil.which("ffprobe"), "-v", "error", "-protocol_whitelist", "file,pipe",
+    args = [shutil.which("ffprobe"), "-v", "error", "-threads", "1", "-protocol_whitelist", "file,pipe",
             "-f", "matroska,webm", "-select_streams", "v:0", "-show_entries",
             "stream=codec_name,width,height:format=duration", "-of", "json",
             "/dev/fd/" + str(stream.fileno())]
@@ -215,10 +217,15 @@ def inspection_main():
     # Applied in this isolated child, never preexec_fn in a threaded application.
     if sys.platform.startswith("linux"):
         import resource
-        resource.setrlimit(resource.RLIMIT_AS, (256 * 1024 * 1024, 256 * 1024 * 1024))
         resource.setrlimit(resource.RLIMIT_CPU, (30, 30))
     try:
         with os.fdopen(int(sys.argv[1]), "rb") as stream:
+            if sys.platform.startswith("linux"):
+                # This is virtual address space, including mapped shared libraries.
+                # 64-bit distro FFmpeg needs more mappings than Pillow/ARMv7.
+                megabytes = 1024 if sys.maxsize > 2**32 and webm_header(stream) else 256
+                limit = megabytes * 1024 * 1024
+                resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
             result = inspect_stream(stream)
     except (OSError, ValueError, EOFError, SyntaxError, subprocess.SubprocessError,
             Image.DecompressionBombError) as error:
