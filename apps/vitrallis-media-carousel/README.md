@@ -4,7 +4,7 @@ A locally managed slideshow for the screen running Vitrallis. Upload from your
 phone/computer, organize collections, then select one in the native Python app.
 Playback does not open a browser.
 
-**0.1.0** · `io.vitrallis.mediacarousel` · manifest v1.
+**0.1.1** · `io.vitrallis.mediacarousel` · manifest v1.
 
 ## Runtime and installation
 
@@ -29,12 +29,13 @@ ARMv7 may need distro packages or a Pillow source build with JPEG/zlib/WebP
 development libraries; an ARMv7 wheel is not assumed. Old PocketCHIP Debian
 images may require an administrator-provided newer OS/Python environment.
 
-The catalog entry is **non-installable** pending App Center install/update/repair,
-manifest-driven launch and launcher icon verification. The current Shell reads
-the repository's default branch (`main`); this release is published on
-`image-carrossel`, so that installer path was unavailable without changing the
-Shell or repository configuration. Neither was changed. Manifest permissions
-declare network/storage requirements and audio false, not a sandbox.
+Install from the official `main` catalog through Vitrallis Shell App Center:
+choose **Check**, select **Vitrallis Media Carousel**, then **Install**. The same
+action installs updates and repairs. App Center checks the prerequisites above
+and reports missing dependencies; it does not install system packages. Version
+0.1.1 publishes the X11 process identity used by the Shell to focus and resume
+its native window. Manifest permissions declare network/storage requirements
+and audio false, not a sandbox.
 
 Launch `python3 main.py` from this directory, or an absolute path to `main.py`
 from any working directory. Resources resolve beside the modules. The installed

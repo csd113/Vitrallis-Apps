@@ -67,6 +67,9 @@ class App:
         self.last_error = ""
         self.home_notice = "Starting local services…"
         self.root.title("Vitrallis Media Carousel")
+        if self.root.tk.call("tk", "windowingsystem") == "x11":
+            # Tk publishes _NET_WM_PID when the client hostname is set.
+            self.root.wm_client(self.root.tk.call("info", "hostname"))
         self.root.geometry("480x272")
         self.root.minsize(400, 240)
         self.root.configure(bg=BG)

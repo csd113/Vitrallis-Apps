@@ -48,15 +48,16 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/bitcoin-dashboard
 | [Catalog schema v1](docs/catalog-format.md) | Publisher-neutral JSON metadata with full Git commit pins and file sizes/SHA-256 values. Trust is client configuration. |
 | Official catalog | [`apps.json`](apps.json) in `csd113/Vitrallis-Apps`; [raw JSON](https://raw.githubusercontent.com/csd113/Vitrallis-Apps/main/apps.json) is its default distribution endpoint. |
 | Shell integration | Vitrallis Shell App Center reads this catalog, verifies pinned packages, and registers native launchers after installation. |
-| Native packages | Bitcoin Dashboard and Vitrallis Debug are listed and enabled for installation through App Center. |
+| Native packages | Bitcoin Dashboard, Vitrallis Debug and Vitrallis Media Carousel are listed and enabled for installation through App Center. |
 
 ## Repository map
 
 ```text
-apps.json                     Official production catalog (Bitcoin Dashboard and Vitrallis Debug)
+apps.json                     Official production catalog (three native apps)
 apps.schema.json              Generic catalog schema v1
 apps/bitcoin-dashboard/       Native Bitcoin Dashboard package
 apps/vitrallis-debug/          Native offline diagnostics package
+apps/vitrallis-media-carousel/ Native slideshow with LAN media management
 apps/<app-slug>/               Canonical location for all applications
 examples/hello-vitrallis/      Copyable manifest v1 app, not in production catalog
 tools/                        Offline validator and commit-based catalog updater
@@ -80,6 +81,16 @@ its own icon and runs through `main.py` with system Python. Install it through
 Vitrallis Shell App Center: Check, select the app, then Install.
 See [runtime integration](docs/runtime-integration.md).
 Desktop validation does not establish physical device compatibility.
+
+## Vitrallis Media Carousel
+
+[Vitrallis Media Carousel](apps/vitrallis-media-carousel/README.md) **0.1.1**
+provides native image, GIF and muted WebM slideshows with LAN uploads and named
+collections. Install it through App Center after providing Python 3.9+, Tk 8.6,
+Pillow >=10.4,<13 and `packaging` in the launcher's Python environment. WebM also
+requires optional system `ffmpeg` and `ffprobe`. App Center reports missing
+prerequisites without installing system packages. See
+[runtime integration](docs/runtime-integration.md).
 
 ## Contributing and licensing
 
