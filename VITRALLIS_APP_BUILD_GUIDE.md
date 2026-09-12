@@ -26,7 +26,7 @@ target client. A manifest alone does not register an app in a shell. Do not chan
 ## Package and runtime
 
 Use the canonical layout, including required `manifest_version = 1`, the real PNG
-icon, requirements, README, assets and tests. Keep identity/version consistent
+icon, requirements, README, dated changelog, assets and tests. Keep identity/version consistent
 with published metadata. No speculative manifest fields belong in v1.
 
 Prefer the standard library and installed toolkit. Document the exact app runtime
@@ -102,6 +102,10 @@ during active work and repeated input. Test through the actual launcher and meas
 startup/idle resource use when the target is available; do not invent guarantees.
 
 Deliver complete code, original/authorized assets, requirements, tests and README.
+Include a dated `CHANGELOG.md` entry matching the app version and add each
+catalog addition or version update to the root changelog. Preserve release history
+and run the [required changelog checks](docs/changelog-policy.md) before submitting.
+App updates without proper changelog entries must not be merged into `main`.
 Report files changed, exact checks/results and remaining integration limits.
 Desktop or skipped GUI tests must not be reported as device verification. Keep
 `installable: false` until the consuming client/runtime adapter is verified.

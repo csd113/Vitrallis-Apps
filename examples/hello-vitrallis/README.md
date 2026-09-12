@@ -27,7 +27,7 @@ It does not force fullscreen or install a menu entry.
 
 Copy this entire directory to `apps/<your-slug>/` in your catalog checkout.
 Change the manifest `name`, `id`
-and `version`, window title in `main.py`, greeting asset, icon, README and tests.
+and `version`, the dated release entry in `CHANGELOG.md`, window title in `main.py`, greeting asset, icon, README and tests.
 Choose a stable reverse-domain ID you control; do not reuse `io.vitrallis.hello`.
 Keep `manifest_version = 1` and declare only permissions you actually use.
 Run `python3 tools/validate_catalog.py --package apps/<your-slug>` from the catalog

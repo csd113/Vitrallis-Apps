@@ -5,6 +5,20 @@ or read [the catalog format](docs/catalog-format.md). Keep changes focused and
 preserve stable application IDs. All apps belong in lowercase `apps/<app-slug>/`
 and follow the native manifest v1 contract.
 
+## Required changelogs
+
+Follow the [changelog and merge policy](docs/changelog-policy.md). Every submitted
+app must include `CHANGELOG.md` with a dated entry matching its version and
+concrete change bullets. Record app additions and published version updates in
+the root [catalog changelog](CHANGELOG.md), and preserve previous release entries.
+Shipped-file changes require a higher version, including changes to app docs or
+changelogs. Test-only changes are excluded from installed packages.
+
+App additions or updates without matching changelogs and catalog inventories
+must not merge into `main`. The required **Changelog policy** check enforces these
+rules alongside both existing Python validation jobs. Reviewers must confirm
+the release notes describe the actual changes, not just satisfy the format.
+
 ## Pre-release compatibility policy
 
 Vitrallis is pre-release. Do not preserve compatibility with obsolete pre-release
@@ -26,6 +40,7 @@ GUI tests. Run from the repository root:
 
 ```sh
 python3 tools/validate_catalog.py --catalog apps.json --package examples/hello-vitrallis --package apps/bitcoin-dashboard
+python3 tools/validate_changelogs.py --base "$(git rev-parse origin/main)"
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools/tests -v
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s examples/hello-vitrallis/tests -v
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/bitcoin-dashboard/tests -v
@@ -52,6 +67,8 @@ committed and pushed before the catalog advertises it. Review generated metadata
 check remote availability, and enable installation only after verifying client
 runtime/adapter support. Do not republish changed bytes under the same version.
 The example is a template and does not belong in the production catalog.
+Publish source and catalog commits on a feature branch, then submit a pull
+request with the completed release notes. Keep source commits when merging.
 
 A review should state what changed, files affected, validation results and any
 remaining integration/device limits. Never claim a shell

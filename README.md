@@ -5,6 +5,8 @@ maintaining either the official catalog or your own. Start with the small
 [Hello Vitrallis example](examples/hello-vitrallis/README.md), then publish exact
 committed bytes with generated checksums.
 
+[Catalog changelog](CHANGELOG.md) · [Required app changelogs and merge policy](docs/changelog-policy.md)
+
 ## Start here
 
 Use Python **3.11+** and Git on Linux, macOS or WSL for repository tooling.
@@ -54,6 +56,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/bitcoin-dashboard
 
 ```text
 apps.json                     Official production catalog (three native apps)
+CHANGELOG.md                  Dated catalog app additions and version updates
 apps.schema.json              Generic catalog schema v1
 apps/bitcoin-dashboard/       Native Bitcoin Dashboard package
 apps/vitrallis-debug/          Native offline diagnostics package
@@ -72,7 +75,7 @@ VITRALLIS_APP_BUILD_GUIDE.md   Developer guidance linked to the package contract
 
 [Bitcoin Dashboard](apps/bitcoin-dashboard/README.md) is a native manifest v1
 package at `apps/bitcoin-dashboard`, with stable ID
-`io.vitrallis.bitcoindashboard` and version **1.2.3**. It preserves the CAD quote,
+`io.vitrallis.bitcoindashboard` and version **1.2.4**. It preserves the CAD quote,
 chart, network cards, detail views, settings and keyboard/touch controls of the
 PocketCHIP dashboard. Python 3.8+ and Tkinter with Tk 8.6 are required.
 
@@ -84,7 +87,7 @@ Desktop validation does not establish physical device compatibility.
 
 ## Vitrallis Media Carousel
 
-[Vitrallis Media Carousel](apps/vitrallis-media-carousel/README.md) **0.1.1**
+[Vitrallis Media Carousel](apps/vitrallis-media-carousel/README.md) **0.1.2**
 provides native image, GIF and muted WebM slideshows with LAN uploads and named
 collections. Install it through App Center after providing Python 3.9+, Tk 8.6,
 Pillow >=10.4,<13 and `packaging` in the launcher's Python environment. WebM also

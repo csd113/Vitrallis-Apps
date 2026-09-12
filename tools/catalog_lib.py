@@ -1,5 +1,6 @@
 """Shared, offline catalog/package checks. Python 3.11+, Git, no pip dependencies."""
 import hashlib
+from datetime import date
 import json
 import os
 from pathlib import Path
@@ -337,7 +338,7 @@ def png_icon(data, where):
 
 
 def manifest(files, where):
-    required = {'app.toml', 'icon.png', 'main.py', 'requirements.txt', 'README.md'}
+    required = {'app.toml', 'icon.png', 'main.py', 'requirements.txt', 'README.md', 'CHANGELOG.md'}
     require(required <= files.keys(), where,
             'missing package files: ' + ', '.join(sorted(required - files.keys())))
     for directory in ('assets/', 'tests/'):
@@ -363,7 +364,62 @@ def manifest(files, where):
             and all(type(value) is bool for value in permissions.values()),
             where, 'permissions must contain exactly network/audio/storage booleans')
     png_icon(files['icon.png'], f'{where}/icon.png')
+    app_changelog(files['CHANGELOG.md'], data['version'], f'{where}/CHANGELOG.md')
     return data
+
+
+def release_date(value, where):
+    match(value, r'\d{4}-\d{2}-\d{2}', where)
+    try:
+        return date.fromisoformat(value)
+    except ValueError as error:
+        raise Invalid(f'{where}: invalid calendar date') from error
+
+
+def release_summary(value, where):
+    text_value(value, where)
+    require(len(value.strip()) >= 12 and not re.match(
+        r'(?i)^(?:todo|tbd|fixme|placeholder|wip)\b', value.strip()),
+        where, 'describe concrete changes; empty or placeholder release notes are forbidden')
+
+
+def app_changelog(raw, version, where):
+    """Read dated release notes without executing or rendering Markdown."""
+    require(len(raw) <= FILE_LIMIT, where, 'changelog exceeds 2 MiB')
+    try:
+        lines = raw.decode('utf-8').splitlines()
+    except UnicodeError as error:
+        raise Invalid(f'{where}: expected UTF-8 changelog') from error
+    entries = {}
+    current = None
+    for line in lines:
+        if line.startswith('## '):
+            heading = re.fullmatch(rf'## ({VERSION}) — (\d{{4}}-\d{{2}}-\d{{2}})', line)
+            if heading:
+                number, day = heading.groups()
+                match(number, VERSION, where, 32)
+                require(number not in entries, where, f'duplicate changelog version {number}')
+                entries[number] = [release_date(day, where), []]
+                current = number
+            else:
+                require(not re.match(r'## (?:\[|\d)', line), where,
+                        'release headings must use: ## VERSION — YYYY-MM-DD')
+                current = None  # Preserve separately labelled unversioned history.
+        elif current is not None:
+            entries[current][1].append(line)
+    require(entries and next(iter(entries)) == version, where,
+            f'newest changelog entry must match manifest version {version}')
+    numbers = [tuple(map(int, number.split('.'))) for number in entries]
+    require(numbers == sorted(numbers, reverse=True), where, 'release versions must be newest first')
+    days = [entry[0] for entry in entries.values()]
+    require(days == sorted(days, reverse=True), where, 'release dates must be newest first')
+    for number, (day, body) in entries.items():
+        bullets = [line[2:].strip() for line in body if line.startswith('- ')]
+        require(bullets, where, f'{number}: release entry needs concrete change bullets')
+        for bullet in bullets:
+            release_summary(bullet, f'{where}/{number}')
+        entries[number] = (day, '\n'.join(body).strip())
+    return entries
 
 
 def package_files(files):
