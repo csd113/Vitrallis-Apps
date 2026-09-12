@@ -134,6 +134,113 @@
           "sha256": "5d624b04eae2c8ce24912c0362e61fb13944cecddd501f60071f724b99d45ba6"
         }
       ]
+    },
+    {
+      "id": "io.vitrallis.mediacarousel",
+      "installable": false,
+      "name": "Vitrallis Media Carousel",
+      "version": "0.1.0",
+      "runtime": "python",
+      "entry": "main.py",
+      "permissions": {
+        "network": true,
+        "audio": false,
+        "storage": true
+      },
+      "description": "Native media slideshow with LAN uploads, named collections and shared settings.",
+      "compatibility_notes": "Requires Python 3.9+, Tk 8.6 and Pillow >=10.4,<13; optional system ffmpeg/ffprobe for muted WebM. ARMv7 PocketCHIP source-run playback, LAN uploads and physical touch/keyboard tested on Debian 13.6. App Center install/update/repair, manifest launch and launcher icon remain unverified: the current Shell reads default branch main, while this release is on image-carrossel. Installation remains disabled.",
+      "source": {
+        "repository": "csd113/Vitrallis-Apps",
+        "commit": "331a9612895e0fb725564c116cae291ef22fa537",
+        "path": "apps/vitrallis-media-carousel"
+      },
+      "files": [
+        {
+          "path": "README.md",
+          "size": 15183,
+          "sha256": "a8c62ac5490b7a992e57ad502c7696b0b6ced4147ed7f1a2f5de76691fa46b82"
+        },
+        {
+          "path": "app.toml",
+          "size": 203,
+          "sha256": "2823821ec54805687b80a95560d848a294d004235e6bebe064a243adfbbcf753"
+        },
+        {
+          "path": "assets/README.md",
+          "size": 338,
+          "sha256": "1f237745d0e66e6eabf78ac2d4972ce6787ea08b8a062c1fef80b95ad12a96f3"
+        },
+        {
+          "path": "assets/icon.svg",
+          "size": 609,
+          "sha256": "3fb9850c9a1d8c6cf8a90bdbdf6831f50eeb25d0f2dff87c10860f31adcd452f"
+        },
+        {
+          "path": "icon.png",
+          "size": 6949,
+          "sha256": "2d2afb08969f1e4a03e6f4ff3864c9c30437663bbd63cd909761bf24de19e43c"
+        },
+        {
+          "path": "library.py",
+          "size": 9460,
+          "sha256": "8b14a3b51c0628281f686eef1d804c1d494b353d642246bacd5e72ba6618e43d"
+        },
+        {
+          "path": "main.py",
+          "size": 1321,
+          "sha256": "b9dd98883ff1cb2e34d9f76eb80ec7367cc9e020ede296e968d41acd00162f5f"
+        },
+        {
+          "path": "media.py",
+          "size": 9483,
+          "sha256": "2b4a4cadc5ad6aaa8ff4cdf26bb0e55015f90e09ff4fd341d204675062df6f3f"
+        },
+        {
+          "path": "player.py",
+          "size": 10100,
+          "sha256": "47f3270653314be800bc86c5c88e462abd90156193d8b60cf32412e77fdab576"
+        },
+        {
+          "path": "requirements.txt",
+          "size": 98,
+          "sha256": "5e6de9c065a3e240115b1eb430b62c6146e9715020b4a91c6326048a8d2dc429"
+        },
+        {
+          "path": "settings.py",
+          "size": 1924,
+          "sha256": "af0946d5371a30c6d68e1895e4d4f89def99db38d5fd309e3b92761b7dcb35fb"
+        },
+        {
+          "path": "storage.py",
+          "size": 5623,
+          "sha256": "b2e147f33dd00e37af79df42c6388a7607c4ac780f83731512a045e3d9c94c6d"
+        },
+        {
+          "path": "ui.py",
+          "size": 19921,
+          "sha256": "292a82d82e353c055f3c18d9a0975e169a50fc86d787ce2ccfd6358c3eed4981"
+        },
+        {
+          "path": "web/app.js",
+          "size": 10874,
+          "sha256": "193db63c5961188a473e2a9a257a3161c657b80c76dcbbf56032bea425c8f037"
+        },
+        {
+          "path": "web/index.html",
+          "size": 4979,
+          "sha256": "4eeb7bf52051fc7ac205ea58388dfd8f4b8efc08dd23d84cd549292d2dff1f90"
+        },
+        {
+          "path": "web/style.css",
+          "size": 5649,
+          "sha256": "86b79004f183321573e84bf556431d255f63eb0e34b81b76e1b4bb0ccdc9dcaf"
+        },
+        {
+          "path": "web_server.py",
+          "size": 16471,
+          "sha256": "a5618c69ce29f99c81e65f5651e5a035039f396cfc1754460e8254bb8d5bfeed"
+        }
+      ]
     }
   ]
 }
