@@ -1,0 +1,53 @@
+{
+  "app_version": "0.1.0",
+  "source_commit": "331a9612895e0fb725564c116cae291ef22fa537",
+  "verified_date": "2026-09-12",
+  "phases": [
+    {
+      "phase": "home_idle",
+      "seconds": 6.011,
+      "gpu_interrupt_delta": {
+        "gpmmu": 0,
+        "ppmmu0": 0,
+        "gp": 10,
+        "pp0": 9
+      },
+      "gpu_active_ms_delta": 2200,
+      "power_status_at_end": "active"
+    },
+    {
+      "phase": "webm_playing",
+      "seconds": 12.005,
+      "gpu_interrupt_delta": {
+        "gpmmu": 0,
+        "ppmmu0": 0,
+        "gp": 341,
+        "pp0": 239
+      },
+      "gpu_active_ms_delta": 9188,
+      "power_status_at_end": "active",
+      "displayed_frame_changes": 53
+    },
+    {
+      "phase": "webm_paused",
+      "seconds": 6.008,
+      "gpu_interrupt_delta": {
+        "gpmmu": 0,
+        "ppmmu0": 0,
+        "gp": 9,
+        "pp0": 9
+      },
+      "gpu_active_ms_delta": 2142,
+      "power_status_at_end": "suspended",
+      "displayed_frame_changes": 0
+    }
+  ],
+  "frame_changes": 58,
+  "playback_error": "",
+  "window_pixels": [
+    480,
+    272
+  ],
+  "elapsed_seconds": 32.532,
+  "clean_shutdown": true
+}
