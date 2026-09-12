@@ -2,6 +2,11 @@
 
 Changes are listed newest first. Dates use America/Vancouver time.
 
+## 1.2.3 — 2026-09-12
+
+- Publish the X11 client hostname so Tk exposes the app's process ID to Vitrallis
+  Shell, allowing the native launcher to focus and resume its window.
+
 ## 1.2.2
 
 - Package Bitcoin Dashboard as a native manifest v1 app with `main.py`, a bundled

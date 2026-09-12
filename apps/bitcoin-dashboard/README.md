@@ -1,7 +1,7 @@
 # Bitcoin Dashboard
 
 A lightweight Bitcoin dashboard for the PocketCHIP's **480 × 272** display,
-built with Python and Tkinter. Current native package version: **1.2.2**.
+built with Python and Tkinter. Current native package version: **1.2.3**.
 
 [Changelog](CHANGELOG.md) · [Native package contract](../../docs/creating-apps.md)
 

@@ -24,6 +24,9 @@ def main(argv=None) -> int:
         print("Vitrallis Debug needs a graphical desktop with Tkinter.", file=sys.stderr)
         return 1
     root.title("Vitrallis Debug")
+    if root.tk.call("tk", "windowingsystem") == "x11":
+        # Tk publishes _NET_WM_PID when the client hostname is set.
+        root.wm_client(root.tk.call("info", "hostname"))
     root.geometry("480x272")
     root.minsize(400, 240)
     try:

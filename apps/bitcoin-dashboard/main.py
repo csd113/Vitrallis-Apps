@@ -22,7 +22,7 @@ from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 # Display and HTTP user-agent version; publication metadata comes from app.toml.
-VERSION = '1.2.2'
+VERSION = '1.2.3'
 BLOCK_HIGHLIGHT_SECONDS = 10
 SATOSHIS_PER_BTC = 100_000_000
 MAX_SUPPLY = 21_000_000 * SATOSHIS_PER_BTC
@@ -264,6 +264,9 @@ class App:
         self.closed = False
         self.poll_id = None
         root.title('Bitcoin CAD v' + VERSION)
+        if root.tk.call('tk', 'windowingsystem') == 'x11':
+            # Tk publishes _NET_WM_PID when the client hostname is set.
+            root.wm_client(root.tk.call('info', 'hostname'))
         root.geometry('480x272')
         root.minsize(480, 272)
         root.configure(bg=BG)

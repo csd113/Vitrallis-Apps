@@ -71,7 +71,7 @@ VITRALLIS_APP_BUILD_GUIDE.md   Developer guidance linked to the package contract
 
 [Bitcoin Dashboard](apps/bitcoin-dashboard/README.md) is a native manifest v1
 package at `apps/bitcoin-dashboard`, with stable ID
-`io.vitrallis.bitcoindashboard` and version **1.2.2**. It preserves the CAD quote,
+`io.vitrallis.bitcoindashboard` and version **1.2.3**. It preserves the CAD quote,
 chart, network cards, detail views, settings and keyboard/touch controls of the
 PocketCHIP dashboard. Python 3.8+ and Tkinter with Tk 8.6 are required.
 
