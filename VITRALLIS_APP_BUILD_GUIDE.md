@@ -10,26 +10,26 @@ This guide adds implementation practices without defining a second manifest.
 
 ## Establish the target
 
-Extract purpose, essential screens, controls, data sources and persistence needs
-from the requested app. Resolve routine choices conservatively; state assumptions
-and ask only for missing information that prevents correct integration.
+Define the app's purpose, essential screens, controls, data sources, and storage
+needs before choosing its layout and dependencies.
 
 Verify the device architecture/OS, Python version, GUI toolkit, usable display
 area, input devices, app location, launcher process lifecycle, icon requirements
-and authorized storage paths. The 480×272 Python/Tkinter PocketCHIP profile is a
-useful starting point, not evidence that every Vitrallis installation supports it.
-When device integration cannot be checked, label the prototype profile and report
-what remains unverified. Do not invent SDKs, environment variables or permission APIs.
+and writable app-data paths. The 480×272 Python/Tkinter PocketCHIP profile is a
+useful starting point. Document the tested device profile and any integration
+limits. Use the platform's documented APIs and configuration.
 
 The repository defines manifest v1; shell consumption is version-dependent.
 [Runtime integration](docs/runtime-integration.md) must be verified against the
-target client. A manifest alone does not register an app in a shell. Do not change the shell just to register an app without authorization.
+target client. A manifest alone does not register an app in a shell; App Center
+handles launcher registration during installation. Changes to the Shell belong
+in its own repository.
 
 ## Package and runtime
 
-Use the canonical layout, including required `manifest_version = 1`, the real PNG
-icon, requirements, README, dated changelog, assets and tests. Keep identity/version consistent
-with published metadata. No speculative manifest fields belong in v1.
+Use the canonical layout, including `manifest_version = 1`, a PNG icon,
+requirements, README, dated changelog, assets, and tests. Keep identity and version
+consistent with published metadata and use only the fields defined by manifest v1.
 
 Prefer the standard library and installed toolkit. Document the exact app runtime
 minimum separately from the repository tools' Python 3.11+ requirement. Tkinter
@@ -39,7 +39,7 @@ services, swap or system configuration as ordinary app startup behavior.
 Keep startup in `main()` behind the standard import guard. Importing modules must
 not open windows, fetch data or write files. Resolve resources relative to the
 script's directory. Installed packages are read-only; persistent settings/saves
-belong only in documented, validated storage locations. Each app must document its own storage requirements.
+belong in the validated storage locations documented in the app README.
 
 ## Interface and lifecycle
 
@@ -65,15 +65,15 @@ within a bounded policy. Never block the GUI indefinitely waiting for a worker.
 
 ## Network and storage
 
-Use capabilities only when requested and declared. Permission flags declare
-requirements; they are not an OS sandbox. Integrate denial/revocation only through
-an actually documented platform mechanism. Do not add telemetry or update checks
-unless requested.
+Declare the capabilities the app needs. Permission flags describe requirements;
+they are not an OS sandbox. Permission denial or revocation depends on support
+from the target platform. Telemetry and app-managed update checks require an
+explicit product decision and clear user-facing documentation.
 
 Show the UI before network I/O and distinguish loading, ready, stale, offline and
 unavailable data. Keep last-known valid samples with their age on failure. Validate
-types, ranges, units, timestamps and lengths before use. Use verified HTTPS,
-finite request timeouts, bounded response reads and bounded backoff; manual refresh
+types, ranges, units, timestamps and lengths before use. Use HTTPS with certificate
+verification, finite request timeouts, bounded response reads and bounded backoff; manual refresh
 must respect active work and rate limits. A socket timeout is not necessarily a
 total deadline. Keep independent sources independently recoverable. Never forward
 credentials across untrusted redirects or include them in logs/screenshots.
@@ -101,14 +101,16 @@ Launch from the app directory and another working directory. Exercise keyboard,
 touch where applicable, long labels, missing/extreme values, error messages,
 startup offline, invalid responses, denied storage and corrupt saves. Verify close
 during active work and repeated input. Test through the actual launcher and measure
-startup/idle resource use when the target is available; do not invent guarantees.
+startup and idle resource use on the target device. Record the test setup with
+any performance measurements.
 
-Deliver complete code, original/authorized assets, requirements, tests and README.
+Include complete code, original or appropriately licensed assets, requirements,
+tests, and a README.
 Include a dated `CHANGELOG.md` entry matching the app version and add each
 catalog addition or version update to the root changelog. Preserve release history
 and run the [required changelog checks](docs/changelog-policy.md) before submitting.
-App updates without proper changelog entries must not be merged into `main`.
-Report files changed, exact checks/results and remaining integration limits.
-Desktop or skipped GUI tests must not be reported as device verification. Keep
-`installable: false` until the consuming client/runtime adapter is verified.
-Never add an assumed license; record licensing as an owner decision if unresolved.
+App updates need matching changelogs before merging into `main`. In the pull
+request, list validation results and remaining integration limits, distinguishing
+desktop tests from device testing. Keep `installable: false` until the target
+client and runtime have been verified. Repository licensing is currently
+unresolved; confirm reuse and distribution rights with the owner.

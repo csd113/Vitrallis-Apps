@@ -2,15 +2,14 @@
 
 Verified on 2026-09-12 against Vitrallis Media Carousel 0.1.0.
 
-**Confirmed: Media Carousel's X11 display rendering uses the hardware Mali-400 GPU
-through Lima and Xorg glamor.** Image/video decoding, resizing and RGB frame
+**Media Carousel's X11 display rendering uses the Mali-400 GPU through Lima and
+Xorg glamor.** Image/video decoding, resizing and RGB frame
 preparation remain on the CPU. The app does not implement direct OpenGL playback
 or hardware video decoding.
 
 The check used the published Media Carousel source
-`331a9612895e0fb725564c116cae291ef22fa537` in an isolated temporary source-run session
-on the authorized PocketCHIP. No app code, Shell code, graphics configuration or
-system packages were changed.
+`331a9612895e0fb725564c116cae291ef22fa537` in an isolated temporary session on
+PocketCHIP with the existing Shell, graphics configuration, and system packages.
 
 The running X server's `/var/log/Xorg.0.log` reports:
 
@@ -36,7 +35,7 @@ refresh rate, not the application's video frame rate. `/dev/dri/card1` and
 `card0`. The device tree identifies the GPU as `arm,mali-400` and names its
 interrupts `gp gpmmu pp0 ppmmu0 pmu`.
 
-The actual native Carousel app displayed the generated 480×272 WebM sample while
+The native Carousel app displayed a synthetic 480×272 WebM sample while
 a temporary helper sampled kernel GPU interrupts and power accounting:
 
 | Phase | Duration | Geometry (`gp`) interrupts | Pixel (`pp0`) interrupts | GPU active time |
@@ -61,10 +60,8 @@ The code path is FFmpeg software decoding/filtering → raw RGB frames →
 `ImageTk.PhotoImage` → Tk canvas → Xorg glamor/Lima → display controller. Source
 inspection found no hardware decoder selection or hardware scaling filter.
 
-The app shut down cleanly and returned to the existing Shell. Temporary source,
-test media and the verification helper were removed; no verification or FFmpeg
-process remained. The verification made no runtime changes; this report and its
-measurements record the findings.
+The app shut down cleanly and returned to the existing Shell. Temporary test
+files were removed, and no helper or FFmpeg processes remained.
 
 [Raw measurements](vitrallis-media-carousel-gpu.json).
 

@@ -40,12 +40,11 @@ Media Carousel's remaining App Center device checks distinct from its source-run
 and [display acceleration evidence](verification/vitrallis-media-carousel-gpu.md).
 All three apps publish X11 process identity for Shell focus/resume.
 
-The packaged Bitcoin README still says catalog installation is disabled. That
-sentence predates enablement; use the current catalog and this guide for status.
-The Debug README's general hardware-certification caveat likewise does not negate
-the specific installation/focus checks recorded in the catalog. App READMEs ship
-inside pinned packages: editing them requires a new app version and publication,
-so status updates outside a package do not rewrite previously published bytes.
+The packaged Bitcoin README's disabled-installation note predates catalog
+enablement. Use the current catalog for installation status. The Debug README's
+hardware caveat applies beyond the specific installation and focus checks listed
+above. App READMEs describe their pinned release; changing them requires a new
+package version and publication.
 
 On Debian, all three apps need `python3-tk`. Media Carousel additionally needs a
 suitable Pillow installation (`python3-pil` and `python3-pil.imagetk`) and

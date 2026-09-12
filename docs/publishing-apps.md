@@ -35,8 +35,7 @@ after merge so a fresh clone can verify its published files.
    ```
 
    Copy the full 40-character commit printed by the last command. Use the source
-   commit even if the working tree later changes. These commands are instructions
-   for an authorized maintainer, not actions performed automatically by the tools.
+   commit even if the working tree later changes.
 3. Preview the generated catalog. Set `SOURCE_COMMIT` to that full SHA and
    `PUBLISHER_REPOSITORY` to the actual GitHub `owner/repository`:
 
