@@ -4,7 +4,7 @@ A locally managed slideshow for the screen running Vitrallis. Upload from your
 phone/computer, organize collections, then select one in the native Python app.
 Playback does not open a browser.
 
-**0.1.2** · `io.vitrallis.mediacarousel` · manifest v1.
+**0.1.3** · `io.vitrallis.mediacarousel` · manifest v1.
 
 [Changelog](CHANGELOG.md).
 
@@ -46,7 +46,7 @@ package is read-only, including interpreter bytecode.
 ## Management workflow
 
 1. Launch the app. Home displays its management URL, server state and a random
-   **16-character access code**. Port 8765 is preferred; if occupied, a free port
+   **6-character access code**. Port 8765 is preferred; if occupied, a free port
    is chosen and displayed.
 2. On another device on the same trusted LAN, open that literal **IP address**
    in a browser and enter the code. Hostname URLs are deliberately rejected.
@@ -186,8 +186,8 @@ to save user content.
   These are virtual-memory ceilings, not resident-memory usage targets. Allowlisted
   formats are identified from actual bytes. Playback rechecks file size/type/dimensions.
   Keep decoders patched.
-- IPv4 listener accepts private/loopback peers. Per-launch 64-bit random code,
-  invalid-code rate limits, explicit IP Host validation, same-origin checks, no
+- IPv4 listener accepts private/loopback peers. Per-launch 24-bit random code
+  (six hexadecimal characters), invalid-code rate limits, explicit IP Host validation, same-origin checks, no
   CORS/cookies, and CSP/no-sniff/no-referrer headers constrain browser attacks.
 - Private directories and the same-UID process are the local trust boundary, not
   a sandbox against another malicious process already running as the device user.
@@ -199,7 +199,7 @@ to save user content.
   only on the device itself. Discovery uses bounded local `hostname -I` on Linux
   or `ifconfig` on macOS, without an Internet connectivity probe. Firewalls or
   Wi-Fi client isolation can prevent access.
-- **Code rejected:** use the current sixteen lowercase hexadecimal characters and
+- **Code rejected:** use the current six lowercase hexadecimal characters and
   literal IP/port displayed on the device. A restart invalidates old codes.
 - **WebM unavailable/slow:** provide both tools on the launcher's PATH. Prefer
   small VP8 video. Images and GIF remain usable without the tools.

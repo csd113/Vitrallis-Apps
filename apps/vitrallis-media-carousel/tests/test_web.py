@@ -1,3 +1,4 @@
+from html.parser import HTMLParser
 import http.client
 import json
 import os
@@ -50,6 +51,33 @@ class WebTests(StorageCase):
         self.assertEqual(status, 200)
         self.assertNotIn("token", data)
         self.assertEqual(data["collections"][0]["name"], "Unsorted")
+
+    def test_six_character_access_code_login(self):
+        self.assertRegex(self.server.token, r"^[0-9a-f]{6}$")
+        self.assertEqual(self.request("GET", "/api/state")[0], 200)
+        wrong_code = ("0" if self.server.token[0] != "0" else "1") + self.server.token[1:]
+        for code in (wrong_code, self.server.token[:-1], self.server.token + "0" * 10):
+            with self.subTest(code_length=len(code)):
+                status, _, _ = self.request("GET", "/api/state",
+                    headers={"Authorization": "Bearer " + code})
+                self.assertEqual(status, 401)
+
+    def test_login_field_requires_six_characters(self):
+        fields = []
+
+        class LoginParser(HTMLParser):
+            def handle_starttag(self, tag, attrs):
+                attributes = dict(attrs)
+                if tag == "input" and attributes.get("id") == "access-code":
+                    fields.append(attributes)
+
+        status, body, _ = self.request("GET", "/", authorized=False)
+        self.assertEqual(status, 200)
+        LoginParser().feed(body.decode("utf-8"))
+        self.assertEqual(len(fields), 1)
+        self.assertEqual(fields[0]["minlength"], "6")
+        self.assertEqual(fields[0]["maxlength"], "6")
+        self.assertEqual(fields[0]["placeholder"], "6-character code")
 
     def test_unauthorized_mutations_have_no_storage_effect(self):
         before = self.library.path.read_bytes()

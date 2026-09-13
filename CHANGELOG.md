@@ -8,6 +8,10 @@ use America/Vancouver time. App IDs remain stable; each app ships its own
 and place new records in the newest date section. See the
 [changelog policy](docs/changelog-policy.md) for the required submission format.
 
+## 2026-09-13
+
+- Updated `io.vitrallis.mediacarousel` `0.1.3`: Shorten the per-launch LAN access code to six characters and update the login form and instructions. [App changelog](apps/vitrallis-media-carousel/CHANGELOG.md).
+
 ## 2026-09-12
 
 - Updated `io.vitrallis.debug` `0.2.0`: Restore the polished dashboard, hardware-rendered Pulse, GPU graphs and Linux CPU/GPU driver detection. [App changelog](apps/vitrallis-debug/CHANGELOG.md).

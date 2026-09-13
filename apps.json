@@ -154,7 +154,7 @@
       "id": "io.vitrallis.mediacarousel",
       "installable": true,
       "name": "Vitrallis Media Carousel",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -166,24 +166,24 @@
       "compatibility_notes": "Requires Python 3.9+, Tk 8.6, Pillow >=10.4,<13 and installed packaging for App Center dependency checks. Optional system ffmpeg/ffprobe enables muted WebM. Available through the official main catalog. Version 0.1.1 adds X11 process identity for Shell focus/resume. Source-run playback, LAN uploads and physical touch/keyboard were tested on an ARMv7 PocketCHIP with Debian 13.6; device App Center install/update/repair verification remains pending.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "308a1ab569a86f2104d9f0675a42e963e7d7147e",
+        "commit": "182f687abb35831bb7dd5a1b8cdcf51d3a7ed693",
         "path": "apps/vitrallis-media-carousel"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 919,
-          "sha256": "60a91280be6fa82e487207a4adf35108eca5dc08d6e91e98242ad4e1736e7b2e"
+          "size": 1083,
+          "sha256": "4f48d465a59d88dd6f8da41d115adf550914330e351028804984d1820f98425d"
         },
         {
           "path": "README.md",
-          "size": 15258,
-          "sha256": "d346b9d2af57cf0c3a955d0454d6a3741e1ea2571547e0beb6442b6042027675"
+          "size": 15282,
+          "sha256": "e9e78e631ed52fc3b7bca820fadd030eb4e7dac6648b74dafb61342a4f4c1d57"
         },
         {
           "path": "app.toml",
           "size": 203,
-          "sha256": "7d548d11c454feec98e46320ef944ef414f71a696803667b1c717c8a9c75da20"
+          "sha256": "465c741f9cab34785e06153d151929d6332a049bf2da05dc9cf5e2f64bc8c1ac"
         },
         {
           "path": "assets/README.md",
@@ -208,7 +208,7 @@
         {
           "path": "main.py",
           "size": 1321,
-          "sha256": "1c60a251bde38904285a04a93d99dd0b904d5baad1bb3d9e2db07bdaceb8cee4"
+          "sha256": "70de05f4e13c0725286ac2cace3576784d103e9070cf210e64722b131bf276fe"
         },
         {
           "path": "media.py",
@@ -247,8 +247,8 @@
         },
         {
           "path": "web/index.html",
-          "size": 4979,
-          "sha256": "4eeb7bf52051fc7ac205ea58388dfd8f4b8efc08dd23d84cd549292d2dff1f90"
+          "size": 4991,
+          "sha256": "6e506ae781dcbec21e3533b75f56e46441c68106bb73dae73faafc3b98bfec4d"
         },
         {
           "path": "web/style.css",
@@ -258,7 +258,7 @@
         {
           "path": "web_server.py",
           "size": 16471,
-          "sha256": "a5618c69ce29f99c81e65f5651e5a035039f396cfc1754460e8254bb8d5bfeed"
+          "sha256": "bf31eb0cc5b22f95f98ab1447ca30785c9d9435758de2e79b5e706c15c331366"
         }
       ]
     }
