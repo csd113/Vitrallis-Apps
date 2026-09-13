@@ -1,1 +1,5 @@
-# No third-party Python dependencies. Python 3.8+ and system Tkinter are required.
+# No pip dependencies. Linux, Python 3.8+ and system Tkinter are required.
+# Optional GPU Pulse: X11, libEGL, libGLESv2 and a hardware GLES2 driver.
+# The app never installs libraries or substitutes a software renderer.
+# Hardware and drivers: proc/sysfs, device tree and optional local pciutils.
+# No administrator privileges or network lookup required.

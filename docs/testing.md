@@ -67,8 +67,8 @@ cache is outside the source and can be removed afterward.
 
 `VITRALLIS_REQUIRE_GUI=1` makes the example and Media Carousel fail when their
 GUI cannot run. Bitcoin's layout tests require Tk/display directly. Vitrallis
-Debug's two GUI smoke tests use a `DISPLAY`/Windows guard and can skip on native
-macOS even with Tk available. Always inspect skips rather than treating the flag
+Debug's two GUI smoke tests require `DISPLAY` and can skip without an X11
+desktop. Always inspect skips rather than treating the flag
 as a guarantee that every GUI test ran. Linux/Xvfb CI exercises that guard.
 
 ## Check committed release history

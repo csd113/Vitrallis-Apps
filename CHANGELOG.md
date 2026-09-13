@@ -10,6 +10,7 @@ and place new records in the newest date section. See the
 
 ## 2026-09-12
 
+- Updated `io.vitrallis.debug` `0.2.0`: Restore the polished dashboard, hardware-rendered Pulse, GPU graphs and Linux CPU/GPU driver detection. [App changelog](apps/vitrallis-debug/CHANGELOG.md).
 - Updated `io.vitrallis.bitcoindashboard` `1.2.4`: Standardize dated package release history and publish its refreshed inventory. [App changelog](apps/bitcoin-dashboard/CHANGELOG.md).
 - Updated `io.vitrallis.debug` `0.1.2`: Add a packaged version history and README link without changing diagnostics. [App changelog](apps/vitrallis-debug/CHANGELOG.md).
 - Updated `io.vitrallis.mediacarousel` `0.1.2`: Add a packaged version history and README link without changing playback. [App changelog](apps/vitrallis-media-carousel/CHANGELOG.md).

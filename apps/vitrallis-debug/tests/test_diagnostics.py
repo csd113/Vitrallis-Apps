@@ -83,7 +83,9 @@ class NetworkTests(unittest.TestCase):
 
     def test_collector_handles_missing_command(self):
         values = {"/proc/stat": "cpu 1 0 0 1\n", "/proc/cpuinfo": "", "/proc/meminfo": "MemTotal: 1 kB\nMemAvailable: 1 kB\n"}
-        collector = d.SystemCollector(Path("/proc"), Path("/sys"), lambda _: None, lambda path: values.get(str(path)), lambda: 1.0)
+        collector = d.SystemCollector(Path("/proc"), Path("/sys"), lambda _: None, lambda path: values.get(str(path)), lambda: 1.0,
+                                      hardware_collector=d.HardwareCollector(sys_root=Path("/missing"),
+                                                                          runner=lambda _: None, reader=lambda path: values.get(str(path))))
         result = collector.collect()
         self.assertIn("network", result.errors)
         self.assertIsNone(result.network)
@@ -93,3 +95,67 @@ class HistoryTests(unittest.TestCase):
     def test_history_is_bounded_and_ignores_missing(self):
         history = d.History(2); history.add(None); history.add(1); history.add(2); history.add(3)
         self.assertEqual(history.items(), (2, 3))
+
+
+class GpuTests(unittest.TestCase):
+    def test_sysfs_busy_counter_and_invalid_values(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as temp, patch('diagnostics.shutil.which', return_value=None):
+            root = Path(temp)
+            counter = root / 'class/drm/card0/device/gpu_busy_percent'
+            counter.parent.mkdir(parents=True)
+            counter.write_text('42\n')
+            collector = d.GpuCollector(root)
+            reading = collector.collect()
+            self.assertEqual((reading.name, reading.percent, reading.source), ('card0', 42, str(counter)))
+            for value in ('nan', 'inf', '-1', '101', 'not a number', ''):
+                counter.write_text(value)
+                self.assertIsNone(collector.collect(), value)
+            counter.write_text('0')
+            self.assertEqual(collector.collect().percent, 0)
+            counter.write_text('100')
+            self.assertEqual(collector.collect().percent, 100)
+
+    def test_optional_nvidia_query_is_bounded_and_parsed_as_csv(self):
+        from unittest.mock import patch
+        commands = []
+        def runner(command):
+            commands.append(command)
+            return '"GPU, model", 51\n'
+        with patch('diagnostics.shutil.which', return_value='/usr/bin/nvidia-smi'):
+            collector = d.GpuCollector(Path('/missing'), runner=runner)
+            result = collector.collect()
+        self.assertEqual((result.name, result.percent), ('GPU, model', 51))
+        self.assertEqual(commands, [['/usr/bin/nvidia-smi', '--query-gpu=name,utilization.gpu',
+                                     '--format=csv,noheader,nounits', '--id=0']])
+
+    def test_missing_and_unsupported_nvidia_counters_are_unavailable(self):
+        from unittest.mock import patch
+        with patch('diagnostics.shutil.which', return_value='nvidia-smi'):
+            for output in (None, '', 'NVIDIA, [N/A]', 'NVIDIA, NaN', 'broken', 'NVIDIA, 101'):
+                collector = d.GpuCollector(Path('/missing'), runner=lambda _: output)
+                self.assertIsNone(collector.collect())
+
+    def test_discovery_is_cached_and_recovers_after_hotplug(self):
+        from unittest.mock import patch
+        now = [1.0]
+        with tempfile.TemporaryDirectory() as temp, patch('diagnostics.shutil.which', return_value=None) as which:
+            root = Path(temp)
+            collector = d.GpuCollector(root, clock=lambda: now[0])
+            self.assertIsNone(collector.collect())
+            counter = root / 'class/drm/card1/device/gpu_busy_percent'
+            counter.parent.mkdir(parents=True)
+            counter.write_text('21')
+            now[0] = 2
+            self.assertIsNone(collector.collect())
+            self.assertEqual(which.call_count, 1)
+            now[0] = 31
+            self.assertEqual(collector.collect().percent, 21)
+
+    def test_history_preserves_gaps_and_stays_bounded(self):
+        history = d.History(4)
+        for value in (10, None, float('nan'), 20):
+            history.add(value)
+        self.assertEqual(history.items(), (10, None, None, 20))
+        history.add(30)
+        self.assertEqual(history.items(), (None, None, 20, 30))

@@ -16,6 +16,7 @@ jobs:
     env:
       PYTHONDONTWRITEBYTECODE: '1'
       VITRALLIS_REQUIRE_GUI: '1'
+      VITRALLIS_REQUIRE_EGL: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,7 +26,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install desktop test prerequisites
-        run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb ffmpeg libegl1 libgles2 libgl1-mesa-dri
       - name: Install Media Carousel Python dependency
         run: python -m pip install -r apps/vitrallis-media-carousel/requirements.txt
       - name: Validate schema, catalog, pinned hashes and example manifest

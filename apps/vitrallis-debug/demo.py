@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import time
 
-from diagnostics import Frequency, Memory, Network, NetworkInterface, Snapshot, TemperatureSensor
+from hardware import DeviceIdentity, HardwareInfo
+
+from diagnostics import GpuReading, Frequency, Memory, Network, NetworkInterface, Snapshot, TemperatureSensor
 
 
 class DemoCollector:
@@ -22,4 +24,6 @@ class DemoCollector:
                         "Allwinner R8 ARM Cortex-A8 demonstration CPU name", 1,
                         Frequency(1008.0, "measured", "/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_cur_freq"),
                         [("policy0", 200.0, 1008.0)],
-                        Memory(512_000, 280_000, 120_000, 20_000, 100_000, 0, 0), [sensor], network, {})
+                        Memory(512_000, 280_000, 120_000, 20_000, 100_000, 0, 0), [sensor], network, {}, gpu=GpuReading("Demo GPU", 24.6, "Explicit demo fixture"),
+                        hardware=HardwareInfo((DeviceIdentity("ARM Cortex-A8", "Explicit demo fixture"),),
+                                              (DeviceIdentity("Demo GPU", "Explicit demo fixture"),)))
