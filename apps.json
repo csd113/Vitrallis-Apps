@@ -72,7 +72,7 @@
       "id": "io.vitrallis.debug",
       "installable": true,
       "name": "Vitrallis Debug",
-      "version": "0.1.2",
+      "version": "0.2.0",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -80,28 +80,28 @@
         "audio": false,
         "storage": false
       },
-      "description": "Offline network, CPU, temperature, and memory diagnostics for the PocketCHIP.",
-      "compatibility_notes": "Requires Python 3.8+ and system Tkinter with Tk 8.6. Native installation and process-based window focus verified on the Debian 13 PocketCHIP with Vitrallis Shell.",
+      "description": "Offline Linux hardware and driver diagnostics with CPU/GPU graphs and a hardware-rendered Pulse.",
+      "compatibility_notes": "Requires Linux, Python 3.8+ and system Tkinter. Pulse additionally requires X11/XWayland, EGL/GLES2 and a compatible hardware driver. Raspberry Pi and Allwinner driver detection is fixture-tested; physical GPU performance is unverified. GPU utilization requires a supported counter.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "308a1ab569a86f2104d9f0675a42e963e7d7147e",
+        "commit": "e39b58eade357df68c7ff5fa3fae94ec1baf4a95",
         "path": "apps/vitrallis-debug"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 628,
-          "sha256": "2124139794401cdb904f49607456d2dae754d8438b9d6ec7af2aee2a6ce03043"
+          "size": 1464,
+          "sha256": "1dfb70abb34b02cdba07e2028821c056beccbfaa9b093c7e2c38b42c1e0c88f3"
         },
         {
           "path": "README.md",
-          "size": 5126,
-          "sha256": "2fc0e16aa54191458135e37a615bb91d4377015726a1fc141964db80d65809fc"
+          "size": 13343,
+          "sha256": "de742512cb04f29f3c190a8ad775468d3e1e93737df9b95955acaf6122b45620"
         },
         {
           "path": "app.toml",
           "size": 188,
-          "sha256": "82dbed52f151974deef2879dd3cf71c6c6967f92c07d43da707f739131cfab99"
+          "sha256": "f87bd6a15695f86068e27c561bb5deba9e4a1a2daa93774f84a2bd76fb3a8422"
         },
         {
           "path": "assets/README.md",
@@ -110,13 +110,23 @@
         },
         {
           "path": "demo.py",
-          "size": 1397,
-          "sha256": "0979a743c2b03c1307da9d0b5022c574f9f70c55b23f37832f8f3ef3785dc4ac"
+          "size": 1729,
+          "sha256": "2cbf3b87ab07680a878374d124b44b2534e73d388ef8eb9954a9fcb71669e5be"
         },
         {
           "path": "diagnostics.py",
-          "size": 18466,
-          "sha256": "078fd50665906a19e00d936d3ceb3755713706a0c35d0212f9d84c63f1ffb3d8"
+          "size": 20822,
+          "sha256": "25cffd82c7e33d76f9373e257e1ae1b5ce1222d13ac8d0579c5f2ab91234cd8e"
+        },
+        {
+          "path": "gpu.py",
+          "size": 11450,
+          "sha256": "dce7ed16d536e527d7bdf49ef359bc72d2a20f3d840e7a2f366c7c9b12945e72"
+        },
+        {
+          "path": "hardware.py",
+          "size": 16580,
+          "sha256": "762e89b74dd9cc26d15f82f7b79bdc6d1ef6d2cfe2fc4df9763e8bf528a750c3"
         },
         {
           "path": "icon.png",
@@ -130,13 +140,13 @@
         },
         {
           "path": "requirements.txt",
-          "size": 83,
-          "sha256": "6d16deaa372d5d7f5ccaf72fb6811ec3e104881aaba22b8b658234f66e2c664d"
+          "size": 355,
+          "sha256": "90dab4c59b94e4ef4e210579f701a3179df2b9ee3517539e4a76c88c654f2aa4"
         },
         {
           "path": "ui.py",
-          "size": 22067,
-          "sha256": "5d624b04eae2c8ce24912c0362e61fb13944cecddd501f60071f724b99d45ba6"
+          "size": 34660,
+          "sha256": "bef973bc44921d90ca302fa1757584d50c07975edad8106e22991e40d7c82a8a"
         }
       ]
     },
