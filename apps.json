@@ -5,7 +5,7 @@
       "id": "io.vitrallis.bitcoindashboard",
       "installable": true,
       "name": "Bitcoin Dashboard",
-      "version": "1.2.3",
+      "version": "1.2.4",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -17,24 +17,24 @@
       "compatibility_notes": "Requires Python 3.8+ and system Tkinter with Tk 8.6. Native installation and process-based window focus verified on the Debian 13 PocketCHIP with Vitrallis Shell.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "81db6d2c1c59ae2ca8fefcde374c3a749cc0f8a8",
+        "commit": "308a1ab569a86f2104d9f0675a42e963e7d7147e",
         "path": "apps/bitcoin-dashboard"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 5009,
-          "sha256": "95e6071bb4c7ffcf438a259a030da1097c6b9dc90e4713f2964a24545d4687a7"
+          "size": 5176,
+          "sha256": "c19fdb9a72eb0c68b4089ca864f78fba505144daa747d48ead8198e626fdf811"
         },
         {
           "path": "README.md",
           "size": 4925,
-          "sha256": "f200081ffa23ccbe36805c8b8876a376374eed72cac26c57c71f43f086f36606"
+          "sha256": "4493496ee5fae1a6b92dc433c5b0ec11f1305f30dff2c21fdb3aed1499a6ba9f"
         },
         {
           "path": "app.toml",
           "size": 199,
-          "sha256": "38f02482b41b6c11efb2a4c1c705178a89034f820850735c52758e4fe5cc48d5"
+          "sha256": "bcad6670c49f64fd28136172e4b7ce68436e6c14f143c491df0fc295f78926d0"
         },
         {
           "path": "assets/README.md",
@@ -59,7 +59,7 @@
         {
           "path": "main.py",
           "size": 42716,
-          "sha256": "13dfed96888345da9da3269e2dbd1d6c2beff40530f5470935ed51f31b7a2f2d"
+          "sha256": "831cc3871ce128196bee273f7574c7c5712f29a827b32127008867c8da5ca0c2"
         },
         {
           "path": "requirements.txt",
@@ -72,7 +72,7 @@
       "id": "io.vitrallis.debug",
       "installable": true,
       "name": "Vitrallis Debug",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -84,19 +84,24 @@
       "compatibility_notes": "Requires Python 3.8+ and system Tkinter with Tk 8.6. Native installation and process-based window focus verified on the Debian 13 PocketCHIP with Vitrallis Shell.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "81db6d2c1c59ae2ca8fefcde374c3a749cc0f8a8",
+        "commit": "308a1ab569a86f2104d9f0675a42e963e7d7147e",
         "path": "apps/vitrallis-debug"
       },
       "files": [
         {
+          "path": "CHANGELOG.md",
+          "size": 628,
+          "sha256": "2124139794401cdb904f49607456d2dae754d8438b9d6ec7af2aee2a6ce03043"
+        },
+        {
           "path": "README.md",
-          "size": 5068,
-          "sha256": "2e7028bc17d7bfad0152e5a2d4fa437e7a76de642a08fbbde009c4740a034b92"
+          "size": 5126,
+          "sha256": "2fc0e16aa54191458135e37a615bb91d4377015726a1fc141964db80d65809fc"
         },
         {
           "path": "app.toml",
           "size": 188,
-          "sha256": "08e54e731a9df2f8b356164b8ad92d49e2f10576f152e4da0718869d7d39a4da"
+          "sha256": "82dbed52f151974deef2879dd3cf71c6c6967f92c07d43da707f739131cfab99"
         },
         {
           "path": "assets/README.md",
@@ -132,6 +137,118 @@
           "path": "ui.py",
           "size": 22067,
           "sha256": "5d624b04eae2c8ce24912c0362e61fb13944cecddd501f60071f724b99d45ba6"
+        }
+      ]
+    },
+    {
+      "id": "io.vitrallis.mediacarousel",
+      "installable": true,
+      "name": "Vitrallis Media Carousel",
+      "version": "0.1.2",
+      "runtime": "python",
+      "entry": "main.py",
+      "permissions": {
+        "network": true,
+        "audio": false,
+        "storage": true
+      },
+      "description": "Native media slideshow with LAN uploads, named collections and shared settings.",
+      "compatibility_notes": "Requires Python 3.9+, Tk 8.6, Pillow >=10.4,<13 and installed packaging for App Center dependency checks. Optional system ffmpeg/ffprobe enables muted WebM. Available through the official main catalog. Version 0.1.1 adds X11 process identity for Shell focus/resume. Source-run playback, LAN uploads and physical touch/keyboard were tested on an ARMv7 PocketCHIP with Debian 13.6; device App Center install/update/repair verification remains pending.",
+      "source": {
+        "repository": "csd113/Vitrallis-Apps",
+        "commit": "308a1ab569a86f2104d9f0675a42e963e7d7147e",
+        "path": "apps/vitrallis-media-carousel"
+      },
+      "files": [
+        {
+          "path": "CHANGELOG.md",
+          "size": 919,
+          "sha256": "60a91280be6fa82e487207a4adf35108eca5dc08d6e91e98242ad4e1736e7b2e"
+        },
+        {
+          "path": "README.md",
+          "size": 15258,
+          "sha256": "d346b9d2af57cf0c3a955d0454d6a3741e1ea2571547e0beb6442b6042027675"
+        },
+        {
+          "path": "app.toml",
+          "size": 203,
+          "sha256": "7d548d11c454feec98e46320ef944ef414f71a696803667b1c717c8a9c75da20"
+        },
+        {
+          "path": "assets/README.md",
+          "size": 338,
+          "sha256": "1f237745d0e66e6eabf78ac2d4972ce6787ea08b8a062c1fef80b95ad12a96f3"
+        },
+        {
+          "path": "assets/icon.svg",
+          "size": 609,
+          "sha256": "3fb9850c9a1d8c6cf8a90bdbdf6831f50eeb25d0f2dff87c10860f31adcd452f"
+        },
+        {
+          "path": "icon.png",
+          "size": 6949,
+          "sha256": "2d2afb08969f1e4a03e6f4ff3864c9c30437663bbd63cd909761bf24de19e43c"
+        },
+        {
+          "path": "library.py",
+          "size": 9460,
+          "sha256": "8b14a3b51c0628281f686eef1d804c1d494b353d642246bacd5e72ba6618e43d"
+        },
+        {
+          "path": "main.py",
+          "size": 1321,
+          "sha256": "1c60a251bde38904285a04a93d99dd0b904d5baad1bb3d9e2db07bdaceb8cee4"
+        },
+        {
+          "path": "media.py",
+          "size": 9483,
+          "sha256": "2b4a4cadc5ad6aaa8ff4cdf26bb0e55015f90e09ff4fd341d204675062df6f3f"
+        },
+        {
+          "path": "player.py",
+          "size": 10100,
+          "sha256": "47f3270653314be800bc86c5c88e462abd90156193d8b60cf32412e77fdab576"
+        },
+        {
+          "path": "requirements.txt",
+          "size": 98,
+          "sha256": "5e6de9c065a3e240115b1eb430b62c6146e9715020b4a91c6326048a8d2dc429"
+        },
+        {
+          "path": "settings.py",
+          "size": 1924,
+          "sha256": "af0946d5371a30c6d68e1895e4d4f89def99db38d5fd309e3b92761b7dcb35fb"
+        },
+        {
+          "path": "storage.py",
+          "size": 5623,
+          "sha256": "b2e147f33dd00e37af79df42c6388a7607c4ac780f83731512a045e3d9c94c6d"
+        },
+        {
+          "path": "ui.py",
+          "size": 20128,
+          "sha256": "3d39129b43207b9c7bc7ac266a4afa92558f98d64ff90c805c9c117124095c46"
+        },
+        {
+          "path": "web/app.js",
+          "size": 10874,
+          "sha256": "193db63c5961188a473e2a9a257a3161c657b80c76dcbbf56032bea425c8f037"
+        },
+        {
+          "path": "web/index.html",
+          "size": 4979,
+          "sha256": "4eeb7bf52051fc7ac205ea58388dfd8f4b8efc08dd23d84cd549292d2dff1f90"
+        },
+        {
+          "path": "web/style.css",
+          "size": 5649,
+          "sha256": "86b79004f183321573e84bf556431d255f63eb0e34b81b76e1b4bb0ccdc9dcaf"
+        },
+        {
+          "path": "web_server.py",
+          "size": 16471,
+          "sha256": "a5618c69ce29f99c81e65f5651e5a035039f396cfc1754460e8254bb8d5bfeed"
         }
       ]
     }

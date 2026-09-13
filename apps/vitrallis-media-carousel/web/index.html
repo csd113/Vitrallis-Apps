@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Vitrallis Media Carousel</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="masthead"><a href="/" class="brand" aria-label="Vitrallis Media Carousel home"><span class="mark" aria-hidden="true">▧</span><span>Vitrallis<small>Media Carousel</small></span></a><span id="connection" class="badge">Device reached</span></header>
+  <main>
+    <noscript>This local management page requires JavaScript for uploads and ordering. Enable it and reload.</noscript>
+    <p id="notice" role="status" aria-live="polite"></p>
+    <section id="login" class="panel intro">
+      <p class="eyebrow">YOUR SCREEN. YOUR COLLECTIONS.</p>
+      <h1>A little gallery,<br>always close to home.</h1>
+      <p>Send photos, GIFs and muted WebM videos to your Vitrallis device. Everything stays on your local network.</p>
+      <form id="login-form"><label for="access-code">Access code shown on the device</label><div class="form-line"><input id="access-code" type="password" maxlength="16" autocomplete="off" spellcheck="false" required placeholder="16-character code"><button type="submit">Connect</button></div></form>
+      <small>A new code is generated every time the app starts.</small>
+    </section>
+    <div id="workspace" hidden>
+      <nav aria-label="Main"><button id="collections-tab" class="active">Collections</button><button id="settings-tab">Settings</button><button id="lock" class="quiet">Lock</button></nav>
+      <p id="device" class="muted"></p>
+      <section id="collections-view">
+        <div class="section-title"><div><p class="eyebrow">MAKE ROOM FOR YOUR FAVORITES</p><h1>Your collections</h1></div><button id="refresh" class="secondary">Refresh</button></div>
+        <form id="create-form" class="form-line"><label class="sr-only" for="collection-name">New collection name</label><input id="collection-name" maxlength="64" placeholder="New collection name" required><button type="submit">Create collection</button></form>
+        <div id="collections" class="collections"></div>
+      </section>
+      <section id="folder-view" hidden>
+        <button id="back" class="quiet">← All collections</button>
+        <div class="section-title"><div><p class="eyebrow">READY FOR THE BIG LITTLE SCREEN</p><h1 id="folder-title"></h1></div><div class="actions"><button id="rename" class="secondary">Rename</button><button id="delete-folder" class="danger">Delete collection</button></div></div>
+        <form id="rename-form" class="form-line" hidden><label class="sr-only" for="rename-name">Collection name</label><input id="rename-name" maxlength="64" required><button type="submit">Save name</button><button id="cancel-rename" type="button" class="quiet">Cancel</button></form>
+        <div id="drop-zone" class="drop-zone"><div class="upload-mark" aria-hidden="true">↑</div><h2>Drop something wonderful here</h2><p>PNG, JPEG, WebP, GIF or WebM · up to 64 MiB each</p><label for="files" class="file-label">Choose files</label><input id="files" type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/webm" multiple><p class="muted">Files upload one at a time. Select this collection on your device to play.</p></div>
+        <div id="upload-status" hidden><label for="progress" id="upload-label">Uploading</label><progress id="progress" max="100" value="0"></progress><ol id="upload-results"></ol></div>
+        <div class="section-title"><h2>Play order <span id="item-count" class="muted"></span></h2><small>Use ↑ / ↓ to move an item. Order saves immediately.</small></div>
+        <ol id="media" class="media"></ol>
+      </section>
+      <section id="settings-view" class="panel" hidden>
+        <p class="eyebrow">SET THE PACE</p><h1>Playback settings</h1><p>Shared with the device. Changes apply the next time you start a collection.</p>
+        <form id="settings-form" class="settings-form">
+          <label for="image-seconds">Still image duration <small>Whole seconds · 1–3600</small></label><input id="image-seconds" type="number" min="1" max="3600" step="1" required>
+          <label for="repeats">Animated / video repeats <small>Complete plays · 1–100</small></label><input id="repeats" type="number" min="1" max="100" step="1" required>
+          <label for="order">Playback order</label><select id="order"><option value="ordered">In Order</option><option value="shuffle">Shuffle</option></select>
+          <label for="loop">End of collection</label><select id="loop"><option value="true">Loop Folder</option><option value="false">Return to Main Menu</option></select>
+          <button type="submit">Save settings</button>
+        </form><p id="decoder-note" class="muted"></p>
+      </section>
+    </div>
+  </main>
+  <footer>Vitrallis Media Carousel · 0.1.0 <span>Local media. No cloud.</span></footer>
+</body>
+</html>

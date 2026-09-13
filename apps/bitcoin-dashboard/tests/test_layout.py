@@ -347,7 +347,12 @@ class LayoutTests(unittest.TestCase):
         with patch.object(bitcoin.App, 'refresh_all') as refresh:
             restored = bitcoin.App(root)
         self.addCleanup(restored.close)
-        self.assertEqual(restored.data, app.data)
+        # Cache validation converts chain timestamps to milliseconds and back.
+        # That round trip can differ by one floating-point unit.
+        expected = app.data.copy()
+        self.assertAlmostEqual(restored.data['chain_updated'], expected['chain_updated'], delta=1e-6)
+        expected['chain_updated'] = restored.data['chain_updated']
+        self.assertEqual(restored.data, expected)
         self.assertFalse(restored.highlight_enabled)
         self.assertEqual(restored.highlight_until, 0)
         refresh.assert_called_once_with()

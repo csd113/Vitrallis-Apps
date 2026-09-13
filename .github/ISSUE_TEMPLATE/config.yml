@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Usage help and troubleshooting
+    url: https://github.com/csd113/Vitrallis-Apps/blob/main/SUPPORT.md
+    about: Find app instructions, dependency help, and the right place to ask.
+  - name: Security reporting guidance
+    url: https://github.com/csd113/Vitrallis-Apps/blob/main/SECURITY.md
+    about: Read this before sharing vulnerability details or sensitive information.
+  - name: Vitrallis Shell and App Center
+    url: https://github.com/csd113/Vitrallis-Shell/issues
+    about: Report Shell, launcher, installer, and App Center behavior in the consuming project.

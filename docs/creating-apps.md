@@ -1,13 +1,15 @@
 # Creating a Vitrallis app
 
-This repository defines the official **package manifest v1** contract. Shell
-support is version-dependent; this specification does not assert that a particular
-Vitrallis-Shell version loads TOML. Verify the runtime and launcher adapter for
-your target before marking a catalog entry installable.
+[Documentation](README.md) · [Testing](testing.md) · [Publishing](publishing-apps.md)
+
+This repository defines the official **package manifest v1** contract. The current
+Vitrallis Shell App Center consumes this format; support in older or other clients
+is version-dependent. Verify the runtime and launcher on your target before
+marking a catalog entry installable. See [runtime integration](runtime-integration.md).
 
 ## Copy the known-good package
 
-From the repository root:
+From the repository root, choose a new directory name that does not already exist:
 
 ```sh
 mkdir -p apps
@@ -21,6 +23,7 @@ apps/my-app/
 ├── main.py
 ├── requirements.txt
 ├── README.md
+├── CHANGELOG.md
 ├── assets/
 │   └── greeting.txt
 └── tests/
@@ -28,7 +31,9 @@ apps/my-app/
 ```
 
 Change `name`, `id` and `version` in the manifest, the window title and greeting
-in code/assets, the icon, README and tests. Choose an ID under a namespace you
+in code/assets, the icon, README, changelog and tests. Replace the example's
+changelog with your app's dated initial release; follow the
+[changelog and merge policy](changelog-policy.md). Choose an ID under a namespace you
 control, such as `org.yourproject.myapp`; do not publish the example's ID as your
 own app. Keep the ID stable on future releases. The directory slug is not the ID.
 
@@ -37,7 +42,7 @@ own app. Keep the ID stable on future releases. The directory slug is not the ID
 ```toml
 manifest_version = 1
 name = "Example App"
-id = "io.vitrallis.example"
+id = "org.yourproject.myapp"
 version = "0.1.0"
 runtime = "python"
 entry = "main.py"
@@ -72,6 +77,9 @@ The canonical layout requires all shown files and both populated directories.
 An otherwise empty `assets/` should contain a README so Git retains it; `tests/`
 should contain meaningful app tests. `requirements.txt` may state that no pip
 dependencies are needed. Tkinter is a system prerequisite, not a pip dependency.
+`CHANGELOG.md` is required and shipped with the app. Its newest dated version
+must match `app.toml`, with concrete change bullets; package validation rejects
+missing, stale, empty or placeholder release entries.
 
 `icon.png` is the conventional icon. The repository publication profile accepts
 noninterlaced PNGs from 1×1 through 512×512 pixels, validates chunk CRCs and bounded
@@ -103,7 +111,7 @@ UI, network failure handling and safe storage for more complex apps.
 ```sh
 python3 tools/validate_catalog.py --package apps/my-app
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/my-app/tests -v
-# Put compilation output outside the package (no publishing ignore rules).
+# Keep compilation output outside the package; Git ignore rules do not filter publication.
 PYTHONPYCACHEPREFIX=/tmp/vitrallis-pycache python3 -m compileall -q apps/my-app
 python3 apps/my-app/main.py
 ```

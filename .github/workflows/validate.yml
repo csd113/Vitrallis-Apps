@@ -26,7 +26,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install desktop test prerequisites
-        run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb libegl1 libgles2 libgl1-mesa-dri
+        run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb ffmpeg libegl1 libgles2 libgl1-mesa-dri
+      - name: Install Media Carousel Python dependency
+        run: python -m pip install -r apps/vitrallis-media-carousel/requirements.txt
       - name: Validate schema, catalog, pinned hashes and example manifest
         run: python tools/validate_catalog.py --catalog apps.json --package examples/hello-vitrallis
       - name: Validate and test every native package (GUI required)
