@@ -2,6 +2,11 @@
 
 Changes are listed newest first. Dates use America/Vancouver time.
 
+## 0.1.3 — 2026-09-13
+
+- Shorten the per-launch LAN access code from sixteen to six hexadecimal
+  characters and align the browser login field and instructions.
+
 ## 0.1.2 — 2026-09-12
 
 - Add a versioned package changelog and link it from the README; media playback,

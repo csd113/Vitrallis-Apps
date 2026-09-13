@@ -117,7 +117,7 @@ class BoundedServer(ThreadingMixIn, HTTPServer):
 class WebServer:
     def __init__(self, library, settings, host="0.0.0.0", port=8765):
         self.library, self.settings = library, settings
-        self.token = secrets.token_hex(8)
+        self.token = secrets.token_hex(3)
         self.host, self.port = host, port
         self.name = socket.gethostname()[:64]
         self.http = None
