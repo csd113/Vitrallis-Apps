@@ -1,0 +1,2 @@
+# No pip packages are required.
+# Runtime: Python 3.8+ and system SDL2 2.0+ with an X11/Wayland/video driver.
