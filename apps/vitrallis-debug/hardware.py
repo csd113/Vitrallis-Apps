@@ -236,6 +236,16 @@ class HardwareCollector:
         for node in self._paths(self.sys_root / 'class/drm', '*'):
             if re.fullmatch(r'(?:card|renderD)[0-9]+', node.name):
                 self._add_graphics(devices, node / 'device', pci, node.name)
+        # Devfreq can expose Lima/Mali even without a render-node alias.
+        for node in self._paths(self.sys_root / 'class/devfreq', '*gpu*'):
+            device = node / 'device'
+            if not device.exists():
+                canonical = self._resolve(node)
+                # Linux devfreq class links point into DEVICE/devfreq/NAME.
+                if canonical is None or canonical.parent.name != 'devfreq':
+                    continue
+                device = canonical.parent.parent
+            self._add_graphics(devices, device, pci, node.name)
         # Always enumerate platform GPUs: a display-only DRM card may exist while
         # Mali uses a separate platform driver with no DRM interface.
         for node in self._paths(self.sys_root / 'bus/platform/devices', '*'):

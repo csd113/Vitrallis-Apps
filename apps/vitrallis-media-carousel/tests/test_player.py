@@ -81,6 +81,23 @@ class SequencingTests(unittest.TestCase):
         now[0] = 123
         self.assertTrue(clock.ready())
 
+    def test_animation_deadlines_do_not_accumulate_upload_time(self):
+        now = [0.0]
+        clock = PlaybackClock(lambda: now[0])
+        clock.arm(.04, continuous=True)
+        now[0] = .065  # expensive presentation and scheduler delay
+        clock.arm(.08, continuous=True)
+        self.assertAlmostEqual(clock.deadline, .12)
+        now[0] = .115
+        self.assertLessEqual(clock.delay_ms(), 6)
+        clock.toggle()
+        now[0] = 50
+        clock.toggle()
+        self.assertAlmostEqual(clock.deadline, 50.005)
+        now[0] = 51
+        self.assertTrue(clock.ready())
+        self.assertEqual(clock.delay_ms(), 1)
+
     def test_gif_timing_bounds(self):
         self.assertEqual(gif_seconds(80), .08)
         self.assertEqual(gif_seconds(1), .02)
@@ -122,6 +139,26 @@ class DecodeTests(StorageCase):
         self.assertEqual(len(frames), 9)
         self.assertEqual([event[3] for event in frames], [.04, .08, .12] * 3)
         self.assertNotEqual(frames[0][2].getpixel((0, 0)), frames[1][2].getpixel((0, 0)))
+
+    def test_gpu_gif_keeps_native_size_and_reuses_bounded_composited_frames(self):
+        item = self.add("animation.gif", gif_bytes(), "gif")
+        decoder = self.decoder()
+        decoder.request(item, (24, 12), dict(DEFAULTS, repeats=2), gpu=True)
+        frames = [event for event in self.events(decoder) if event[1] == "frame"]
+        self.assertEqual(len(frames), 6)
+        self.assertTrue(all(event[2].size == (48, 24) for event in frames))
+        self.assertIs(frames[0][2], frames[3][2])
+        self.assertEqual([event[3] for event in frames], [.04, .08, .12] * 2)
+
+    def test_gif_over_cache_budget_streams_repeats_without_retaining_frames(self):
+        item = self.add("animation.gif", gif_bytes(), "gif")
+        decoder = self.decoder()
+        with patch("player.MAX_GIF_CACHE_BYTES", 0):
+            decoder.request(item, (24, 12), dict(DEFAULTS, repeats=2), gpu=True)
+            frames = [event for event in self.events(decoder) if event[1] == "frame"]
+        self.assertEqual(len(frames), 6)
+        self.assertIsNot(frames[0][2], frames[3][2])
+        self.assertEqual(frames[0][2].tobytes(), frames[3][2].tobytes())
 
     def test_missing_and_corrupt_files_emit_error_then_recover(self):
         item = self.add(content=b"corrupt")

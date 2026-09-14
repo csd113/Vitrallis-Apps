@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """A calm, GPU-friendly SDL2 firefly field for small Vitrallis displays.
 
-Artwork is created once as small RGBA textures.  The frame loop only updates
+Packaged artwork is uploaded once as small RGBA textures.  The frame loop only updates
 insect state and issues SDL texture/primitive draws; it never uploads a full
 CPU framebuffer.  SDL's accelerated renderer is requested first and a normal
 SDL renderer is used when the platform has no accelerated driver.
@@ -14,9 +14,11 @@ from dataclasses import dataclass
 import math
 from pathlib import Path
 import random
+import re
+import zlib
 import sys
 import time
-from typing import Iterable, List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 
 LOGICAL_WIDTH, LOGICAL_HEIGHT = 480, 272
@@ -34,13 +36,15 @@ SDL_RENDERER_SOFTWARE = 0x00000001
 SDL_RENDERER_ACCELERATED = 0x00000002
 SDL_RENDERER_PRESENTVSYNC = 0x00000004
 SDL_TEXTUREACCESS_STATIC = 0
-SDL_PIXELFORMAT_RGBA32 = 376840196
+SDL_PIXELFORMAT_RGBA32 = 376840196 if sys.byteorder == "little" else 373694468
 SDL_BLENDMODE_NONE = 0
 SDL_BLENDMODE_BLEND = 1
 SDL_BLENDMODE_ADD = 2
 SDL_FLIP_NONE = 0
 SDL_QUIT, SDL_KEYDOWN, SDL_MOUSEMOTION, SDL_MOUSEBUTTONDOWN = 0x100, 0x300, 0x400, 0x401
-SDLK_ESCAPE, SDLK_SPACE = 27, 32
+SDL_WINDOWEVENT = 0x200
+SDL_WINDOWEVENT_LEAVE, SDL_WINDOWEVENT_FOCUS_LOST = 11, 13
+SDLK_ESCAPE, SDLK_SPACE, SDLK_RETURN = 27, 32, 13
 SDLK_UP, SDLK_DOWN, SDLK_LEFT, SDLK_RIGHT = 1073741906, 1073741905, 1073741904, 1073741903
 
 
@@ -65,6 +69,7 @@ class RendererSnapshot:
     output_size: Tuple[int, int]
     max_texture_size: Tuple[int, int]
     hardware_error: Optional[str] = None
+    gl_renderer: Optional[str] = None
 
     @property
     def accelerated(self) -> bool:
@@ -129,6 +134,7 @@ class SDL:
         self.RenderClear = _bind(self.lib, "SDL_RenderClear", integer, ptr)
         self.RenderPresent = _bind(self.lib, "SDL_RenderPresent", None, ptr)
         self.RenderFillRect = _bind(self.lib, "SDL_RenderFillRect", integer, ptr, c.POINTER(SDLRect))
+        self.RenderFillRects = _bind(self.lib, "SDL_RenderFillRects", integer, ptr, c.POINTER(SDLRect), integer)
         self.RenderCopy = _bind(self.lib, "SDL_RenderCopy", integer, ptr, ptr, c.POINTER(SDLRect), c.POINTER(SDLRect))
         self.RenderCopyEx = _bind(self.lib, "SDL_RenderCopyEx", integer, ptr, ptr, c.POINTER(SDLRect), c.POINTER(SDLRect), c.c_double, c.c_void_p, integer)
         self.CreateTexture = _bind(self.lib, "SDL_CreateTexture", ptr, ptr, uint, integer, integer, integer)
@@ -140,6 +146,10 @@ class SDL:
         self.RenderSetLogicalSize = _bind(self.lib, "SDL_RenderSetLogicalSize", integer, ptr, integer, integer)
         self.PollEvent = _bind(self.lib, "SDL_PollEvent", integer, c.c_void_p)
         self.GetMouseState = _bind(self.lib, "SDL_GetMouseState", uint, c.POINTER(integer), c.POINTER(integer))
+        self.RenderReadPixels = _bind(self.lib, "SDL_RenderReadPixels", integer, ptr, c.POINTER(SDLRect), uint, ptr, integer)
+        self.GLGetCurrentContext = _bind(self.lib, "SDL_GL_GetCurrentContext", ptr)
+        self.GLGetCurrentWindow = _bind(self.lib, "SDL_GL_GetCurrentWindow", ptr)
+        self.GLGetProcAddress = _bind(self.lib, "SDL_GL_GetProcAddress", ptr, text)
         self.Delay = _bind(self.lib, "SDL_Delay", None, uint)
 
     def error(self) -> str:
@@ -183,104 +193,28 @@ def hash01(x: int, y: int = 0) -> float:
     return ((value ^ (value >> 16)) & 0xffff) / 65535.0
 
 
-def rgba_texture_pixels(width: int, height: int, fill=(0, 0, 0, 0)) -> bytearray:
-    return bytearray(fill * (width * height))
+def load_artwork(name: str, width: int, height: int) -> Tuple[int, int, bytearray]:
+    """Decode a bounded packaged RGBA texture without an image-library dependency."""
+    path = Path(__file__).resolve().parent / "assets" / (name + ".rgba.z")
+    expected = width * height * 4
+    try:
+        with path.open("rb") as source:
+            packed = source.read(expected + 1025)
+        if len(packed) > expected + 1024:
+            raise ValueError("oversized texture")
+        decoder = zlib.decompressobj()
+        pixels = decoder.decompress(packed, expected + 1)
+        if len(pixels) != expected or not decoder.eof or decoder.unused_data or decoder.unconsumed_tail:
+            raise ValueError("invalid texture length or trailing data")
+    except (OSError, ValueError, zlib.error) as error:
+        raise RuntimeError("Unable to load artwork %s: %s" % (path.name, error)) from error
+    return width, height, bytearray(pixels)
 
 
-def set_pixel(pixels: bytearray, width: int, x: int, y: int, color: Tuple[int, int, int, int]) -> None:
-    if 0 <= x < width and 0 <= y < len(pixels) // (width * 4):
-        offset = (y * width + x) * 4
-        pixels[offset:offset + 4] = bytes(color)
-
-
-def make_scene() -> Tuple[int, int, bytearray]:
-    """Original, limited-palette scene artwork made once at launch."""
-    width, height = LOGICAL_WIDTH, LOGICAL_HEIGHT
-    pixels = rgba_texture_pixels(width, height)
-    for y in range(height):
-        sky = clamp(y / 185.0, 0.0, 1.0)
-        color = (int(5 + sky * 6), int(13 + sky * 17), int(30 + sky * 15), 255)
-        for x in range(width):
-            set_pixel(pixels, width, x, y, color)
-    for index in range(112):
-        x, y = int(hash01(index, 7) * width), int(hash01(index, 13) * 145)
-        brightness = 74 + int(hash01(index, 19) * 90)
-        set_pixel(pixels, width, x, y, (brightness // 2, brightness // 2, brightness, 255))
-    # A dim moon haze, distant hills and a tree line.
-    for y in range(34, 130):
-        for x in range(290, 394):
-            distance = math.hypot(x - 343, y - 80)
-            if distance < 53:
-                old = (y * width + x) * 4
-                amount = int((1 - distance / 53) * 14)
-                pixels[old] = min(255, pixels[old] + amount)
-                pixels[old + 1] = min(255, pixels[old + 1] + amount)
-                pixels[old + 2] = min(255, pixels[old + 2] + amount * 2)
-    for x in range(width):
-        hill = int(145 + 14 * math.sin(x * .019) + 10 * math.sin(x * .047 + 1.4))
-        far = int(163 + 8 * math.sin(x * .031 + .8))
-        for y in range(hill, height):
-            set_pixel(pixels, width, x, y, (10, 28, 38, 255))
-        for y in range(far, height):
-            set_pixel(pixels, width, x, y, (7, 29, 28, 255))
-    for x in range(0, width, 6):
-        top = 150 + int(hash01(x, 37) * 26)
-        canopy = 3 + int(hash01(x, 43) * 5)
-        for y in range(top, 185):
-            for dx in range(-canopy, canopy + 1):
-                if hash01(x + dx, y) > .16:
-                    set_pixel(pixels, width, x + dx, y, (4, 22, 24, 255))
-    for y in range(188, height):
-        for x in range(width):
-            t = (y - 188) / 84.0
-            set_pixel(pixels, width, x, y, (4, int(27 - t * 10), int(22 - t * 8), 255))
-    for x in range(0, width, 3):
-        base = 268 - int(hash01(x, 61) * 14)
-        tip = base - 9 - int(hash01(x, 71) * 17)
-        for y in range(tip, base):
-            offset = int((base - y) * (hash01(x, 79) - .5) * .18)
-            set_pixel(pixels, width, x + offset, y, (8, 49, 35, 255))
-    return width, height, pixels
-
-
-def make_glow(size: int = 64) -> Tuple[int, int, bytearray]:
-    pixels = rgba_texture_pixels(size, size)
-    center = (size - 1) / 2.0
-    for y in range(size):
-        for x in range(size):
-            radius = math.hypot(x - center, y - center) / center
-            if radius < 1:
-                alpha = int(210 * (1.0 - radius) ** 2.4)
-                set_pixel(pixels, size, x, y, (255, 220, 95, alpha))
-    return size, size, pixels
-
-
-def make_firefly_sprite() -> Tuple[int, int, bytearray]:
-    width, height = 20, 14
-    pixels = rgba_texture_pixels(width, height)
-    # Wings, outlined body, warm abdomen and head: deliberately readable near camera.
-    for x, y in ((6, 4), (5, 5), (4, 6), (3, 7), (5, 8), (14, 4), (15, 5), (16, 6), (17, 7), (15, 8)):
-        set_pixel(pixels, width, x, y, (161, 197, 177, 120))
-    for x, y in ((8, 4), (9, 4), (10, 4), (8, 5), (9, 5), (10, 5), (8, 6), (9, 6), (10, 6), (9, 3)):
-        set_pixel(pixels, width, x, y, (16, 28, 25, 255))
-    for x, y in ((8, 7), (9, 7), (10, 7), (8, 8), (9, 8), (10, 8), (9, 9), (9, 10)):
-        set_pixel(pixels, width, x, y, (255, 218, 71, 255))
-    return width, height, pixels
-
-
-def make_grass_sprite() -> Tuple[int, int, bytearray]:
-    width, height = 18, 42
-    pixels = rgba_texture_pixels(width, height)
-    for blade in range(7):
-        base = 4 + blade * 2
-        tip_x = base + int((hash01(blade, 5) - .5) * 9)
-        tip_y = int(hash01(blade, 9) * 16)
-        for y in range(tip_y, height):
-            progress = (y - tip_y) / max(1, height - tip_y)
-            x = int(tip_x * (1 - progress) + base * progress)
-            set_pixel(pixels, width, x, y, (13, 58, 39, 190))
-            set_pixel(pixels, width, x + 1, y, (9, 45, 33, 180))
-    return width, height, pixels
+def software_gl_renderer(name: str) -> bool:
+    """Match the current Shell's known CPU rasterizers without substring false positives."""
+    lowered = name.lower()
+    return bool(set(re.findall(r"[a-z0-9]+", lowered)) & {"llvmpipe", "softpipe", "swrast", "swr"}) or "software rasterizer" in lowered
 
 
 @dataclass
@@ -324,6 +258,8 @@ class Field:
         target = len(self.fireflies) if count is None else int(clamp(count, MIN_FIREFLIES, MAX_FIREFLIES))
         self.fireflies = [self.new_firefly() for _ in range(target)]
         self.time = 0.0
+        self.shooting_star = 9.0
+        self.fireflies.sort(key=lambda fly: fly.depth)
 
     def change_population(self, amount: int) -> None:
         target = int(clamp(len(self.fireflies) + amount, MIN_FIREFLIES, MAX_FIREFLIES))
@@ -331,6 +267,7 @@ class Field:
             del self.fireflies[target:]
         else:
             self.fireflies.extend(self.new_firefly() for _ in range(target - len(self.fireflies)))
+            self.fireflies.sort(key=lambda fly: fly.depth)
 
     def pulse(self, x: float, y: float) -> None:
         """A click is a gentle local scatter, never a game-like explosion."""
@@ -428,7 +365,8 @@ class PerformanceMeter:
                 return None
             if len(values) < 4 or any(value < 0 for value in values):
                 return None
-            return sum(values), values[3] + (values[4] if len(values) > 4 else 0)
+            # Linux guest and guest_nice are already included in user and nice.
+            return sum(values[:8]), values[3] + (values[4] if len(values) > 4 else 0)
         return None
 
     def discover_gpu_paths(self, now: float) -> None:
@@ -460,7 +398,9 @@ class PerformanceMeter:
             self.cpu_previous = totals
         self.discover_gpu_paths(now)
         gpu = None
-        for path in self.gpu_paths:
+        # SDL2 does not expose a portable mapping to DRM cards. Avoid choosing
+        # an arbitrary GPU on multi-adapter hosts. The UI labels this DRM load.
+        for path in self.gpu_paths if len(self.gpu_paths) == 1 else ():
             raw = self.read(path)
             try:
                 value = float(raw.strip()) if raw is not None else -1.0
@@ -474,6 +414,9 @@ class PerformanceMeter:
 
 
 FONT = {
+    "B": (30, 17, 17, 30, 17, 17, 30), "J": (7, 2, 2, 2, 18, 18, 12),
+    "K": (17, 18, 20, 24, 20, 18, 17), "Q": (14, 17, 17, 17, 21, 18, 13),
+    "Z": (31, 1, 2, 4, 8, 16, 31),
     " ": (0, 0, 0, 0, 0, 0, 0), "A": (14, 17, 17, 31, 17, 17, 17), "C": (15, 16, 16, 16, 16, 16, 15),
     "D": (30, 17, 17, 17, 17, 17, 30), "E": (31, 16, 16, 30, 16, 16, 31), "F": (31, 16, 16, 30, 16, 16, 16),
     "G": (15, 16, 16, 23, 17, 17, 15), "H": (17, 17, 17, 31, 17, 17, 17), "I": (31, 4, 4, 4, 4, 4, 31),
@@ -493,7 +436,7 @@ class FireflyApp:
         self.sdl, self.window, self.renderer = sdl, None, None
         self.textures: List[c.c_void_p] = []
         self.field = Field()
-        self.show_status = False
+        self.show_status = True
         self.show_performance = False
         self.performance = PerformanceMeter()
         self.mood_index = 0
@@ -510,17 +453,17 @@ class FireflyApp:
             # Keep an unsuccessful hidden renderer from posting a synthetic quit.
             sdl.SetHint(b"SDL_QUIT_ON_LAST_WINDOW_CLOSE", b"0")
             sdl.SetHint(b"SDL_VIDEO_ALLOW_SCREENSAVER", b"1")
-            sdl.SetHint(b"SDL_TOUCH_MOUSE_EVENTS", b"0")
+            sdl.SetHint(b"SDL_TOUCH_MOUSE_EVENTS", b"1")
             sdl.SetHint(b"SDL_MOUSE_TOUCH_EVENTS", b"0")
             self.window, self.renderer, self.renderer_snapshot = self.select_renderer()
             self.renderer_name = self.renderer_snapshot.name
             self.accelerated = self.renderer_snapshot.accelerated
-            sdl.RenderSetLogicalSize(self.renderer, LOGICAL_WIDTH, LOGICAL_HEIGHT)
-            info = SDLRendererInfo()
-            self.scene = self.texture(*make_scene(), SDL_BLENDMODE_NONE)
-            self.glow_texture = self.texture(*make_glow(), SDL_BLENDMODE_ADD)
-            self.fly_texture = self.texture(*make_firefly_sprite(), SDL_BLENDMODE_BLEND)
-            self.grass_texture = self.texture(*make_grass_sprite(), SDL_BLENDMODE_BLEND)
+            if sdl.RenderSetLogicalSize(self.renderer, LOGICAL_WIDTH, LOGICAL_HEIGHT) != 0:
+                raise RuntimeError("SDL logical size failed: " + sdl.error())
+            self.scene = self.texture(*load_artwork("meadow", 480, 272), SDL_BLENDMODE_NONE)
+            self.glow_texture = self.texture(*load_artwork("glow", 64, 64), SDL_BLENDMODE_ADD)
+            self.fly_texture = self.texture(*load_artwork("firefly", 20, 14), SDL_BLENDMODE_BLEND)
+            self.grass_texture = self.texture(*load_artwork("grass", 18, 42), SDL_BLENDMODE_BLEND)
         except BaseException:
             self.close()
             raise
@@ -542,8 +485,9 @@ class FireflyApp:
             flags |= SDL_RENDERER_PRESENTVSYNC
         renderer = self.sdl.CreateRenderer(window, index, flags)
         if not renderer:
+            detail = self.sdl.error()
             self.sdl.DestroyWindow(window)
-            raise RuntimeError(self.sdl.error())
+            raise RuntimeError(detail)
         info = SDLRendererInfo()
         status = self.sdl.GetRendererInfo(renderer, c.byref(info))
         if status != 0 or not valid_renderer(mode, info):
@@ -551,6 +495,11 @@ class FireflyApp:
             self.sdl.DestroyRenderer(renderer)
             self.sdl.DestroyWindow(window)
             raise RuntimeError(detail)
+        self.active_gl_renderer = self.current_gl_renderer(window, renderer, info)
+        if mode == "hardware" and self.active_gl_renderer and software_gl_renderer(self.active_gl_renderer):
+            self.sdl.DestroyRenderer(renderer)
+            self.sdl.DestroyWindow(window)
+            raise RuntimeError("SDL accelerated backend uses CPU rasterizer %r" % self.active_gl_renderer)
         # Show only a verified renderer. Fullscreen output size may settle here.
         self.sdl.ShowWindow(window)
         width, height = c.c_int(), c.c_int()
@@ -560,13 +509,30 @@ class FireflyApp:
             raise RuntimeError(self.sdl.error())
         return window, renderer, info, (width.value, height.value)
 
+    def current_gl_renderer(self, window, renderer, info: SDLRendererInfo) -> Optional[str]:
+        if info.name not in (b"opengl", b"opengles", b"opengles2"):
+            return None
+        pixel = (c.c_ubyte * 4)()
+        rect = SDLRect(0, 0, 1, 1)
+        # One startup readback activates this SDL backend; never read back a frame.
+        if self.sdl.RenderReadPixels(renderer, c.byref(rect), SDL_PIXELFORMAT_RGBA32, pixel, 4) != 0:
+            return None
+        if not self.sdl.GLGetCurrentContext() or self.sdl.GLGetCurrentWindow() != window:
+            return None
+        address = self.sdl.GLGetProcAddress(b"glGetString")
+        if not address:
+            return None
+        query = c.CFUNCTYPE(c.c_char_p, c.c_uint)(address)
+        value = query(0x1F01)  # GL_RENDERER, copied before the context can be destroyed.
+        return value.decode("utf-8", "replace") if value else None
+
     def snapshot(self, actual: str, info: SDLRendererInfo, output: Tuple[int, int], hardware_error: Optional[str]) -> RendererSnapshot:
         width, height = c.c_int(), c.c_int()
         self.sdl.GetWindowSize(self.window, c.byref(width), c.byref(height))
         driver = (self.sdl.GetCurrentVideoDriver() or b"unknown").decode("utf-8", "replace")
         return RendererSnapshot(self.requested_renderer, actual, (info.name or b"SDL").decode("utf-8", "replace"),
                                 info.flags, driver, (width.value, height.value), output,
-                                (info.max_texture_width, info.max_texture_height), hardware_error)
+                                (info.max_texture_width, info.max_texture_height), hardware_error, self.active_gl_renderer)
 
     def select_renderer(self):
         drivers = renderer_drivers(self.sdl)
@@ -589,9 +555,8 @@ class FireflyApp:
         hardware_error = "; ".join(failures) if failures else None
         if self.requested_renderer == "hardware":
             raise RuntimeError("hardware renderer unavailable: %s; check SDL/Mesa drivers and display access, or use --renderer auto or --renderer software" % (hardware_error or "no accelerated renderer"))
-        for index, _ in drivers:
-            advertised = SDLRendererInfo()
-            if self.sdl.GetRenderDriverInfo(index, c.byref(advertised)) != 0 or not valid_renderer("software", advertised):
+        for index, advertised in drivers:
+            if not valid_renderer("software", advertised):
                 continue
             try:
                 window, renderer, info, output = self.attempt_renderer(index, "software", False)
@@ -611,6 +576,7 @@ class FireflyApp:
                     str(snapshot.vsync).lower(), snapshot.max_texture_size[0], snapshot.max_texture_size[1], snapshot.video_driver,
                     snapshot.window_size[0], snapshot.window_size[1], snapshot.output_size[0], snapshot.output_size[1],
                     str(bool(snapshot.hardware_error)).lower()))
+        message += " flags=%#x gl_renderer=%r" % (snapshot.flags, snapshot.gl_renderer)
         if snapshot.hardware_error:
             message += " hardware_error=%r" % snapshot.hardware_error
         print(message + " app='Firefly Field'", file=sys.stderr)
@@ -623,7 +589,9 @@ class FireflyApp:
         if self.sdl.UpdateTexture(texture, None, buffer, width * 4) != 0:
             self.sdl.DestroyTexture(texture)
             raise RuntimeError("SDL texture upload failed: " + self.sdl.error())
-        self.sdl.SetTextureBlendMode(texture, blend)
+        if self.sdl.SetTextureBlendMode(texture, blend) != 0:
+            self.sdl.DestroyTexture(texture)
+            raise RuntimeError("SDL texture blend mode failed: " + self.sdl.error())
         self.textures.append(texture)
         return texture
 
@@ -635,24 +603,27 @@ class FireflyApp:
     def draw_text(self, x: int, y: int, text: str, scale: int = 1, color=(209, 239, 183, 255)) -> None:
         self.sdl.SetRenderDrawColor(self.renderer, *color)
         cursor = x
+        blocks = []
         for char in text.upper():
             rows = FONT.get(char, FONT[" "])
             for row, bits in enumerate(rows):
                 for column in range(5):
                     if bits & (1 << (4 - column)):
-                        block = SDLRect(cursor + column * scale, y + row * scale, scale, scale)
-                        self.sdl.RenderFillRect(self.renderer, c.byref(block))
+                        blocks.append(SDLRect(cursor + column * scale, y + row * scale, scale, scale))
             cursor += 6 * scale
+        if blocks:
+            rectangles = (SDLRect * len(blocks))(*blocks)
+            self.sdl.RenderFillRects(self.renderer, rectangles, len(blocks))
 
     def draw_status(self) -> None:
         # H exposes the complete keyboard path without cluttering the resting scene.
-        panel = SDLRect(10, 10, 178, 204)
+        panel = SDLRect(10, 10, 178, 214)
         self.sdl.SetRenderDrawBlendMode(self.renderer, SDL_BLENDMODE_BLEND)
         self.sdl.SetRenderDrawColor(self.renderer, 4, 14, 18, 215)
         self.sdl.RenderFillRect(self.renderer, c.byref(panel))
         self.sdl.SetRenderDrawColor(self.renderer, 126, 193, 163, 105)
-        for edge in (SDLRect(10, 10, 178, 1), SDLRect(10, 213, 178, 1),
-                     SDLRect(10, 10, 1, 204), SDLRect(187, 10, 1, 204)):
+        for edge in (SDLRect(10, 10, 178, 1), SDLRect(10, 223, 178, 1),
+                     SDLRect(10, 10, 1, 214), SDLRect(187, 10, 1, 214)):
             self.sdl.RenderFillRect(self.renderer, c.byref(edge))
         self.sdl.SetRenderDrawBlendMode(self.renderer, SDL_BLENDMODE_NONE)
         self.draw_text(17, 16, "FIREFLY FIELD", 1)
@@ -672,7 +643,8 @@ class FireflyApp:
         self.draw_text(17, 165, "C: MOOD", 1)
         self.draw_text(17, 176, "W: WIND", 1)
         self.draw_text(17, 187, "ESC: EXIT", 1)
-        self.draw_text(17, 202, "H: HIDE", 1, (170, 205, 167, 255))
+        self.draw_text(17, 198, "ENTER: SCATTER", 1)
+        self.draw_text(17, 209, "H: HIDE", 1, (170, 205, 167, 255))
 
     @staticmethod
     def percentage(value: Optional[float]) -> str:
@@ -687,7 +659,7 @@ class FireflyApp:
         self.sdl.RenderFillRect(self.renderer, c.byref(panel))
         self.sdl.SetRenderDrawBlendMode(self.renderer, SDL_BLENDMODE_NONE)
         self.draw_text(405, 16, "CPU:" + self.percentage(reading.cpu_percent), 1, (170, 205, 167, 255))
-        self.draw_text(405, 29, "GPU:" + self.percentage(reading.gpu_percent), 1, (170, 205, 167, 255))
+        self.draw_text(405, 29, "DRM:" + self.percentage(reading.gpu_percent), 1, (170, 205, 167, 255))
 
     def draw_twinkles(self) -> None:
         """A small deterministic star pass adds life without texture uploads."""
@@ -721,7 +693,7 @@ class FireflyApp:
         self.sdl.RenderCopy(self.renderer, self.scene, None, c.byref(destination))
         self.draw_twinkles()
         # Far insects are first, selling depth while leaving close sprites readable.
-        for fly in sorted(self.field.fireflies, key=lambda item: item.depth):
+        for fly in self.field.fireflies:
             brightness = self.field.brightness(fly)
             glow_size = (15 + fly.depth * 31) * fly.size * (0.65 + brightness * .7) * self.field.glow
             self.copy(self.glow_texture, fly.x, fly.y, glow_size, glow_size, int(255 * brightness * self.field.glow))
@@ -751,6 +723,7 @@ class FireflyApp:
         elif sym in (ord("d"), ord("D")): self.field.change_population(-1)
         elif sym in (ord("c"), ord("C")): self.mood_index = (self.mood_index + 1) % len(MOODS)
         elif sym in (ord("w"), ord("W")): self.wind_index = (self.wind_index + 1) % len(WIND_LEVELS)
+        elif sym == SDLK_RETURN: self.field.pulse(LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2)
         elif sym == SDLK_UP: self.field.change_population(10)
         elif sym == SDLK_DOWN: self.field.change_population(-10)
         elif sym == SDLK_LEFT: self.field.glow = clamp(self.field.glow - .1, .2, 1.4)
@@ -762,11 +735,12 @@ class FireflyApp:
             kind = c.c_uint32.from_buffer(event, 0).value
             if kind == SDL_QUIT:
                 self.running = False
-            elif kind == SDL_KEYDOWN:
+            elif kind == SDL_WINDOWEVENT and event[12] in (SDL_WINDOWEVENT_LEAVE, SDL_WINDOWEVENT_FOCUS_LOST):
+                self.field.pointer = None
+            elif kind == SDL_KEYDOWN and not event[13]:
                 self.handle_key(c.c_int32.from_buffer(event, 20).value)
             elif kind == SDL_MOUSEMOTION:
-                self.pointer = (float(c.c_int32.from_buffer(event, 20).value), float(c.c_int32.from_buffer(event, 24).value))
-                self.field.pointer = self.pointer
+                self.field.pointer = (float(c.c_int32.from_buffer(event, 20).value), float(c.c_int32.from_buffer(event, 24).value))
             elif kind == SDL_MOUSEBUTTONDOWN:
                 x, y = c.c_int32.from_buffer(event, 16).value, c.c_int32.from_buffer(event, 20).value
                 self.field.pulse(float(x), float(y))
@@ -782,7 +756,9 @@ class FireflyApp:
             self.frames += 1
             if now - self.fps_then >= 1:
                 self.fps, self.frames, self.fps_then = self.frames, 0, now
-            self.sdl.Delay(1)
+            remaining = 1.0 / 60.0 - (time.monotonic() - now)
+            if remaining > 0:
+                self.sdl.Delay(max(1, math.ceil(remaining * 1000)))
 
     def close(self) -> None:
         if self.renderer:

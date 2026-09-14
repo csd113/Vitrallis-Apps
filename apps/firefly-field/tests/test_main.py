@@ -110,5 +110,109 @@ class FieldTests(unittest.TestCase):
         self.assertFalse(app.running)
 
 
+class PolishTests(unittest.TestCase):
+    def test_packaged_textures_decode_to_exact_dimensions(self):
+        for name, width, height in (("meadow",480,272),("glow",64,64),("firefly",20,14),("grass",18,42)):
+            with self.subTest(name=name):
+                w,h,pixels=firefly.load_artwork(name,width,height)
+                self.assertEqual((w,h,len(pixels)),(width,height,width*height*4))
+        with self.assertRaises(RuntimeError):
+            firefly.load_artwork("meadow",1,1)
+
+    def test_artwork_rejects_truncated_and_trailing_streams(self):
+        from unittest.mock import patch, mock_open
+        import zlib
+        valid = zlib.compress(bytes(16))
+        for packed in (valid[:-1], valid + b"trailing", zlib.compress(bytes(17))):
+            with self.subTest(packed=packed):
+                with patch.object(Path, "open", mock_open(read_data=packed)):
+                    with self.assertRaises(RuntimeError):
+                        firefly.load_artwork("fixture", 2, 2)
+
+    def test_guest_time_is_not_counted_twice(self):
+        self.assertEqual(firefly.PerformanceMeter.cpu_totals("cpu 100 20 30 400 10 5 6 7 40 10"), (578,410))
+
+    def test_software_gl_names_match_shell_without_false_positives(self):
+        for name in ("llvmpipe (LLVM 19)","softpipe","SWR rasterizer","Mesa Software Rasterizer","swrast"):
+            self.assertTrue(firefly.software_gl_renderer(name))
+        for name in ("Apple M1", "Mali400", "Mesa Intel UHD", "unswrelated"):
+            self.assertFalse(firefly.software_gl_renderer(name))
+
+    def test_depth_order_survives_population_changes_and_reseed(self):
+        field=firefly.Field()
+        for change in (30,-10,500,-500):
+            field.change_population(change)
+            depths=[fly.depth for fly in field.fireflies]
+            self.assertEqual(depths, sorted(depths))
+        field.shooting_star=.1
+        field.reseed()
+        self.assertEqual(field.shooting_star,9)
+        self.assertEqual([fly.depth for fly in field.fireflies],sorted(fly.depth for fly in field.fireflies))
+
+    def test_font_contains_all_control_letters_and_backend_names(self):
+        self.assertTrue(set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:-% ") <= firefly.FONT.keys())
+
+    def test_keyboard_scatter_changes_center_insect_velocity(self):
+        app=object.__new__(firefly.FireflyApp)
+        app.field=firefly.Field()
+        fly=app.field.fireflies[0]
+        fly.x,fly.y,fly.vx,fly.vy=250,136,0,0
+        app.handle_key(firefly.SDLK_RETURN)
+        self.assertGreater(fly.vx,0)
+
+    def test_toggle_repeat_and_pointer_leave(self):
+        import ctypes as c
+        class Events:
+            def __init__(self, events): self.events=iter(events)
+            def PollEvent(self, target):
+                source=next(self.events,None)
+                if source is None: return 0
+                c.memmove(target,source,56)
+                return 1
+        repeated=(c.c_ubyte*56)()
+        c.c_uint32.from_buffer(repeated).value=firefly.SDL_KEYDOWN
+        repeated[13]=1
+        c.c_int32.from_buffer(repeated,20).value=firefly.SDLK_SPACE
+        leave=(c.c_ubyte*56)()
+        c.c_uint32.from_buffer(leave).value=firefly.SDL_WINDOWEVENT
+        leave[12]=firefly.SDL_WINDOWEVENT_LEAVE
+        app=object.__new__(firefly.FireflyApp)
+        app.field=firefly.Field()
+        app.field.pointer=(50,50)
+        app.sdl=Events([repeated,leave])
+        app.events()
+        self.assertFalse(app.field.paused)
+        self.assertIsNone(app.field.pointer)
+
+    def test_hardware_retry_and_fallback_policy(self):
+        from unittest.mock import patch
+        hardware=firefly.SDLRendererInfo();hardware.name=b'opengles2';hardware.flags=2
+        software=firefly.SDLRendererInfo();software.name=b'software';software.flags=1
+        class Drivers:
+            def GetRenderDriverInfo(self, index, pointer):
+                pointer._obj.name=b'software';pointer._obj.flags=1
+                return 0
+        for mode in ('auto','hardware','software'):
+            with self.subTest(mode=mode):
+                app=object.__new__(firefly.FireflyApp)
+                app.sdl=Drivers();app.requested_renderer=mode
+                calls=[]
+                def attempt(index,actual,vsync):
+                    calls.append((actual,vsync))
+                    if actual=='hardware': raise RuntimeError('llvmpipe rejected')
+                    return 1,2,software,(480,272)
+                app.attempt_renderer=attempt
+                app.snapshot=lambda *args: args
+                with patch.object(firefly,'renderer_drivers',return_value=[(0,hardware),(1,software)]):
+                    if mode=='hardware':
+                        with self.assertRaisesRegex(RuntimeError,'llvmpipe rejected'): app.select_renderer()
+                        self.assertEqual(calls,[('hardware',True),('hardware',False)])
+                    else:
+                        result=app.select_renderer()
+                        self.assertEqual(result[2][0],'software')
+                        if mode=='software': self.assertEqual(calls,[('software',False)])
+                        else: self.assertIn('llvmpipe rejected',result[2][3])
+
+
 if __name__ == "__main__":
     unittest.main()

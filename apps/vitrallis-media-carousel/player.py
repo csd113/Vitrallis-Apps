@@ -14,6 +14,9 @@ from media import (FORMATS, MAX_FRAMES, MAX_GIF_PIXELS, MAX_PIXELS,
                    MAX_ANIMATION_PIXELS, MAX_VIDEO_SECONDS, MediaError, Processes, video_command)
 
 
+MAX_GIF_CACHE_BYTES = 8 * 1024 * 1024
+
+
 class Playlist:
     def __init__(self, items, settings, rng=None):
         self.items = [dict(item) for item in items]
@@ -69,9 +72,18 @@ class PlaybackClock:
         self.remaining = 0
         self.paused = False
 
-    def arm(self, seconds):
-        self.remaining = max(0, seconds)
-        self.deadline = self.now() + self.remaining
+    def arm(self, seconds, continuous=False):
+        # Advance animation deadlines from the previous presentation timeline,
+        # not from completion of image upload, which otherwise slows every frame.
+        now = self.now()
+        origin = self.deadline if continuous and self.deadline is not None else now
+        self.deadline = origin + max(0, seconds)
+        self.remaining = max(0, self.deadline - now)
+
+    def delay_ms(self):
+        if self.paused or self.deadline is None:
+            return 10
+        return max(1, min(20, math.ceil((self.deadline - self.now()) * 1000)))
 
     def toggle(self):
         if self.paused:
@@ -130,7 +142,7 @@ class Decoder:
             drain(self.commands)
             drain(self.events)
 
-    def request(self, item, size, settings):
+    def request(self, item, size, settings, gpu=False):
         self.stop()
         with self.lock:
             self.cancel = threading.Event()
@@ -138,7 +150,8 @@ class Decoder:
             width, height = max(1, size[0]), max(1, size[1])
             scale = min(1, 1280 / width, 720 / height)
             bounded = (max(2, int(width * scale) // 2 * 2), max(2, int(height * scale) // 2 * 2))
-            self.commands.put_nowait((self.generation, item, bounded, dict(settings), self.cancel))
+            options = dict(settings, gpu=bool(gpu))
+            self.commands.put_nowait((self.generation, item, bounded, options, self.cancel))
             return self.generation
 
     def _emit(self, cancel, generation, kind, value=None, seconds=0):
@@ -182,7 +195,13 @@ class Decoder:
                 return
             if source.width * source.height > MAX_GIF_PIXELS:
                 raise MediaError("GIF exceeds pixel limit")
+            cache, cached_bytes, cache_complete = [], 0, False
             for _ in range(settings["repeats"]):
+                if cache_complete:
+                    for frame, seconds in cache:
+                        if not self._emit(cancel, generation, "frame", frame, seconds):
+                            return
+                    continue
                 source.seek(0)
                 frames, pixels = 0, 0
                 while not cancel.is_set() and not self.closed.is_set():
@@ -190,16 +209,23 @@ class Decoder:
                         raise MediaError("GIF frame exceeds pixel limit")
                     seconds = gif_seconds(source.info.get("duration", 100))
                     # Pillow composites disposal/transparency into the current frame.
-                    frame = display_copy(source, size)
+                    frame = source.convert("RGBA") if settings.get("gpu") else display_copy(source, size)
                     frames += 1
                     pixels += source.width * source.height
                     if frames > MAX_FRAMES or pixels > MAX_ANIMATION_PIXELS:
                         raise MediaError("GIF exceeds frame budget")
+                    if cache is not None:
+                        cached_bytes += frame.width * frame.height * 4
+                        if cached_bytes <= MAX_GIF_CACHE_BYTES:
+                            cache.append((frame, seconds))
+                        else:
+                            cache = None
                     if not self._emit(cancel, generation, "frame", frame, seconds):
                         return
                     try:
                         source.seek(frames)
                     except EOFError:
+                        cache_complete = cache is not None
                         break
                 if cancel.is_set():
                     return

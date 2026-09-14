@@ -4,7 +4,7 @@ A locally managed slideshow for the screen running Vitrallis. Upload from your
 phone/computer, organize collections, then select one in the native Python app.
 Playback does not open a browser.
 
-**0.1.3** · `io.vitrallis.mediacarousel` · manifest v1.
+**0.1.4** · `io.vitrallis.mediacarousel` · manifest v1.
 
 [Changelog](CHANGELOG.md).
 
@@ -19,6 +19,8 @@ Playback does not open a browser.
 - Optional system **ffmpeg and ffprobe**, both on `PATH`, for WebM. FFmpeg 4.3+
   with Matroska/WebM, VP8/VP9, scale/pad/fps and rawvideo is the intended baseline;
   AV1 requires a working AV1 decoder in that build.
+- Optional X11 hardware playback: system **libX11, libEGL and libGLESv2** with a
+  working GLES2 driver (including Lima/Mali). No additional pip packages.
 - A graphical session and writable private storage. No Node/npm, browser runtime,
   web framework, cloud account, audio service or container runtime.
 
@@ -113,12 +115,32 @@ larger windows. Two collection rows per page preserve touch target size.
 - Shell SIGTERM and terminal SIGINT request the same orderly shutdown, including
   decoder processes and active HTTP transfers.
 
-Only the current image/animation and two queued display frames are retained.
-There are no generated thumbnails in 0.1.0. Video source resolution still affects
-decoder cost: prepare media near 480×272 and short VP8 clips for slow hardware.
-Resize recenters the current frame; the next item or previous/next action decodes
-at the new size. High-resolution and high-frame-rate video can exceed PocketCHIP
-decoding capacity; the output cap is not a guaranteed playback frame rate.
+GIF decoding and disposal/transparency compositing remain in Pillow. On X11,
+playback automatically tries a hardware EGL/GLES2 surface inside the existing Tk
+window. The GPU scales and presents RGBA textures instead of creating Tk images
+and applying CPU resampling every frame. Texture allocation is reused while
+frame size stays constant. Tk retains keyboard navigation and the control overlay.
+Software GL rasterizers and unknown GPU names are rejected as hardware; missing
+libraries, unsupported desktops (including native macOS Tk), or a lost surface
+fall back to Tk and log the reason as `event=media_renderer mode=tk`. Successful
+initialization logs `mode=hardware` and the GL renderer name.
+
+Animation deadlines follow media time, so uploads and UI polling do not add a
+new delay to every frame. Expired frames can be skipped to catch up; decoded
+replay counts and frame delays are preserved. Pause retains remaining frame time.
+Small GIFs reuse composited frames across repeats within an **8 MiB** cache;
+larger animations stream with two queued frames. GPU GIF frames retain native
+resolution (within the existing one-million-pixel limit) for GPU filtering.
+Neither GIF decompression nor WebM decoding is claimed to be hardware accelerated.
+A GPU cannot guarantee full speed when CPU decoding exceeds the frame budget.
+
+Resize refits the current GPU texture. Tk fallback recenters its current frame;
+the next item or previous/next action decodes at the new size. High-resolution
+and high-frame-rate video can exceed PocketCHIP decoding capacity.
+
+The 0.1.4 GPU path and timing fixes have desktop/fake-device regression coverage;
+physical Lima/Mali throughput and overlay behavior still need target verification.
+The following device evidence describes the earlier playback implementation.
 
 Source-run validation on an ARMv7 PocketCHIP with the current Vitrallis Shell used
 Debian 13.6, Python 3.13.5, Tk 8.6, Pillow 11.1.0 and FFmpeg 7.1.5. The native
@@ -225,7 +247,9 @@ PYTHONPYCACHEPREFIX=/tmp/vitrallis-pycache python3 -m compileall -q apps/vitrall
 
 `VITRALLIS_REQUIRE_GUI=1` requires desktop GUI tests (use Linux `xvfb-run -a` when
 needed). Optional WebM tests skip without FFmpeg; CI provides it for real decoding
-tests. All server tests bind only to loopback, storage is temporary, media samples
+tests. `VITRALLIS_REQUIRE_EGL=1` enables an additional real EGL/texture test on
+Linux/Xvfb; its test-only software-policy mock does not enable software GL in
+the app. All server tests bind only to loopback, storage is temporary, media samples
 are generated and no tests need Internet services. Run all `CONTRIBUTING.md` checks.
 For an authorized source-run device session, `tests/device_session.py` opens the
 same native app and accepts simple status/navigation commands over standard input;
@@ -233,7 +257,7 @@ use separate XDG roots for test media. It exits after ten minutes and is exclude
 from the installed package along with the other tests.
 
 Modules: `main.py` entry; `ui.py` screens/services; `player.py` playlist/clock/single
-decoder worker; `media.py` inspection/FFmpeg; `storage.py` paths/atomic writes/lock;
+decoder worker; `gpu.py` optional EGL/GLES2 presentation; `media.py` inspection/FFmpeg; `storage.py` paths/atomic writes/lock;
 `library.py` collections/order; `settings.py` validation; `web_server.py` HTTP;
 `web/` bundled site; `assets/` original artwork; `tests/` development-only tests.
 

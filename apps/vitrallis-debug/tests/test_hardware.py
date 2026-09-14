@@ -257,3 +257,17 @@ class EmbeddedDriverTests(unittest.TestCase):
         self.assertEqual(info.cpu_name, 'ARM Cortex-A53')
         self.assertEqual(info.board.name, 'Raspberry Pi (fixture)')
         self.assertIsNone(info.soc)
+
+    def test_devfreq_only_gpu_is_identified_and_aliases_are_deduplicated(self):
+        node = self.device('1c40000.gpu', 'arm,mali-400\x00', 'lima', aliases=('renderD128',))
+        (self.sys/'bus/platform/devices/1c40000.gpu').unlink()
+        target = node/'devfreq/1c40000.gpu'
+        target.mkdir(parents=True)
+        alias = self.sys/'class/devfreq/1c40000.gpu'
+        alias.parent.mkdir(parents=True)
+        alias.symlink_to(target, target_is_directory=True)
+        info = self.collect()
+        self.assertEqual(len(info.gpus), 1)
+        self.assertEqual(info.gpu_name('1c40000.gpu'), 'ARM Mali-400')
+        self.assertIn('1c40000.gpu', info.gpus[0].aliases)
+        self.assertEqual(info.gpus[0].driver.name, 'lima')

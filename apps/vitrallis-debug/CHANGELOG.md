@@ -2,6 +2,13 @@
 
 Changes are listed newest first. Dates use America/Vancouver time.
 
+## 0.2.1 — 2026-09-14
+
+- Discover Lima/Mali GPU identities and aliases through GPU devfreq class devices.
+- Read Linux devfreq_monitor load events from an isolated tracefs instance when permitted and display a two-second polling-weighted rolling average.
+- Reject stale, malformed and unrelated-device events; show unavailable when trace access or fresh load samples are missing.
+- Release owned trace resources on normal exit, startup failure and handled termination without changing global trace settings.
+
 ## 0.2.0 — 2026-09-12
 
 - Replace the background Canvas pulse with an eight-second foreground EGL/GLES2

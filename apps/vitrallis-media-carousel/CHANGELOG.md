@@ -2,6 +2,13 @@
 
 Changes are listed newest first. Dates use America/Vancouver time.
 
+## 0.1.4 — 2026-09-14
+
+- Present GIF frames through optional hardware EGL/GLES2 textures on X11, moving proportional scaling and display composition off Tk/Pillow.
+- Preserve CPU decoding and Tk fallback when a compatible GPU surface is unavailable or lost; reject software GL rasterizers as hardware.
+- Advance animation deadlines without accumulating image-upload cost, schedule near the next frame deadline and skip expired frames when late.
+- Reuse composited GIF frames within an eight-MiB cache across repeats while preserving disposal, frame durations, bounded queues and cancellation.
+
 ## 0.1.3 — 2026-09-13
 
 - Shorten the per-launch LAN access code from sixteen to six hexadecimal

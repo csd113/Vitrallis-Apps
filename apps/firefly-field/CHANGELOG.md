@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.1 — 2026-09-14
+
+- Ship a painted pixel-art meadow and prebuilt RGBA scene, firefly, glow and grass textures; remove startup pixel generation.
+- Reject known software OpenGL rasterizers like the current Shell and log the active GL renderer identity.
+- Cap rendering at 60 FPS, retain depth order between population changes and batch bitmap text draws.
+- Restore touch-generated mouse input, clear stale pointer influence and ignore repeated toggle key events.
+- Show complete help at startup, add keyboard scatter and complete missing bitmap glyphs.
+- Exclude guest CPU time from duplicate accounting and label unassociated device utilization as DRM rather than app GPU load.
+- Publish the package as installable after its source, catalog inventory and app checks complete.
+
 ## 0.2.0 — 2026-09-13
 
 - Add an opt-in performance overlay with local CPU utilization and real DRM GPU

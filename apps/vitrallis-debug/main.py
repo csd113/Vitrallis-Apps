@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import signal
 
 # Installed packages are read-only.  Avoid interpreter bytecode caches beside app files.
 sys.dont_write_bytecode = True
@@ -29,19 +30,30 @@ def main(argv=None) -> int:
         root.wm_client(root.tk.call("info", "hostname"))
     root.geometry("480x272")
     root.minsize(400, 240)
+    dashboard = None
+    handlers = {}
     try:
         from ui import Dashboard
         collector = None
         if args == ["--demo"]:
             from demo import DemoCollector
             collector = DemoCollector()
-        Dashboard(root, tk, collector, demo=args == ["--demo"])
+        dashboard = Dashboard(root, tk, collector, demo=args == ["--demo"])
+        for signum in (signal.SIGTERM, signal.SIGINT):
+            handlers[signum] = signal.signal(signum, lambda *_: dashboard.close())
         root.mainloop()
     except Exception as error:
         try: root.destroy()
         except tk.TclError: pass
         print(f"Vitrallis Debug could not start: {error}", file=sys.stderr)
         return 1
+    finally:
+        for signum, handler in handlers.items():
+            signal.signal(signum, handler)
+        if dashboard is not None:
+            close = getattr(dashboard.collector, 'close', None)
+            if close:
+                close()
     return 0
 
 
