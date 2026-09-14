@@ -166,14 +166,14 @@
       "compatibility_notes": "Requires Python 3.8+ and system SDL2 2.0+ with an X11/Wayland/video driver. Follows Vitrallis Shell GPU renderer policy: auto prefers verified accelerated SDL renderers (GLES2 first) and falls back to software; hardware mode explicitly requires acceleration. Target Shell/App Center installation, update and repair verification is pending.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "c3c7445d8cd31f3d8634f244515266a1a4ee41b9",
+        "commit": "e8f128cf4af843a3f758afad646f60bbbecce064",
         "path": "apps/firefly-field"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 1025,
-          "sha256": "245979d266b788b37b29343fb06ccfb0c90de23ec5b1f48511e267054b61f1bd"
+          "size": 1181,
+          "sha256": "fe8214e5d6450877416cc1aef76a20c2ae3043722c4ac2580513119606f357b6"
         },
         {
           "path": "README.md",
@@ -202,8 +202,8 @@
         },
         {
           "path": "main.py",
-          "size": 33847,
-          "sha256": "59539cc7f514f1a59879370fcc24bc5f905a0d47c02a7dac710197f2fa9c2a34"
+          "size": 35545,
+          "sha256": "3a51505f3a58982acf6860006e2699cd861d6f2ac3617d563bc17537b6490b6e"
         },
         {
           "path": "requirements.txt",
