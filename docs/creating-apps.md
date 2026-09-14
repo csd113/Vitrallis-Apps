@@ -99,11 +99,33 @@ if using XDG locations as a fallback, label that assumption, validate externally
 supplied paths and use atomic writes. Do not persist when storage is false. Keep
 rapidly changing data in memory and avoid unnecessary flash writes.
 
+## Keyboard baseline (catalog acceptance requirement)
+
+Every production app submitted to this catalog **must be baseline usable using
+only physical keyboard input**. This is an acceptance rule for App Center
+catalogue listings and for enabling installation; touch, mouse and stylus support
+are enhancements, never the only path to an essential action.
+
+At a minimum, a keyboard-only user must be able to launch the app, discover the
+available controls, reach and operate its primary experience, navigate between
+essential screens or modes, dismiss errors/overlays, cancel or go back, and exit
+through the normal launcher lifecycle. Controls must have a visible focus state
+where focus applies. Use Tab/Shift+Tab and Enter/Space for standard controls,
+arrow keys where they fit the layout, and a documented Escape/back sequence.
+An ambient or fullscreen app may use direct shortcuts instead, but it must show
+or otherwise clearly document those shortcuts from within the app.
+
+Document the complete keyboard map in the app README and add meaningful
+keyboard-focused regression tests for the essential paths. Manifest v1 has no
+keyboard capability field; a new manifest key is invalid rather than a way to
+opt out. The package validator checks structure, not interaction semantics, so
+reviewers must reject a submission that lacks this evidence.
+
 The example is a 480×272 Tkinter window with a greeting, Home button and Escape
 exit. It uses no network, audio or persistent storage. This is a desktop-testable
 starting profile, not a device compatibility certification. Verify the actual
-usable display area, keyboard/touch controls, runtime, launch and return-to-shell
-behavior. [The developer guide](../VITRALLIS_APP_BUILD_GUIDE.md) covers responsive
+usable display area, the required keyboard-only baseline, touch controls where
+provided, runtime, launch and return-to-shell behavior. [The developer guide](../VITRALLIS_APP_BUILD_GUIDE.md) covers responsive
 UI, network failure handling and safe storage for more complex apps.
 
 ## Validate before committing
@@ -117,6 +139,7 @@ python3 apps/my-app/main.py
 ```
 
 Also launch using an absolute script path from another working directory, test
-keyboard-only navigation and close behavior, and exercise relevant failures.
+the complete keyboard-only baseline and close behavior, and exercise relevant
+failures.
 The validator checks data and files; it does not prove application behavior or
 permissions compliance. Continue with [publishing apps](publishing-apps.md).

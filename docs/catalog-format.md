@@ -49,14 +49,16 @@ Each entry contains exactly these fields:
 | `runtime` | `python` in v1. Does not authorize invoking an arbitrary interpreter. |
 | `entry` | Safe app-relative entry file, included in `files`. Native packages require a `.py` entry. |
 | `permissions` | Exactly boolean `network`, `audio`, `storage`. Requirements, not sandbox enforcement or proof of consent. |
-| `installable` | Publisher readiness flag. False forbids catalog-driven installation/update/repair. True still needs a compatible runtime, trusted source and reviewed client adapter. |
+| `installable` | Publisher readiness flag. False forbids catalog-driven installation/update/repair. True still needs a compatible runtime, trusted source, reviewed client adapter, and the repository's mandatory keyboard-only baseline. |
 | `source.repository` | A GitHub `owner/repository` value. Owner: 1–39 ASCII letters/digits/hyphens, starts/ends with a letter or digit, no consecutive hyphens. Repository: 1–100 ASCII letters/digits/underscore/dot/hyphen, excluding `.` and `..`. No URL, credentials, port, path or `.git` suffix convention; use the actual repository name. The syntax check does not establish existence or trust. |
 | `source.commit` | Exactly 40 lowercase hexadecimal characters identifying a Git commit (SHA-1 object format). A branch, abbreviated hash, tag object or tree is not a source pin. |
 | `source.path` | `apps/<app-slug>` for native packages, where the slug is lowercase letters/digits separated by single hyphens. |
 | `files` | Complete package at that commit, excluding app-local `tests/`, sorted by ASCII path. Each row has exactly `path`, integer `size`, lowercase 64-hex `sha256`. Includes docs and assets. |
 
 Catalog schema is **1**. Only the current native package contract is accepted.
-Format acceptance does not imply installer support.
+Format acceptance does not imply installer support or interaction usability. In
+addition to schema validation, catalog acceptance requires every production app
+to satisfy the [keyboard baseline](creating-apps.md#keyboard-baseline-catalog-acceptance-requirement); reviewers reject pointer/touch-only essential workflows.
 
 ## Cross-field and byte rules
 

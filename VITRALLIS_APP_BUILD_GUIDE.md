@@ -48,10 +48,15 @@ window decorations. Use clear contrast, short labels and visible focus. Roughly
 14–16 pixel body text and 36–44 pixel control heights are initial design targets;
 verify actual toolkit font metrics and keyboard/touch usability.
 
-Keep essential content visible without horizontal scrolling. Provide keyboard
-access with Tab/Shift+Tab and Enter/Space, plus arrow navigation where useful.
-Escape should dismiss overlays, return from subviews, then exit from the main
-view with documented handling of unsaved work. Provide a visible Home/Exit action.
+Keep essential content visible without horizontal scrolling. The catalog's
+keyboard baseline is mandatory: every essential workflow must work without a
+pointer or touch input, including discovering controls, primary actions,
+navigation, back/cancel and normal exit. Provide keyboard access with
+Tab/Shift+Tab and Enter/Space, plus arrow navigation where useful. Escape should
+dismiss overlays, return from subviews, then exit from the main view with
+documented handling of unsaved work. Provide a visible Home/Exit action. For a
+fullscreen or ambient experience, direct shortcuts are acceptable only when the
+app itself makes the shortcut map discoverable.
 Return through the documented launcher lifecycle; do not launch another desktop.
 Do not force fullscreen without shell policy. Touch activation should cancel when
 the pointer leaves the target before release. Restore focus after closing dialogs.
@@ -97,15 +102,17 @@ and temporary storage, not live service dependencies. Compile all source modules
 with bytecode redirected outside the package, validate the manifest/files/icon,
 and run the complete app test suite.
 
-Launch from the app directory and another working directory. Exercise keyboard,
-touch where applicable, long labels, missing/extreme values, error messages,
+Launch from the app directory and another working directory. Exercise the complete
+keyboard-only baseline first, then touch where applicable, long labels,
+missing/extreme values, error messages,
 startup offline, invalid responses, denied storage and corrupt saves. Verify close
 during active work and repeated input. Test through the actual launcher and measure
 startup and idle resource use on the target device. Record the test setup with
 any performance measurements.
 
 Include complete code, original or appropriately licensed assets, requirements,
-tests, and a README.
+tests, and a README. Tests must cover the keyboard-only essential paths; manual
+review must confirm that tests and documentation match the actual controls.
 Include a dated `CHANGELOG.md` entry matching the app version and add each
 catalog addition or version update to the root changelog. Preserve release history
 and run the [required changelog checks](docs/changelog-policy.md) before submitting.
