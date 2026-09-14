@@ -33,15 +33,16 @@ Published versions and installation readiness belong to that catalog.
 | [Bitcoin Dashboard](../apps/bitcoin-dashboard/README.md) | Python 3.8+, Tkinter / Tk 8.6; no pip dependencies | Catalog records native installation and process-based window focus on Debian 13 PocketCHIP |
 | [Vitrallis Debug](../apps/vitrallis-debug/README.md) | Python 3.8+, Tkinter / Tk 8.6; no pip dependencies; Linux interfaces provide real diagnostics | Catalog records native installation and process-based window focus on Debian 13 PocketCHIP |
 | [Vitrallis Media Carousel](../apps/vitrallis-media-carousel/README.md) | Python 3.9+, Tk 8.6, Pillow >=10.4,<13; App Center also needs `packaging`; optional `ffmpeg` and `ffprobe` for muted WebM | Catalog records source-run playback, LAN uploads, physical touch and keyboard on Debian 13.6 ARMv7 PocketCHIP; device App Center install/update/repair verification remains pending |
-| [Firefly Field](../apps/firefly-field/README.md) | Python 3.8+, system SDL2 2.0+ and a video driver; no pip dependencies | Catalog entry is disabled pending target Shell/App Center install/update/repair and physical GPU verification |
+| [Firefly Field](../apps/firefly-field/README.md) | Python 3.8+, system SDL2 2.0+ and a video driver; no pip dependencies | Catalog enables installation; target Shell/App Center and physical GPU performance follow-up remains recorded |
 
-**Three entries are enabled in the catalog; Firefly Field is intentionally
-disabled.** Enablement is a publisher flag, not a claim that every device
-workflow has been verified. In particular, keep Media Carousel's remaining App
-Center device checks distinct from its source-run and [display acceleration
-evidence](verification/vitrallis-media-carousel-gpu.md). Firefly Field follows
-the Shell's SDL renderer selection and is ready for source-run verification, but
-its catalog installation lifecycle and actual target GPU selection are unverified.
+**All catalog entries are enabled.** Enablement is a publisher flag, not a claim
+that every device workflow has been verified. In particular, keep Media
+Carousel's remaining App Center device checks distinct from its source-run and
+[display acceleration evidence](verification/vitrallis-media-carousel-gpu.md).
+Firefly Field owns a Python SDL2 binding and follows the Shell's
+renderer-selection policy (the Shell's Rust crate is not a Python API). Its
+target installation lifecycle and physical GPU selection remain follow-up
+verification work.
 
 The packaged Bitcoin README's disabled-installation note predates catalog
 enablement. Use the current catalog for installation status. The Debug README's

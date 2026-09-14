@@ -1,4 +1,3 @@
-TODO: Update the Vitrallis Debug app to detect Lima/Mali GPUs using /sys/class/devfreq/*gpu* and display GPU utilization from the Linux devfreq_monitor load data, with a short rolling average so the percentage is stable and readable.
-
-- [ ] Media carousel plays gifs at a very slow speed, need to implement hw acceleration for gif playback
-- [ ] 
+- [x] Debug 0.2.1: discover GPU devfreq devices and average devfreq_monitor load.
+- [x] Media Carousel 0.1.4: add GPU GIF presentation and correct animation timing.
+- [ ] Verify devfreq trace permissions, GPU playback speed and overlay behavior on physical Lima/Mali hardware.

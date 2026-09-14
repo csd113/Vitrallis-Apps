@@ -58,7 +58,9 @@ Each entry contains exactly these fields:
 Catalog schema is **1**. Only the current native package contract is accepted.
 Format acceptance does not imply installer support or interaction usability. In
 addition to schema validation, catalog acceptance requires every production app
-to satisfy the [keyboard baseline](creating-apps.md#keyboard-baseline-catalog-acceptance-requirement); reviewers reject pointer/touch-only essential workflows.
+to satisfy the [keyboard baseline](creating-apps.md#keyboard-baseline-catalog-acceptance-requirement); reviewers reject pointer/touch-only essential workflows. This is a repository
+acceptance policy, not a new wire-format field or a capability inferred by the
+validator. Schema v1 and its exact allowed keys remain unchanged.
 
 ## Cross-field and byte rules
 
