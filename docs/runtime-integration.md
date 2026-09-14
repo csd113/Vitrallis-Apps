@@ -33,12 +33,15 @@ Published versions and installation readiness belong to that catalog.
 | [Bitcoin Dashboard](../apps/bitcoin-dashboard/README.md) | Python 3.8+, Tkinter / Tk 8.6; no pip dependencies | Catalog records native installation and process-based window focus on Debian 13 PocketCHIP |
 | [Vitrallis Debug](../apps/vitrallis-debug/README.md) | Python 3.8+, Tkinter / Tk 8.6; no pip dependencies; Linux interfaces provide real diagnostics | Catalog records native installation and process-based window focus on Debian 13 PocketCHIP |
 | [Vitrallis Media Carousel](../apps/vitrallis-media-carousel/README.md) | Python 3.9+, Tk 8.6, Pillow >=10.4,<13; App Center also needs `packaging`; optional `ffmpeg` and `ffprobe` for muted WebM | Catalog records source-run playback, LAN uploads, physical touch and keyboard on Debian 13.6 ARMv7 PocketCHIP; device App Center install/update/repair verification remains pending |
+| [Firefly Field](../apps/firefly-field/README.md) | Python 3.8+, system SDL2 2.0+ and a video driver; no pip dependencies | Catalog entry is disabled pending target Shell/App Center install/update/repair and physical GPU verification |
 
-**All three entries are enabled in the catalog.** Enablement is a publisher flag,
-not a claim that every device workflow has been verified. In particular, keep
-Media Carousel's remaining App Center device checks distinct from its source-run
-and [display acceleration evidence](verification/vitrallis-media-carousel-gpu.md).
-All three apps publish X11 process identity for Shell focus/resume.
+**Three entries are enabled in the catalog; Firefly Field is intentionally
+disabled.** Enablement is a publisher flag, not a claim that every device
+workflow has been verified. In particular, keep Media Carousel's remaining App
+Center device checks distinct from its source-run and [display acceleration
+evidence](verification/vitrallis-media-carousel-gpu.md). Firefly Field follows
+the Shell's SDL renderer selection and is ready for source-run verification, but
+its catalog installation lifecycle and actual target GPU selection are unverified.
 
 The packaged Bitcoin README's disabled-installation note predates catalog
 enablement. Use the current catalog for installation status. The Debug README's
@@ -46,13 +49,14 @@ hardware caveat applies beyond the specific installation and focus checks listed
 above. App READMEs describe their pinned release; changing them requires a new
 package version and publication.
 
-On Debian, all three apps need `python3-tk`. Media Carousel additionally needs a
-suitable Pillow installation (`python3-pil` and `python3-pil.imagetk`) and
+On Debian, the three Tk apps need `python3-tk`. Media Carousel additionally needs
+a suitable Pillow installation (`python3-pil` and `python3-pil.imagetk`) and
 `python3-packaging` for App Center's requirement checks; verify that the distro
-Pillow meets the declared range. Optional `ffmpeg` supplies WebM tools. Its
-[README](../apps/vitrallis-media-carousel/README.md#runtime-and-installation)
-explains older images, ARMv7 dependencies, and runtime setup. Repository tools
-separately need Python 3.11+.
+Pillow meets the declared range. Optional `ffmpeg` supplies WebM tools. Firefly
+Field requires the system `libsdl2-2.0-0` runtime; `--renderer hardware` requires
+an accelerated SDL driver while `--renderer auto` has a complete software
+fallback. Its [README](../apps/firefly-field/README.md) documents those modes.
+Repository tools separately need Python 3.11+.
 
 ## Verify a new app or target
 

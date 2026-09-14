@@ -49,6 +49,7 @@ manifest v1**. Runtime requirements and device verification vary by app; see
 | [Bitcoin Dashboard](apps/bitcoin-dashboard/README.md) | Bitcoin CAD price, chart, and network dashboard for the PocketCHIP. |
 | [Vitrallis Debug](apps/vitrallis-debug/README.md) | Offline network, CPU, temperature, and memory diagnostics for the PocketCHIP. |
 | [Vitrallis Media Carousel](apps/vitrallis-media-carousel/README.md) | Native media slideshow with LAN uploads, named collections and shared settings. |
+| [Firefly Field](apps/firefly-field/README.md) | A calm, fullscreen pixel-art firefly meadow rendered through SDL2. |
 
 [`apps.json`](apps.json) is authoritative for published versions, installation
 readiness, and compatibility notes. The [catalog changelog](CHANGELOG.md) records
