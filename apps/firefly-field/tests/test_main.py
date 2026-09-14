@@ -1,6 +1,7 @@
 import importlib.util
 from pathlib import Path
 import sys
+from tempfile import TemporaryDirectory
 import unittest
 
 
@@ -50,10 +51,31 @@ class FieldTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             firefly.parse_renderer("vulkan")
 
+    def test_performance_meter_uses_cpu_deltas_and_real_gpu_counter_only(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            proc, sys_root = root / "proc", root / "sys"
+            proc.mkdir()
+            counter = sys_root / "class/drm/card0/device/gpu_busy_percent"
+            counter.parent.mkdir(parents=True)
+            proc.joinpath("stat").write_text("cpu  100 0 0 100 0\n", encoding="ascii")
+            counter.write_text("47\n", encoding="ascii")
+            meter = firefly.PerformanceMeter(proc, sys_root)
+            initial = meter.sample(0)
+            self.assertIsNone(initial.cpu_percent)
+            self.assertEqual(initial.gpu_percent, 47.0)
+            proc.joinpath("stat").write_text("cpu  180 0 0 120 0\n", encoding="ascii")
+            measured = meter.sample(1)
+            self.assertEqual(measured.cpu_percent, 80.0)
+            self.assertEqual(measured.gpu_percent, 47.0)
+            counter.write_text("101\n", encoding="ascii")
+            self.assertIsNone(meter.sample(2).gpu_percent)
+
     def test_keyboard_controls_cover_the_complete_ambient_experience(self):
         app = object.__new__(firefly.FireflyApp)
         app.field = firefly.Field(50, seed=1)
-        app.running, app.show_status = True, False
+        app.running, app.show_status, app.show_performance = True, False, False
+        app.mood_index, app.wind_index = 0, 1
         app.field.update(.1)
 
         app.handle_key(firefly.SDLK_SPACE)
@@ -64,11 +86,24 @@ class FieldTests(unittest.TestCase):
         self.assertEqual(len(app.field.fireflies), 60)
         app.handle_key(firefly.SDLK_DOWN)
         self.assertEqual(len(app.field.fireflies), 50)
+        app.handle_key(ord("a"))
+        self.assertEqual(len(app.field.fireflies), 51)
+        app.handle_key(ord("d"))
+        self.assertEqual(len(app.field.fireflies), 50)
+        app.field.change_population(firefly.MAX_FIREFLIES)
+        app.handle_key(ord("a"))
+        self.assertEqual(len(app.field.fireflies), firefly.MAX_FIREFLIES)
         initial_glow = app.field.glow
         app.handle_key(firefly.SDLK_LEFT)
         self.assertLess(app.field.glow, initial_glow)
         app.handle_key(firefly.SDLK_RIGHT)
         self.assertEqual(app.field.glow, initial_glow)
+        app.handle_key(ord("p"))
+        self.assertTrue(app.show_performance)
+        app.handle_key(ord("c"))
+        self.assertEqual(app.mood_index, 1)
+        app.handle_key(ord("w"))
+        self.assertEqual(app.wind_index, 2)
         app.handle_key(ord("r"))
         self.assertEqual(app.field.time, 0)
         app.handle_key(firefly.SDLK_ESCAPE)

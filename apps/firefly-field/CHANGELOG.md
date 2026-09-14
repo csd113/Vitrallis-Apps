@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 — 2026-09-13
+
+- Add an opt-in performance overlay with local CPU utilization and real DRM GPU
+  busy readings where the driver exposes them, reporting unavailable otherwise.
+- Add single-firefly A/D controls bounded to the 30–260 population range while
+  retaining the Up/Down ten-firefly shortcuts.
+- Add keyboard-selectable Night, Mist and Moss color moods plus three wind
+  strengths, with current values displayed in the status overlay.
+
 ## 0.1.1 — 2026-09-13
 
 - Make the complete ambient experience keyboard-operable and expose every key

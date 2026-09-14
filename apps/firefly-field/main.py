@@ -21,6 +21,9 @@ from typing import Iterable, List, Optional, Sequence, Tuple
 
 LOGICAL_WIDTH, LOGICAL_HEIGHT = 480, 272
 MIN_FIREFLIES, MAX_FIREFLIES, DEFAULT_FIREFLIES = 30, 260, 170
+MOODS = (("NIGHT", (255, 255, 255)), ("MIST", (188, 222, 255)), ("MOSS", (195, 255, 211)))
+WIND_LEVELS = (.65, 1.0, 1.45)
+WIND_NAMES = ("CALM", "SOFT", "LIVELY")
 
 SDL_INIT_VIDEO = 0x00000020
 SDL_WINDOW_SHOWN = 0x00000004
@@ -133,6 +136,7 @@ class SDL:
         self.UpdateTexture = _bind(self.lib, "SDL_UpdateTexture", integer, ptr, c.POINTER(SDLRect), c.c_void_p, integer)
         self.SetTextureBlendMode = _bind(self.lib, "SDL_SetTextureBlendMode", integer, ptr, integer)
         self.SetTextureAlphaMod = _bind(self.lib, "SDL_SetTextureAlphaMod", integer, ptr, u8)
+        self.SetTextureColorMod = _bind(self.lib, "SDL_SetTextureColorMod", integer, ptr, u8, u8, u8)
         self.RenderSetLogicalSize = _bind(self.lib, "SDL_RenderSetLogicalSize", integer, ptr, integer, integer)
         self.PollEvent = _bind(self.lib, "SDL_PollEvent", integer, c.c_void_p)
         self.GetMouseState = _bind(self.lib, "SDL_GetMouseState", uint, c.POINTER(integer), c.POINTER(integer))
@@ -382,6 +386,93 @@ class Field:
             if fly.y > 260: fly.y, fly.vy = 259, -abs(fly.vy)
 
 
+@dataclass(frozen=True)
+class PerformanceReading:
+    """A deliberately narrow, local performance snapshot."""
+    cpu_percent: Optional[float]
+    gpu_percent: Optional[float]
+
+
+class PerformanceMeter:
+    """Sample portable CPU and exposed DRM busy counters without subprocesses.
+
+    GPU utilisation has no portable SDL metric. A missing `gpu_busy_percent`
+    counter is reported as unavailable instead of guessing from frame rate,
+    renderer flags or clock frequency.
+    """
+    def __init__(self, proc_root: Path = Path("/proc"), sys_root: Path = Path("/sys")) -> None:
+        self.proc_root, self.sys_root = proc_root, sys_root
+        self.cpu_previous: Optional[Tuple[int, int]] = None
+        self.gpu_paths: List[Path] = []
+        self.next_sample, self.next_discovery = 0.0, 0.0
+        self.reading = PerformanceReading(None, None)
+
+    @staticmethod
+    def read(path: Path) -> Optional[str]:
+        try:
+            return path.read_text(encoding="ascii", errors="replace")
+        except OSError:
+            return None
+
+    @staticmethod
+    def cpu_totals(raw: Optional[str]) -> Optional[Tuple[int, int]]:
+        if not raw:
+            return None
+        for line in raw.splitlines():
+            parts = line.split()
+            if not parts or parts[0] != "cpu":
+                continue
+            try:
+                values = [int(value) for value in parts[1:]]
+            except ValueError:
+                return None
+            if len(values) < 4 or any(value < 0 for value in values):
+                return None
+            return sum(values), values[3] + (values[4] if len(values) > 4 else 0)
+        return None
+
+    def discover_gpu_paths(self, now: float) -> None:
+        if now < self.next_discovery:
+            return
+        self.gpu_paths = []
+        try:
+            cards = sorted((self.sys_root / "class/drm").glob("card[0-9]*"))
+            for card in cards:
+                if card.name[4:].isdigit():
+                    counter = card / "device/gpu_busy_percent"
+                    if counter.is_file():
+                        self.gpu_paths.append(counter)
+        except OSError:
+            pass
+        self.next_discovery = now + 30.0
+
+    def sample(self, now: float) -> PerformanceReading:
+        if now < self.next_sample:
+            return self.reading
+        self.next_sample = now + .75
+        totals = self.cpu_totals(self.read(self.proc_root / "stat"))
+        cpu = None
+        if totals:
+            if self.cpu_previous:
+                total_delta, idle_delta = totals[0] - self.cpu_previous[0], totals[1] - self.cpu_previous[1]
+                if total_delta > 0 and 0 <= idle_delta <= total_delta:
+                    cpu = (total_delta - idle_delta) * 100.0 / total_delta
+            self.cpu_previous = totals
+        self.discover_gpu_paths(now)
+        gpu = None
+        for path in self.gpu_paths:
+            raw = self.read(path)
+            try:
+                value = float(raw.strip()) if raw is not None else -1.0
+            except ValueError:
+                continue
+            if 0.0 <= value <= 100.0:
+                gpu = value
+                break
+        self.reading = PerformanceReading(cpu, gpu)
+        return self.reading
+
+
 FONT = {
     " ": (0, 0, 0, 0, 0, 0, 0), "A": (14, 17, 17, 31, 17, 17, 17), "C": (15, 16, 16, 16, 16, 16, 15),
     "D": (30, 17, 17, 17, 17, 17, 30), "E": (31, 16, 16, 30, 16, 16, 31), "F": (31, 16, 16, 30, 16, 16, 16),
@@ -393,7 +484,7 @@ FONT = {
     "0": (14, 17, 19, 21, 25, 17, 14), "1": (4, 12, 4, 4, 4, 4, 14), "2": (14, 17, 1, 2, 4, 8, 31),
     "3": (30, 1, 1, 14, 1, 1, 30), "4": (2, 6, 10, 18, 31, 2, 2), "5": (31, 16, 16, 30, 1, 1, 30),
     "6": (14, 16, 16, 30, 17, 17, 14), "7": (31, 1, 2, 4, 8, 8, 8), "8": (14, 17, 17, 14, 17, 17, 14),
-    "9": (14, 17, 17, 15, 1, 1, 14), ":": (0, 4, 0, 0, 4, 0, 0), "%": (17, 2, 4, 8, 16, 0, 17),
+    "9": (14, 17, 17, 15, 1, 1, 14), ":": (0, 4, 0, 0, 4, 0, 0), "-": (0, 0, 0, 31, 0, 0, 0), "%": (17, 2, 4, 8, 16, 0, 17),
 }
 
 
@@ -403,6 +494,10 @@ class FireflyApp:
         self.textures: List[c.c_void_p] = []
         self.field = Field()
         self.show_status = False
+        self.show_performance = False
+        self.performance = PerformanceMeter()
+        self.mood_index = 0
+        self.wind_index = 1
         self.running = True
         self.fps, self.frames, self.fps_then = 0, 0, time.monotonic()
         self.renderer_name, self.accelerated = "Unknown", False
@@ -551,13 +646,13 @@ class FireflyApp:
 
     def draw_status(self) -> None:
         # H exposes the complete keyboard path without cluttering the resting scene.
-        panel = SDLRect(10, 10, 178, 142)
+        panel = SDLRect(10, 10, 178, 204)
         self.sdl.SetRenderDrawBlendMode(self.renderer, SDL_BLENDMODE_BLEND)
         self.sdl.SetRenderDrawColor(self.renderer, 4, 14, 18, 215)
         self.sdl.RenderFillRect(self.renderer, c.byref(panel))
         self.sdl.SetRenderDrawColor(self.renderer, 126, 193, 163, 105)
-        for edge in (SDLRect(10, 10, 178, 1), SDLRect(10, 151, 178, 1),
-                     SDLRect(10, 10, 1, 142), SDLRect(187, 10, 1, 142)):
+        for edge in (SDLRect(10, 10, 178, 1), SDLRect(10, 213, 178, 1),
+                     SDLRect(10, 10, 1, 204), SDLRect(187, 10, 1, 204)):
             self.sdl.RenderFillRect(self.renderer, c.byref(edge))
         self.sdl.SetRenderDrawBlendMode(self.renderer, SDL_BLENDMODE_NONE)
         self.draw_text(17, 16, "FIREFLY FIELD", 1)
@@ -566,12 +661,33 @@ class FireflyApp:
         name = ("GPU " if self.accelerated else "SDL ") + self.renderer_name[:10]
         self.draw_text(17, 51, name, 1, (170, 205, 167, 255))
         self.draw_text(17, 62, "STATE: " + ("PAUSED" if self.field.paused else "FLOW"), 1)
-        self.draw_text(17, 77, "SPACE: PAUSE", 1)
-        self.draw_text(17, 88, "R: RESEED", 1)
-        self.draw_text(17, 99, "UP DOWN: FLIES", 1)
-        self.draw_text(17, 110, "LEFT RIGHT: GLOW", 1)
-        self.draw_text(17, 121, "ESC: EXIT", 1)
-        self.draw_text(17, 136, "H: HIDE", 1, (170, 205, 167, 255))
+        self.draw_text(17, 73, "MOOD: " + MOODS[self.mood_index][0], 1)
+        self.draw_text(17, 84, "WIND: " + WIND_NAMES[self.wind_index], 1)
+        self.draw_text(17, 99, "SPACE: PAUSE", 1)
+        self.draw_text(17, 110, "R: RESEED", 1)
+        self.draw_text(17, 121, "UP DOWN: TEN", 1)
+        self.draw_text(17, 132, "A D: ONE", 1)
+        self.draw_text(17, 143, "LEFT RIGHT: GLOW", 1)
+        self.draw_text(17, 154, "P: STATS", 1)
+        self.draw_text(17, 165, "C: MOOD", 1)
+        self.draw_text(17, 176, "W: WIND", 1)
+        self.draw_text(17, 187, "ESC: EXIT", 1)
+        self.draw_text(17, 202, "H: HIDE", 1, (170, 205, 167, 255))
+
+    @staticmethod
+    def percentage(value: Optional[float]) -> str:
+        return "---" if value is None else "%03d%%" % round(clamp(value, 0.0, 100.0))
+
+    def draw_performance(self, now: float) -> None:
+        """A compact opt-in overlay, kept off by default for a quiet scene."""
+        reading = self.performance.sample(now)
+        panel = SDLRect(399, 10, 71, 37)
+        self.sdl.SetRenderDrawBlendMode(self.renderer, SDL_BLENDMODE_BLEND)
+        self.sdl.SetRenderDrawColor(self.renderer, 4, 14, 18, 205)
+        self.sdl.RenderFillRect(self.renderer, c.byref(panel))
+        self.sdl.SetRenderDrawBlendMode(self.renderer, SDL_BLENDMODE_NONE)
+        self.draw_text(405, 16, "CPU:" + self.percentage(reading.cpu_percent), 1, (170, 205, 167, 255))
+        self.draw_text(405, 29, "GPU:" + self.percentage(reading.gpu_percent), 1, (170, 205, 167, 255))
 
     def draw_twinkles(self) -> None:
         """A small deterministic star pass adds life without texture uploads."""
@@ -599,6 +715,8 @@ class FireflyApp:
     def render(self) -> None:
         self.sdl.SetRenderDrawColor(self.renderer, 3, 10, 20, 255)
         self.sdl.RenderClear(self.renderer)
+        _, tint = MOODS[self.mood_index]
+        self.sdl.SetTextureColorMod(self.scene, *tint)
         destination = SDLRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT)
         self.sdl.RenderCopy(self.renderer, self.scene, None, c.byref(destination))
         self.draw_twinkles()
@@ -613,11 +731,13 @@ class FireflyApp:
         # A handful of cheap texture copies gives the foreground a living edge.
         for index in range(19):
             x = index * 28 - 10
-            sway = math.sin(self.field.time * .75 + index * .91) * (2 + index % 3)
+            sway = math.sin(self.field.time * .75 + index * .91) * (2 + index % 3) * WIND_LEVELS[self.wind_index]
             self.copy(self.grass_texture, x, 257, 20, 46, 180, sway)
         self.draw_shooting_star()
         if self.show_status:
             self.draw_status()
+        if self.show_performance:
+            self.draw_performance(time.monotonic())
         self.sdl.RenderPresent(self.renderer)
 
     def handle_key(self, sym: int) -> None:
@@ -626,6 +746,11 @@ class FireflyApp:
         elif sym == SDLK_SPACE: self.field.paused = not self.field.paused
         elif sym in (ord("r"), ord("R")): self.field.reseed(len(self.field.fireflies))
         elif sym in (ord("h"), ord("H")): self.show_status = not self.show_status
+        elif sym in (ord("p"), ord("P")): self.show_performance = not self.show_performance
+        elif sym in (ord("a"), ord("A")): self.field.change_population(1)
+        elif sym in (ord("d"), ord("D")): self.field.change_population(-1)
+        elif sym in (ord("c"), ord("C")): self.mood_index = (self.mood_index + 1) % len(MOODS)
+        elif sym in (ord("w"), ord("W")): self.wind_index = (self.wind_index + 1) % len(WIND_LEVELS)
         elif sym == SDLK_UP: self.field.change_population(10)
         elif sym == SDLK_DOWN: self.field.change_population(-10)
         elif sym == SDLK_LEFT: self.field.glow = clamp(self.field.glow - .1, .2, 1.4)

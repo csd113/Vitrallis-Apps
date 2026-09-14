@@ -48,12 +48,22 @@ python3 /path/to/apps/firefly-field/main.py --check
 | R | Reseed the field. |
 | H | Toggle the status overlay. |
 | Up / Down | Add or remove 10 fireflies. |
+| A / D | Add or remove one firefly, bounded to 30–260. |
 | Left / Right | Reduce or increase glow. |
+| P | Toggle live CPU/GPU utilization. |
+| C | Cycle Night, Mist and Moss color moods. |
+| W | Cycle Calm, Soft and Lively wind. |
 | Escape | Exit through the normal window lifecycle. |
 
 The default view intentionally has no visible UI. Press **H** to reveal the
 status overlay and complete keyboard reference, so every control remains
 discoverable and usable without a pointer or touchscreen.
+
+The performance overlay is off by default. CPU utilization is sampled from
+`/proc/stat`. GPU utilization is shown only when the active Linux DRM driver
+exports a real `gpu_busy_percent` counter; `---` means unavailable. Renderer
+selection and frame rate are not misreported as GPU load. Settings are
+session-only and require no storage permission.
 
 ## Artwork and performance
 
