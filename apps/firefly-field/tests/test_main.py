@@ -50,6 +50,30 @@ class FieldTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             firefly.parse_renderer("vulkan")
 
+    def test_keyboard_controls_cover_the_complete_ambient_experience(self):
+        app = object.__new__(firefly.FireflyApp)
+        app.field = firefly.Field(50, seed=1)
+        app.running, app.show_status = True, False
+        app.field.update(.1)
+
+        app.handle_key(firefly.SDLK_SPACE)
+        self.assertTrue(app.field.paused)
+        app.handle_key(ord("h"))
+        self.assertTrue(app.show_status)
+        app.handle_key(firefly.SDLK_UP)
+        self.assertEqual(len(app.field.fireflies), 60)
+        app.handle_key(firefly.SDLK_DOWN)
+        self.assertEqual(len(app.field.fireflies), 50)
+        initial_glow = app.field.glow
+        app.handle_key(firefly.SDLK_LEFT)
+        self.assertLess(app.field.glow, initial_glow)
+        app.handle_key(firefly.SDLK_RIGHT)
+        self.assertEqual(app.field.glow, initial_glow)
+        app.handle_key(ord("r"))
+        self.assertEqual(app.field.time, 0)
+        app.handle_key(firefly.SDLK_ESCAPE)
+        self.assertFalse(app.running)
+
 
 if __name__ == "__main__":
     unittest.main()

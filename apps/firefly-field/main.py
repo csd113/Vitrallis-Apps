@@ -37,6 +37,8 @@ SDL_BLENDMODE_BLEND = 1
 SDL_BLENDMODE_ADD = 2
 SDL_FLIP_NONE = 0
 SDL_QUIT, SDL_KEYDOWN, SDL_MOUSEMOTION, SDL_MOUSEBUTTONDOWN = 0x100, 0x300, 0x400, 0x401
+SDLK_ESCAPE, SDLK_SPACE = 27, 32
+SDLK_UP, SDLK_DOWN, SDLK_LEFT, SDLK_RIGHT = 1073741906, 1073741905, 1073741904, 1073741903
 
 
 class SDLRect(c.Structure):
@@ -386,7 +388,7 @@ FONT = {
     "L": (16, 16, 16, 16, 16, 16, 31), "M": (17, 27, 21, 21, 17, 17, 17), "N": (17, 25, 21, 19, 17, 17, 17),
     "O": (14, 17, 17, 17, 17, 17, 14), "P": (30, 17, 17, 30, 16, 16, 16), "R": (30, 17, 17, 30, 20, 18, 17),
     "S": (15, 16, 16, 14, 1, 1, 30), "T": (31, 4, 4, 4, 4, 4, 4), "U": (17, 17, 17, 17, 17, 17, 14),
-    "V": (17, 17, 17, 17, 17, 10, 4), "W": (17, 17, 17, 21, 21, 21, 10), "Y": (17, 17, 10, 4, 4, 4, 4),
+    "V": (17, 17, 17, 17, 17, 10, 4), "W": (17, 17, 17, 21, 21, 21, 10), "X": (17, 17, 10, 4, 10, 17, 17), "Y": (17, 17, 10, 4, 4, 4, 4),
     "0": (14, 17, 19, 21, 25, 17, 14), "1": (4, 12, 4, 4, 4, 4, 14), "2": (14, 17, 1, 2, 4, 8, 31),
     "3": (30, 1, 1, 14, 1, 1, 30), "4": (2, 6, 10, 18, 31, 2, 2), "5": (31, 16, 16, 30, 1, 1, 30),
     "6": (14, 16, 16, 30, 17, 17, 14), "7": (31, 1, 2, 4, 8, 8, 8), "8": (14, 17, 17, 14, 17, 17, 14),
@@ -547,7 +549,8 @@ class FireflyApp:
             cursor += 6 * scale
 
     def draw_status(self) -> None:
-        panel = SDLRect(10, 10, 172, 61)
+        # H exposes the complete keyboard path without cluttering the resting scene.
+        panel = SDLRect(10, 10, 178, 138)
         self.sdl.SetRenderDrawColor(self.renderer, 4, 14, 18, 215)
         self.sdl.RenderFillRect(self.renderer, c.byref(panel))
         self.draw_text(17, 16, "FIREFLY FIELD", 1)
@@ -555,6 +558,12 @@ class FireflyApp:
         self.draw_text(17, 40, "FPS: %02d" % self.fps, 1, (170, 205, 167, 255))
         name = ("GPU " if self.accelerated else "SDL ") + self.renderer_name[:10]
         self.draw_text(17, 51, name, 1, (170, 205, 167, 255))
+        self.draw_text(17, 67, "SPACE: PAUSE", 1)
+        self.draw_text(17, 78, "R: RESEED", 1)
+        self.draw_text(17, 89, "UP DOWN: FLIES", 1)
+        self.draw_text(17, 100, "LEFT RIGHT: GLOW", 1)
+        self.draw_text(17, 111, "ESC: EXIT", 1)
+        self.draw_text(17, 126, "H: HIDE", 1, (170, 205, 167, 255))
 
     def render(self) -> None:
         self.sdl.SetRenderDrawColor(self.renderer, 3, 10, 20, 255)
@@ -582,15 +591,15 @@ class FireflyApp:
         self.sdl.RenderPresent(self.renderer)
 
     def handle_key(self, sym: int) -> None:
-        # SDLK values are stable ASCII for these keys; arrows use SDL's 0x40000000 range.
-        if sym in (27,): self.running = False
-        elif sym in (32,): self.field.paused = not self.field.paused
+        """Every ambient control has a direct keyboard equivalent."""
+        if sym == SDLK_ESCAPE: self.running = False
+        elif sym == SDLK_SPACE: self.field.paused = not self.field.paused
         elif sym in (ord("r"), ord("R")): self.field.reseed(len(self.field.fireflies))
         elif sym in (ord("h"), ord("H")): self.show_status = not self.show_status
-        elif sym in (273, 1073741906): self.field.change_population(10)
-        elif sym in (274, 1073741905): self.field.change_population(-10)
-        elif sym in (276, 1073741904): self.field.glow = clamp(self.field.glow - .1, .2, 1.4)
-        elif sym in (275, 1073741903): self.field.glow = clamp(self.field.glow + .1, .2, 1.4)
+        elif sym == SDLK_UP: self.field.change_population(10)
+        elif sym == SDLK_DOWN: self.field.change_population(-10)
+        elif sym == SDLK_LEFT: self.field.glow = clamp(self.field.glow - .1, .2, 1.4)
+        elif sym == SDLK_RIGHT: self.field.glow = clamp(self.field.glow + .1, .2, 1.4)
 
     def events(self) -> None:
         event = (c.c_ubyte * 56)()

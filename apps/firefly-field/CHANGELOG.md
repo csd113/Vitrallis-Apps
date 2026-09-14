@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1 — 2026-09-13
+
+- Make the complete ambient experience keyboard-operable and expose every key
+  binding in the optional status overlay, including a normal Escape exit.
+- Add keyboard regression coverage for pause, reseed, overlay, population, glow
+  and exit controls without requiring a graphical SDL session.
+
 ## 0.1.0 — 2026-09-13
 
 - Add the offline Firefly Field ambient app with original pixel-art night scene,

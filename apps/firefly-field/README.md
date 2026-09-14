@@ -51,8 +51,9 @@ python3 /path/to/apps/firefly-field/main.py --check
 | Left / Right | Reduce or increase glow. |
 | Escape | Exit through the normal window lifecycle. |
 
-The default view intentionally has no visible UI. The optional overlay reports
-population, measured frame rate and SDL renderer name.
+The default view intentionally has no visible UI. Press **H** to reveal the
+status overlay and complete keyboard reference, so every control remains
+discoverable and usable without a pointer or touchscreen.
 
 ## Artwork and performance
 
