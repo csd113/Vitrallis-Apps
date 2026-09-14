@@ -10,7 +10,7 @@ and place new records in the newest date section. See the
 
 ## 2026-09-13
 
-- Added `io.vitrallis.fireflyfield` `0.1.0`: Publish the SDL2-rendered Firefly Field ambient meadow with verified accelerated-renderer selection and software fallback. [App changelog](apps/firefly-field/CHANGELOG.md).
+- Added `io.vitrallis.fireflyfield` `0.1.1`: Publish the SDL2-rendered Firefly Field ambient meadow with verified accelerated-renderer selection, software fallback and complete keyboard controls. [App changelog](apps/firefly-field/CHANGELOG.md).
 - Updated `io.vitrallis.mediacarousel` `0.1.3`: Shorten the per-launch LAN access code to six characters and update the login form and instructions. [App changelog](apps/vitrallis-media-carousel/CHANGELOG.md).
 
 ## 2026-09-12

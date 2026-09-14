@@ -154,7 +154,7 @@
       "id": "io.vitrallis.fireflyfield",
       "installable": false,
       "name": "Firefly Field",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -166,24 +166,24 @@
       "compatibility_notes": "Requires Python 3.8+ and system SDL2 2.0+ with an X11/Wayland/video driver. Follows Vitrallis Shell GPU renderer policy: auto prefers verified accelerated SDL renderers (GLES2 first) and falls back to software; hardware mode explicitly requires acceleration. Target Shell/App Center installation, update and repair verification is pending.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "f7db82ec4bff02e45f92fdbb725784f0561c5fcf",
+        "commit": "c3c7445d8cd31f3d8634f244515266a1a4ee41b9",
         "path": "apps/firefly-field"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 704,
-          "sha256": "ae866f15c8fda6599e835c92d962dd693b995e39bec3cab90516e606b4290308"
+          "size": 1025,
+          "sha256": "245979d266b788b37b29343fb06ccfb0c90de23ec5b1f48511e267054b61f1bd"
         },
         {
           "path": "README.md",
-          "size": 3121,
-          "sha256": "96f045694dc9822a75f7f33a7b9904979b2e21f164e13a82166fe750e888edcc"
+          "size": 3194,
+          "sha256": "b349062ff5a30c36d4396f1fcd674785647a958f954390a10b302c455324571a"
         },
         {
           "path": "app.toml",
           "size": 193,
-          "sha256": "a7a1988ab1d020aaf7bb6f6e016b3632deadad0ccc742a242c69d37c06b6fcea"
+          "sha256": "8edd4809f630cf43fd191a20e190b9949989124da9f08cb8dc849ff48e527927"
         },
         {
           "path": "assets/README.md",
@@ -202,8 +202,8 @@
         },
         {
           "path": "main.py",
-          "size": 33325,
-          "sha256": "258814c574eb6d964aa828eea8fe8c9cded9d0df976118a5fbf20a5010c86d0a"
+          "size": 33847,
+          "sha256": "59539cc7f514f1a59879370fcc24bc5f905a0d47c02a7dac710197f2fa9c2a34"
         },
         {
           "path": "requirements.txt",
