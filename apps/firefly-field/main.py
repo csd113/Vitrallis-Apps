@@ -122,6 +122,7 @@ class SDL:
         self.GetCurrentVideoDriver = _bind(self.lib, "SDL_GetCurrentVideoDriver", text)
         self.SetHint = _bind(self.lib, "SDL_SetHint", integer, text, text)
         self.SetRenderDrawColor = _bind(self.lib, "SDL_SetRenderDrawColor", integer, ptr, u8, u8, u8, u8)
+        self.SetRenderDrawBlendMode = _bind(self.lib, "SDL_SetRenderDrawBlendMode", integer, ptr, integer)
         self.RenderClear = _bind(self.lib, "SDL_RenderClear", integer, ptr)
         self.RenderPresent = _bind(self.lib, "SDL_RenderPresent", None, ptr)
         self.RenderFillRect = _bind(self.lib, "SDL_RenderFillRect", integer, ptr, c.POINTER(SDLRect))
@@ -550,26 +551,57 @@ class FireflyApp:
 
     def draw_status(self) -> None:
         # H exposes the complete keyboard path without cluttering the resting scene.
-        panel = SDLRect(10, 10, 178, 138)
+        panel = SDLRect(10, 10, 178, 142)
+        self.sdl.SetRenderDrawBlendMode(self.renderer, SDL_BLENDMODE_BLEND)
         self.sdl.SetRenderDrawColor(self.renderer, 4, 14, 18, 215)
         self.sdl.RenderFillRect(self.renderer, c.byref(panel))
+        self.sdl.SetRenderDrawColor(self.renderer, 126, 193, 163, 105)
+        for edge in (SDLRect(10, 10, 178, 1), SDLRect(10, 151, 178, 1),
+                     SDLRect(10, 10, 1, 142), SDLRect(187, 10, 1, 142)):
+            self.sdl.RenderFillRect(self.renderer, c.byref(edge))
+        self.sdl.SetRenderDrawBlendMode(self.renderer, SDL_BLENDMODE_NONE)
         self.draw_text(17, 16, "FIREFLY FIELD", 1)
         self.draw_text(17, 29, "FIREFLIES: %03d" % len(self.field.fireflies), 1, (170, 205, 167, 255))
         self.draw_text(17, 40, "FPS: %02d" % self.fps, 1, (170, 205, 167, 255))
         name = ("GPU " if self.accelerated else "SDL ") + self.renderer_name[:10]
         self.draw_text(17, 51, name, 1, (170, 205, 167, 255))
-        self.draw_text(17, 67, "SPACE: PAUSE", 1)
-        self.draw_text(17, 78, "R: RESEED", 1)
-        self.draw_text(17, 89, "UP DOWN: FLIES", 1)
-        self.draw_text(17, 100, "LEFT RIGHT: GLOW", 1)
-        self.draw_text(17, 111, "ESC: EXIT", 1)
-        self.draw_text(17, 126, "H: HIDE", 1, (170, 205, 167, 255))
+        self.draw_text(17, 62, "STATE: " + ("PAUSED" if self.field.paused else "FLOW"), 1)
+        self.draw_text(17, 77, "SPACE: PAUSE", 1)
+        self.draw_text(17, 88, "R: RESEED", 1)
+        self.draw_text(17, 99, "UP DOWN: FLIES", 1)
+        self.draw_text(17, 110, "LEFT RIGHT: GLOW", 1)
+        self.draw_text(17, 121, "ESC: EXIT", 1)
+        self.draw_text(17, 136, "H: HIDE", 1, (170, 205, 167, 255))
+
+    def draw_twinkles(self) -> None:
+        """A small deterministic star pass adds life without texture uploads."""
+        for index in range(24):
+            x = int(12 + hash01(index, 101) * (LOGICAL_WIDTH - 24))
+            y = int(14 + hash01(index, 103) * 126)
+            pulse = .52 + .48 * math.sin(self.field.time * (.58 + hash01(index, 107)) + index)
+            brightness = int(58 + 104 * pulse)
+            self.sdl.SetRenderDrawColor(self.renderer, brightness // 2, brightness // 2, brightness, 255)
+            size = 2 if pulse > .94 and index % 5 == 0 else 1
+            star = SDLRect(x, y, size, size)
+            self.sdl.RenderFillRect(self.renderer, c.byref(star))
+
+    def draw_shooting_star(self) -> None:
+        if not 0 < self.field.shooting_star < .75:
+            return
+        progress = 1 - self.field.shooting_star / .75
+        # Draw the tail first so the small bright head remains crisp.
+        for segment in range(4, -1, -1):
+            tail = max(0.0, progress - segment * .055)
+            alpha = int(150 * (1 - progress) * (1 - segment * .15))
+            size = 8 + (4 - segment) * 2
+            self.copy(self.glow_texture, 70 + tail * 190, 45 + tail * 60, size, size, alpha)
 
     def render(self) -> None:
         self.sdl.SetRenderDrawColor(self.renderer, 3, 10, 20, 255)
         self.sdl.RenderClear(self.renderer)
         destination = SDLRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT)
         self.sdl.RenderCopy(self.renderer, self.scene, None, c.byref(destination))
+        self.draw_twinkles()
         # Far insects are first, selling depth while leaving close sprites readable.
         for fly in sorted(self.field.fireflies, key=lambda item: item.depth):
             brightness = self.field.brightness(fly)
@@ -583,9 +615,7 @@ class FireflyApp:
             x = index * 28 - 10
             sway = math.sin(self.field.time * .75 + index * .91) * (2 + index % 3)
             self.copy(self.grass_texture, x, 257, 20, 46, 180, sway)
-        if 0 < self.field.shooting_star < .75:
-            progress = 1 - self.field.shooting_star / .75
-            self.copy(self.glow_texture, 70 + progress * 190, 45 + progress * 60, 24, 24, int(175 * (1 - progress)))
+        self.draw_shooting_star()
         if self.show_status:
             self.draw_status()
         self.sdl.RenderPresent(self.renderer)
