@@ -4,7 +4,7 @@ import sys
 import signal
 
 NAME = "Vitrallis Media Carousel"
-VERSION = "0.1.3"
+VERSION = "0.1.4"
 
 
 def install_shutdown_handlers(app):

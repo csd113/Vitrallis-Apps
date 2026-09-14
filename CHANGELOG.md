@@ -8,8 +8,13 @@ use America/Vancouver time. App IDs remain stable; each app ships its own
 and place new records in the newest date section. See the
 [changelog policy](docs/changelog-policy.md) for the required submission format.
 
-## 2026-09-13
+## 2026-09-14
 
+- Added `io.vitrallis.fireflyfield` `0.2.1`: Ship packaged meadow artwork, improve renderer selection and input handling, and enable catalog installation. [App changelog](apps/firefly-field/CHANGELOG.md).
+- Updated `io.vitrallis.debug` `0.2.1`: Discover Lima/Mali devfreq GPUs and present a stable devfreq-monitor utilization average. [App changelog](apps/vitrallis-debug/CHANGELOG.md).
+- Updated `io.vitrallis.mediacarousel` `0.1.4`: Use an optional GLES2 presentation path for GIFs and keep animation timing on the media clock. [App changelog](apps/vitrallis-media-carousel/CHANGELOG.md).
+
+## 2026-09-13
 - Updated `io.vitrallis.mediacarousel` `0.1.3`: Shorten the per-launch LAN access code to six characters and update the login form and instructions. [App changelog](apps/vitrallis-media-carousel/CHANGELOG.md).
 
 ## 2026-09-12

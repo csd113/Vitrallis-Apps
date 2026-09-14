@@ -2,14 +2,16 @@
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import queue
+import sys
 import time
 import tkinter as tk
 from tkinter import ttk
 
 from PIL import ImageTk
+from gpu import GpuUnavailable, ImageRenderer
 from library import Library
 from media import capabilities
-from player import Decoder, PlaybackClock, Playlist
+from player import Decoder, PlaybackClock, Playlist, display_copy
 from settings import Settings
 from storage import InstanceLock, Paths
 from web_server import WebServer
@@ -62,6 +64,10 @@ class App:
         self.screen = "home"
         self.playlist = None
         self.photo = None
+        self.gpu_renderer = None
+        self.gpu_surface = None
+        self.last_frame = None
+        self.animated = False
         self.poll_id = None
         self.overlay_until = 0
         self.last_error = ""
@@ -110,6 +116,8 @@ class App:
         return tk.Label(parent, text=text, bg=BG, fg=INK, anchor="w", **kwargs)
 
     def clear(self):
+        self.close_gpu()
+        self.last_frame = None
         for child in self.frame.winfo_children():
             child.destroy()
         self.photo = None
@@ -271,12 +279,60 @@ class App:
         self.button(self.overlay, "Back", self.escape).pack(side="left", fill="both", expand=True)
         self.canvas.focus_set()
         self.root.update_idletasks()
+        self.open_gpu()
         self.advance()
         self.show_controls()
 
+    def open_gpu(self):
+        self.gpu_surface = tk.Frame(self.canvas, bg="black", takefocus=False)
+        self.gpu_surface.place(x=0, y=0, relwidth=1, relheight=1)
+        self.gpu_surface.bind("<ButtonRelease-1>", lambda event: self.show_controls())
+        self.gpu_surface.bind("<Expose>", self.center_frame)
+        self.root.update_idletasks()
+        try:
+            self.gpu_renderer = ImageRenderer(self.gpu_surface)
+            print("event=media_renderer mode=hardware renderer=%r" % self.gpu_renderer.renderer, file=sys.stderr)
+        except GpuUnavailable as error:
+            self.close_gpu()
+            print("event=media_renderer mode=tk reason=%r" % str(error), file=sys.stderr)
+
+    def close_gpu(self):
+        if self.gpu_renderer is not None:
+            self.gpu_renderer.close()
+            self.gpu_renderer = None
+        if self.gpu_surface is not None:
+            try:
+                self.gpu_surface.destroy()
+            except tk.TclError:
+                pass  # The toplevel may already have been destroyed externally.
+            self.gpu_surface = None
+
+    def present_frame(self, image):
+        self.last_frame = image
+        size = (self.canvas.winfo_width(), self.canvas.winfo_height())
+        if self.gpu_renderer is not None:
+            try:
+                self.gpu_renderer.present(image, *size)
+                return
+            except GpuUnavailable as error:
+                print("event=media_renderer mode=tk reason=%r" % str(error), file=sys.stderr)
+                self.close_gpu()
+        fitted = display_copy(image, size) if image.width > size[0] or image.height > size[1] else image
+        self.photo = ImageTk.PhotoImage(fitted, master=self.root)
+        self.canvas.itemconfigure(self.image_id, image=self.photo)
+        self.canvas.coords(self.image_id, size[0] / 2, size[1] / 2)
+
     def center_frame(self, event=None):
         if self.screen == "playback":
-            self.canvas.coords(self.image_id, self.canvas.winfo_width() / 2, self.canvas.winfo_height() / 2)
+            if self.gpu_renderer is not None:
+                try:
+                    self.gpu_renderer.repaint(self.canvas.winfo_width(), self.canvas.winfo_height())
+                except GpuUnavailable:
+                    self.close_gpu()
+                    if self.last_frame is not None:
+                        self.present_frame(self.last_frame)
+            else:
+                self.canvas.coords(self.image_id, self.canvas.winfo_width() / 2, self.canvas.winfo_height() / 2)
 
     def load_item(self, item):
         if item is None:
@@ -286,11 +342,19 @@ class App:
             self.home(message)
             return
         self.clock = PlaybackClock()
+        self.animated = item["kind"] in ("gif", "webm")
+        self.last_frame = None
+        if self.gpu_renderer is not None:
+            try:
+                self.gpu_renderer.clear()
+            except GpuUnavailable:
+                self.close_gpu()
         self.canvas.delete("error")
         self.canvas.itemconfigure(self.image_id, image="")
         self.photo = None
         self.generation = self.services.decoder.request(item,
-            (self.canvas.winfo_width(), self.canvas.winfo_height()), self.playlist.settings)
+            (self.canvas.winfo_width(), self.canvas.winfo_height()), self.playlist.settings,
+            gpu=self.gpu_renderer is not None)
         self.pause_button.configure(text="Pause")
 
     def advance(self, direction=1):
@@ -325,6 +389,7 @@ class App:
     def show_controls(self):
         if self.screen == "playback":
             self.overlay.place(relx=0, rely=1, anchor="sw", relwidth=1, height=42)
+            self.overlay.lift()
             self.overlay_until = time.monotonic() + 3
 
     def playback_tick(self):
@@ -340,16 +405,21 @@ class App:
         if generation != self.generation:
             return
         if kind == "frame":
-            self.photo = ImageTk.PhotoImage(value, master=self.root)
-            self.canvas.itemconfigure(self.image_id, image=self.photo)
-            self.center_frame()
-            self.clock.arm(seconds)
+            if self.animated:
+                self.clock.arm(seconds, continuous=True)
+                # Consume expired animation frames without uploading them.
+                if not self.clock.ready() or self.services.decoder.events.empty():
+                    self.present_frame(value)
+            else:
+                self.present_frame(value)
+                self.clock.arm(seconds)
         elif kind == "done":
             self.advance()
         elif kind == "error":
             self.last_error = value
             self.load_item(self.playlist.failed())
             if self.screen == "playback":
+                self.close_gpu()
                 self.show_controls()
                 self.canvas.delete("error")
                 self.canvas.create_text(8, 8, text="Skipped: " + value, anchor="nw", width=max(100, self.canvas.winfo_width()-16),
@@ -357,7 +427,8 @@ class App:
 
     def schedule(self):
         if not self.finished:
-            self.poll_id = self.root.after(20 if self.screen == "playback" else 200, self.poll)
+            delay = self.clock.delay_ms() if self.screen == "playback" else 200
+            self.poll_id = self.root.after(delay, self.poll)
 
     def poll(self):
         self.poll_id = None
@@ -427,6 +498,7 @@ class App:
         self.root.destroy()
 
     def finish(self):
+        self.close_gpu()
         # Handles an external mainloop quit as well as normal Home/WM close.
         if not self.finished:
             if self.pending is not None:

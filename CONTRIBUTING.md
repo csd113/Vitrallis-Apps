@@ -28,13 +28,14 @@ a pull request. Keep changes focused and do not overwrite another contributor's 
 2. Follow the [manifest v1 contract](docs/creating-apps.md). Include `app.toml`,
    `main.py`, `icon.png`, `requirements.txt`, `README.md`, `CHANGELOG.md`, and
    populated `assets/` and `tests/`. Preserve an existing app's stable ID.
-3. Document Python/toolkit requirements, controls, storage locations, declared
+3. Meet the mandatory [keyboard baseline](docs/creating-apps.md#keyboard-baseline-catalog-acceptance-requirement): a user using only key presses can discover controls and complete every essential workflow, including normal exit. Document the complete key map in the app README and cover essential keyboard paths with regression tests. Pointer/touch-only essential controls are rejected.
+4. Document Python/toolkit requirements, controls, storage locations, declared
    permissions, and known device limits in the app README. Prefer existing
    dependencies or the standard library. Do not install system dependencies at
    app startup or treat permission flags as a sandbox.
-4. Validate and test the working package using [the testing guide](docs/testing.md).
+5. Validate and test the working package using [the testing guide](docs/testing.md).
    Exercise relevant failure modes and launch from another working directory.
-5. Complete release notes and publication before submitting an app release.
+6. Complete release notes and publication before submitting an app release.
 
 Do not commit credentials, caches, device runtimes, or generated build artifacts.
 All committed app files outside `tests/` are published, including documentation.
@@ -93,7 +94,7 @@ the catalog on the same feature branch. The updater previews by default and does
 not commit, push, install, or fetch source.
 
 Enable installation only after checking the target runtime, installer, launcher,
-update, and repair paths. Submit source and catalog together in a pull request.
+update, repair paths, and the keyboard baseline. Submit source and catalog together in a pull request.
 Keep the source commits when merging so a fresh clone can resolve every pin.
 Do not republish different bytes under the same version.
 
@@ -105,8 +106,8 @@ display size; for device claims include OS/runtime, app and Shell versions, and
 what was actually exercised. Remove secrets and private information from evidence.
 Mark release-only checklist items as not applicable for documentation-only PRs.
 
-App releases must include matching changelogs and catalog inventories before
-merge. Required checks are **Changelog policy**, **validate (3.11)**, and
+App releases must include matching changelogs, catalog inventories, and keyboard
+baseline evidence before merge. Required checks are **Changelog policy**, **validate (3.11)**, and
 **validate (3.13)**, with an up-to-date branch and a pull request. See the
 [merge policy](docs/changelog-policy.md) for details.
 

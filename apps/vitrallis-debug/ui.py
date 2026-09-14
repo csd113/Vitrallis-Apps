@@ -190,6 +190,11 @@ class Dashboard:
                     except queue.Full: pass
         except Exception:  # A category failure must never take down the display.
             pass
+        finally:
+            if not self.accept_results:
+                close = getattr(self.collector, "close", None)
+                if close:
+                    close()
 
     def _drain_results(self) -> bool:
         newest = None
@@ -619,6 +624,10 @@ class Dashboard:
     def close(self) -> None:
         if self.closed: return
         self.closed, self.accept_results = True, False
+        if self.worker is None or not self.worker.is_alive():
+            close = getattr(self.collector, "close", None)
+            if close:
+                close()
         self.model.pulse.cancel(); self._clear_pulse()
         for ident in tuple(self.after_ids):
             try: self.root.after_cancel(ident)

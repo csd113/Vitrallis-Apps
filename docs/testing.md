@@ -102,6 +102,12 @@ python3 tools/validate_catalog.py --package apps/my-app
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/my-app/tests -v
 ```
 
+For every production package, the test suite must include meaningful coverage of
+its [keyboard-only baseline](creating-apps.md#keyboard-baseline-catalog-acceptance-requirement): discovery of controls, essential actions, navigation or back/cancel,
+and normal exit as applicable. Automated tests cannot decide whether an interface
+is semantically usable, so reviewers must also exercise and verify the documented
+key-only path before accepting an App Center submission.
+
 For a display-free example check:
 
 ```sh

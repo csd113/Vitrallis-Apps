@@ -1,9 +1,9 @@
 # Vitrallis Debug
 
-Current package: **0.1.2** · [Changelog](CHANGELOG.md).
+Current package: **0.2.1** · [Changelog](CHANGELOG.md).
 
 Vitrallis Debug is an offline instrument panel for a 480×272 Vitrallis/PocketCHIP
-profile. Version 0.2.0 retains the X11 process identity so Vitrallis Shell can
+profile. Version 0.2.1 retains the X11 process identity so Vitrallis Shell can
 focus and resume its window. It presents expandable Network, CPU, GPU, Temperature
 and Memory cards using local Linux system interfaces. Hardware and driver
 identification covers desktop Linux, Raspberry Pi and Allwinner/PocketCHIP sources.
@@ -57,7 +57,7 @@ Pulse requires an X11 desktop (including XWayland), system `libX11`, `libEGL`,
 `libGLESv2`, and an installed hardware OpenGL ES 2 driver matching the Tk window
 visual. These are optional **system** prerequisites, not pip requirements. Other
 diagnostics continue working if they are absent. The app never installs drivers,
-changes the system, or falls back to CPU animation. Software renderers such as
+or falls back to CPU animation. Software renderers such as
 llvmpipe, softpipe and SwiftShader, and unrecognized renderer names, are refused.
 The GPU detail page shows a failure reason or the renderer selected after Pulse
 starts, along with the OpenGL ES version string exported by the userspace driver.
@@ -84,7 +84,7 @@ hardware inventory after a device change.
 - CPU names come from `/proc/cpuinfo` (never a numeric `processor` index or a
   board name). CPU device-tree `compatible` properties provide names such as
   ARM Cortex-A8 when cpuinfo is missing or only reports a generic ARM processor.
-- GPU identity comes from DRM, PCI and platform sysfs devices, optional local
+- GPU identity comes from DRM, devfreq GPU aliases, PCI and platform sysfs devices, optional local
   `lspci -D -vmm -nn`, and GPU device-tree bindings. DRM card, render and framebuffer
   nodes for the same device are deduplicated. Without a model database, readable
   PCI IDs are shown explicitly as IDs with “model unavailable”.
@@ -131,17 +131,28 @@ kernel modules, installs drivers, or alters their configuration.
   `cpuinfo_cur_freq`; a `scaling_cur_freq` fallback is explicitly labelled
   *driver-reported/requested*, not a guaranteed instantaneous clock. No BogoMIPS,
   advertised maximum, hardcoded PocketCHIP rate, or guess is substituted.
-- GPU reads the first valid `/sys/class/drm/cardN/device/gpu_busy_percent` counter
-  (such as AMDGPU), or GPU 0 through optional installed `nvidia-smi` with a bounded
-  command timeout. Discovery is cached for 30 seconds. The selected device and
-  source appear in details; it need not be the same device used by Pulse on a
-  multi-GPU system. Only finite 0–100 values are accepted. GPU charts use a fixed
-  0–100% scale and a 60-sample window; missing readings leave gaps. Switching
-  devices clears the history. No utilization is inferred from clock speed, FPS,
-  CPU usage, or successful hardware rendering.
-  Raspberry Pi V3D/VC4, PocketCHIP/Mali and other drivers without these counters show **unavailable**;
-  the presence of a GPU alone does not guarantee a utilization interface. This
-  version does not scrape debugfs, require root, or scan every process.
+- GPU reads the first valid `/sys/class/drm/cardN/device/gpu_busy_percent` counter,
+  then GPU devfreq load events, then GPU 0 through optional `nvidia-smi`.
+  Discovery is cached for 30 seconds. `/sys/class/devfreq/*gpu*` identities are
+  matched to GPU sysfs devices and their device-tree/driver names, including
+  Lima/Mali. Frequency alone is never treated as utilization.
+  For devfreq, the app creates its own tracefs instance under
+  `/sys/kernel/tracing/instances/` (or the legacy debug/tracing mount), enables
+  only `devfreq:devfreq_monitor`, and reads bounded nonblocking event batches.
+  The kernel's `load` percentage is averaged over two seconds, weighted by each
+  event's `polling_ms`. Only discovered GPU names and fresh 0–100 readings are
+  accepted; malformed, duplicate and stale records are ignored. Missing samples
+  expire to unavailable rather than holding the last value forever.
+  This needs kernel trace-event support and administrator-delegated access to
+  create/configure tracefs instances. The app never invokes sudo, mounts tracefs,
+  changes permissions, changes GPU governors, enables global tracing, or consumes
+  another tracer's stream. Permission denial is explained in the GPU details.
+  Its own instance is disabled and removed on normal exit and handled SIGTERM/
+  SIGINT. SIGKILL or power loss cannot run cleanup; an administrator can remove a
+  leftover `vitrallis-debug-*` instance after confirming its app has stopped.
+  Other GPU counters continue working without tracefs access. The selected
+  device/source appears in details and may differ from Pulse's rendering GPU.
+  Charts retain a 60-sample window with gaps for unavailable readings.
 - Temperature scans Linux thermal zones and hwmon inputs. A CPU/SoC/package/core
   named source is preferred; otherwise the display says generic sensor. Values are
   shown in °C, with exposed hardware critical limits when available. No guessed
@@ -154,8 +165,8 @@ kernel modules, installs drivers, or alters their configuration.
 Each graph holds up to 60 in-memory sample slots, with gaps for missing readings. Slow or failed refreshes retain a
 last valid view with a visible STALE marker and age threshold; no samples, settings,
 caches, telemetry, uploads, update checks, audio, or persistent files are created.
-The package directory is treated as read-only. All declared manifest permissions
-are false.
+The package directory is treated as read-only. The devfreq monitor changes only its temporary kernel trace instance; it writes
+no app storage. All declared manifest permissions are false.
 
 ## Verification and limitations
 
@@ -187,6 +198,8 @@ lifecycle and actual device performance remain hardware verification work.
 
 The renderer follows the [Khronos EGL specification](https://registry.khronos.org/EGL/).
 GPU telemetry uses the documented [AMDGPU busy counter](https://kernel.org/doc/html/v5.10/gpu/amdgpu.html)
+, the Linux [devfreq_monitor trace definition](https://github.com/torvalds/linux/blob/master/include/trace/events/devfreq.h),
+[isolated ftrace instances](https://docs.kernel.org/trace/ftrace.html#instances),
 and [NVIDIA SMI query interface](https://docs.nvidia.com/deploy/nvidia-smi/).
 Identity detection follows the [PCI sysfs interfaces](https://kernel.org/doc/html/v5.12/PCI/sysfs-pci.html)
 and [pciutils machine-readable format](https://manpages.debian.org/unstable/pciutils/lspci.8.en.html).
@@ -200,7 +213,7 @@ and [CPU sysfs ABI](https://github.com/torvalds/linux/blob/master/Documentation/
 
 ## Publication
 
-The source package is version 0.2.0. The repository catalog pins the published
+The source package is version 0.2.1. The repository catalog pins the published
 source commit and its file hashes through the two-commit publication workflow.
 App Center receives an update only after the corresponding catalog publication
 is merged into the configured catalog branch.

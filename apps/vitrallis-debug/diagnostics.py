@@ -20,6 +20,7 @@ import time
 from typing import Callable, Iterable, List, Optional
 
 from hardware import HardwareCollector, HardwareInfo
+from devfreq import DevfreqMonitor
 
 
 MAX_HISTORY = 60
@@ -372,8 +373,8 @@ class GpuReading:
 class GpuCollector:
     """Read documented GPU counters; never infer load from frequency or FPS.
 
-    Discovery is cached for 30 seconds. No recursive /sys walk, debugfs access,
-    privileged commands, or per-process /proc scan is needed on small devices.
+    Discovery is cached for 30 seconds. GPU devfreq devices use a private
+    devfreq_monitor trace instance when tracefs permissions allow it.
     """
     def __init__(self, sys_root: Path, read_text: ReadText = _read_text,
                  runner: CommandRunner = _local_command,
@@ -382,6 +383,8 @@ class GpuCollector:
         self.sources: list[tuple[str, Path]] = []
         self.next_discovery = 0.0
         self.nvidia: Optional[str] = None
+        self.devfreq_devices: set[str] = set()
+        self.monitor = DevfreqMonitor(sys_root, clock)
 
     def collect(self) -> Optional[GpuReading]:
         now = self.clock()
@@ -397,12 +400,20 @@ class GpuCollector:
                         self.sources.append((card.name, path))
             except OSError:
                 pass
+            try:
+                self.devfreq_devices = {node.name for node in (self.sys_root / "class/devfreq").glob("*gpu*") if node.is_dir()}
+            except OSError:
+                self.devfreq_devices = set()
             self.nvidia = shutil.which("nvidia-smi")
             self.next_discovery = now + 30.0
         for name, path in self.sources:
             percent = _number(self.read_text(path))
             if percent is not None and 0 <= percent <= 100:
+                self.monitor.collect(set())
                 return GpuReading(name, percent, str(path))
+        reading = self.monitor.collect(self.devfreq_devices)
+        if reading is not None:
+            return GpuReading(*reading)
         if self.nvidia:
             output = self.runner([self.nvidia, "--query-gpu=name,utilization.gpu",
                                   "--format=csv,noheader,nounits", "--id=0"])
@@ -415,6 +426,9 @@ class GpuCollector:
                 if percent is not None and 0 <= percent <= 100:
                     return GpuReading(row[0].strip()[:160], percent, "nvidia-smi / GPU 0")
         return None
+
+    def close(self) -> None:
+        self.monitor.close()
 
 
 @dataclass
@@ -465,7 +479,8 @@ class SystemCollector:
             errors["memory"] = "Memory data unavailable"
         gpu = self.gpu.collect()
         if gpu is None:
-            errors["gpu"] = "This driver exposes no supported GPU utilization counter"
+            errors["gpu"] = (self.gpu.monitor.reason if self.gpu.devfreq_devices else
+                             "This driver exposes no supported GPU utilization counter")
         sensors = discover_sensors(self.sys_root, self.read_text)
         network = None
         if include_network:
@@ -480,6 +495,9 @@ class SystemCollector:
                         platform.machine() or "unknown", read_governors(self.sys_root, self.read_text),
                         parse_load_averages(self.read_text(self.proc_root / "loadavg")),
                         parse_uptime(self.read_text(self.proc_root / "uptime")), gpu, hardware)
+
+    def close(self) -> None:
+        self.gpu.close()
 
 
 def os_cpu_count() -> Optional[int]:

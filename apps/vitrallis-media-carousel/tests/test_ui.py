@@ -119,6 +119,30 @@ class NativeTests(StorageCase):
         self.app.escape()
         self.assertEqual(self.app.screen, "home")
 
+    def test_gpu_present_pause_navigation_and_surface_failure_fallback(self):
+        from unittest.mock import Mock
+        from gpu import GpuUnavailable
+        self.upload_to_services("animation.gif", gif_bytes(), "gif")
+        renderer = Mock(renderer="Mali-400")
+        with patch("ui.ImageRenderer", return_value=renderer):
+            self.app.play(self.cid)
+            self.wait_for(lambda: renderer.present.called)
+            self.assertIsNone(self.app.photo)
+            self.app.pause()
+            count = renderer.present.call_count
+            for _ in range(5):
+                self.root.update()
+                time.sleep(.02)
+            self.assertEqual(renderer.present.call_count, count)
+            renderer.present.side_effect = GpuUnavailable("surface lost")
+            self.app.pause()
+            self.wait_for(lambda: self.app.photo is not None)
+            self.assertIsNone(self.app.gpu_renderer)
+            renderer.close.assert_called_once()
+            self.app.navigate(1)
+            self.app.escape()
+            self.assertEqual(self.app.screen, "home")
+
     def test_close_during_startup_and_no_owned_threads(self):
         self.cleanup_app()
         root = tk.Tk()

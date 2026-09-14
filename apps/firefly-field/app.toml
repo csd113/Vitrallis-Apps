@@ -1,6 +1,6 @@
 manifest_version = 1
-name = "Vitrallis Debug"
-id = "io.vitrallis.debug"
+name = "Firefly Field"
+id = "io.vitrallis.fireflyfield"
 version = "0.2.1"
 runtime = "python"
 entry = "main.py"

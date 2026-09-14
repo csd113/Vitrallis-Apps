@@ -53,12 +53,13 @@ after merge so a fresh clone can verify its published files.
    permissions come from the committed manifest. The tool generates all file
    paths, byte sizes and SHA-256 hashes, sorts the catalog, and validates **every**
    resulting entry. It prints JSON and leaves `apps.json` unchanged by default.
-4. Repeat the command with `--write` to atomically replace `apps.json`. Existing
+4. Confirm the app meets the mandatory [keyboard baseline](creating-apps.md#keyboard-baseline-catalog-acceptance-requirement): its README documents all keyboard controls and its tests cover essential keyboard-only use. A package that needs pointer/touch input for an essential action must not be submitted to App Center. Repeat the command with `--write` to atomically replace `apps.json`. Existing
    entries retain their description, compatibility notes and installable flag
    unless explicitly overridden. `--installable` and `--no-installable` are
    explicit overrides; enable installation only after a reviewed adapter and
-   runtime/installation/update/repair path are verified. A manifest alone is not
-   sufficient. Equal-version changed bytes and version downgrades are refused.
+   runtime/installation/update/repair path and keyboard baseline are verified. A
+   manifest alone is not sufficient. Equal-version changed bytes and version
+   downgrades are refused.
 5. Validate and review:
 
    Add the matching `Added` or `Updated` entry to root `CHANGELOG.md`. Review
