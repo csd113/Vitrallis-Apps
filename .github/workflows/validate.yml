@@ -17,7 +17,6 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       VITRALLIS_REQUIRE_GUI: '1'
       VITRALLIS_REQUIRE_EGL: '1'
-      CARGO_TARGET_DIR: ${{ runner.temp }}/vitrallis-rust-target
     steps:
       - uses: actions/checkout@v4
         with:
@@ -56,6 +55,8 @@ jobs:
       - name: Example desktop tests (GUI required)
         run: xvfb-run -a python -m unittest discover -s examples/hello-vitrallis/tests -v
       - name: Experimental Rust example and packaging
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/vitrallis-rust-target
         run: |
           python -m unittest discover -s examples/hello-rust/tests -v
           cargo fmt --manifest-path examples/hello-rust/Cargo.toml --all --check
