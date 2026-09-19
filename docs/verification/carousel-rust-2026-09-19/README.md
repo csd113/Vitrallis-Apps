@@ -110,11 +110,63 @@ found only its window, no running QA executable and no listener on port 8765.
 The temporary Linux validation container was stopped; fixture files and logs are
 retained for review. The unrelated Shell task's isolated
 fixture installation/update/uninstall tests establish its native runtime contract;
-they do not establish this unpublished Carousel package's App Center lifecycle.
+the later real-package lifecycle checks below establish Carousel coverage.
 
 Catalog publication retains the source commits and uses generated pins and root
-release history. Installation stays disabled until this exact package is exercised
-through the updated App Center installation/update/repair/uninstall flow. Touch interaction also needs
+release history. Installation is enabled as requested, with native Shell
+0.1.0-beta3.1 or newer required. The later publication checks below supplement
+the initial source-run evidence. Touch interaction also needs
 physical coverage. A quantitative language comparison requires repeated alternating
 Python/Rust runs with the same media, settings, compositor, power/thermal state and
 codec versions, with WebM/FFmpeg work reported separately.
+
+## Publication validation and 0.1.1
+
+GitHub Ubuntu 24.04 x86-64 exposed an FFprobe startup failure before decoding:
+`libicudata.so.74: failed to map segment from shared object`. A bounded subprocess
+reproduction failed at 256 MiB and succeeded at 384 and 512 MiB. Version 0.1.1
+therefore permits 512 MiB of address space on 64-bit Linux development hosts;
+the PocketCHIP/32-bit Linux limit remains 256 MiB. This is a virtual-address
+mapping allowance, not a change to image allocation, dimensions, frame counts,
+HTTP input limits or the device performance workload. All 16 Rust tests, seven
+host package/codec tests, formatting and strict host/ARM Clippy passed again.
+
+Version 0.1.1 source is pinned to
+`a7e7b5b39aa052c94ead80a7b89e6a4592bf5620`; the ARM ELF SHA-256 is
+`9b31520240dbeb58667a4cd44eeda549a869218f2d1d4f2a6775c896e7415504`.
+Both source commits remain reachable. The root catalog record describes the
+final initial main-branch release, 0.1.1; app-local history retains 0.1.0.
+
+Actual App Center installation fetched all 28 published files from GitHub over
+its normal HTTPS transport and verified their size/hash inventory. The pre-merge
+catalog was fetched by immutable commit and placed in a separate QA HOME's
+catalog cache, because normal discovery still followed main before merge.
+A temporary loopback SSH CONNECT tunnel provided the USB-only device access to
+only api.github.com and raw.githubusercontent.com. It did not change TLS trust,
+device DNS, routing or production download/installer code.
+
+Version 0.1.0 installed and opened from the real App Center action, executing the
+installed native ELF. Keyboard exit and child reaping passed. Removing only
+the QA installation's executable triggered Repair; the real repair action
+re-downloaded and restored the exact file. A shared-data sentinel survived.
+
+The exact released Shell 0.1.0-beta3.1 ARM binary then performed the real
+0.1.0 → 0.1.1 update. All 28 resulting file hashes matched the new pinned
+inventory, and shared data survived. The updated app opened as a fresh process
+from the installed path and exited normally. All four actual codec tests passed
+again against that installed 0.1.1 executable (38.05 seconds). The uninstall
+confirmation defaulted to Cancel and retained the package; confirming Uninstall
+removed its files and launcher while preserving shared user data.
+
+All managed-package tests used `manager-home/` under the same private QA root.
+The test Shell stopped, original Shell PID3419 was restored, and no test app
+window or port8765 listener remained. No app was installed into the owner's
+normal profile. Screenshots containing temporary access codes were excluded.
+
+An existing Python carousel test exposed a separate response/cleanup race in CI:
+a successful HTTP response can arrive before the worker releases its upload slot.
+The test now waits up to two seconds for that release before occupying the slot
+to test saturation. Production Python files are unchanged. Twenty repeated
+regression runs passed, followed by all 91 Python carousel tests (one documented
+opt-in EGL skip on the host). No app version change is needed for this test-only
+correction. Required GitHub checks are attached to the publication pull request.

@@ -1,5 +1,8 @@
 .github/workflows/validate.yml
+CHANGELOG.md
 CONTRIBUTING.md
+README.md
+apps.json
 apps.schema.json
 apps/carousel-rust/CHANGELOG.md
 apps/carousel-rust/Cargo.lock
@@ -33,6 +36,7 @@ apps/carousel-rust/tests/unit.rs
 apps/carousel-rust/web/app.js
 apps/carousel-rust/web/index.html
 apps/carousel-rust/web/style.css
+apps/vitrallis-media-carousel/tests/test_web.py
 docs/catalog-format.md
 docs/creating-apps.md
 docs/experimental-rust.md
@@ -44,7 +48,12 @@ docs/verification/carousel-rust-2026-09-19/changed-files.txt
 docs/verification/carousel-rust-2026-09-19/host-clippy.log
 docs/verification/carousel-rust-2026-09-19/linux-software-smoke.log
 docs/verification/carousel-rust-2026-09-19/linux-tests.log
+docs/verification/carousel-rust-2026-09-19/manager-installed.png
+docs/verification/carousel-rust-2026-09-19/manager-removed.png
+docs/verification/carousel-rust-2026-09-19/manager-repaired.png
+docs/verification/carousel-rust-2026-09-19/manager-updated.png
 docs/verification/carousel-rust-2026-09-19/package-tests.log
+docs/verification/carousel-rust-2026-09-19/pocketchip-011-codecs.log
 docs/verification/carousel-rust-2026-09-19/pocketchip-codecs.log
 docs/verification/carousel-rust-2026-09-19/pocketchip-help.log
 docs/verification/carousel-rust-2026-09-19/pocketchip-help.png
@@ -54,6 +63,7 @@ docs/verification/carousel-rust-2026-09-19/pocketchip-playback.log
 docs/verification/carousel-rust-2026-09-19/pocketchip-process-sample.json
 docs/verification/carousel-rust-2026-09-19/pocketchip-settings.png
 docs/verification/carousel-rust-2026-09-19/rust-tests.log
+docs/verification/carousel-rust-2026-09-19/ubuntu-ffprobe-address-space.log
 tools/build_rust_app.py
 tools/catalog_lib.py
 tools/tests/test_native_rust.py

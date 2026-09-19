@@ -145,7 +145,9 @@ class WebTests(WebCase):
         connection = self.begin_partial_upload()
         try:
             self.assertEqual(self.upload()[0], 201)
-            self.assertTrue(self.server.upload_slot.acquire(blocking=False))
+            # The response can arrive before the worker's finally block releases
+            # its slot. Wait for that completion, then occupy the second slot.
+            self.assertTrue(self.server.upload_slot.acquire(timeout=2))
             try:
                 self.assertEqual(self.upload()[0], 409)
             finally:
