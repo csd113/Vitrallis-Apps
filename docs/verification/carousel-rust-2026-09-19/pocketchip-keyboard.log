@@ -1,0 +1,4 @@
+Verified: Python duration2 read by Rust; Rust saved3; playback pause/next/previous/back/help/exit keys accepted with checked X11 focus
+Python read Rust-saved settings and five shared items; lock released
+event=media_renderer language=rust backend=opengl gpu="Mali400" accelerated=true vsync_requested=true physical_scanout=unverified
+event=carousel_metrics language=rust elapsed_ms=14081 presented=17 decoded=2 skipped=0

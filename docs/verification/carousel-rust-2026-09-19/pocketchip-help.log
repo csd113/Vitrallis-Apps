@@ -1,0 +1,4 @@
+Verified Help H shortcut and keyboard exit with checked X11 focus
+Python read Rust-saved settings and five shared items; lock released
+event=media_renderer language=rust backend=opengl gpu="Mali400" accelerated=true vsync_requested=true physical_scanout=unverified
+event=carousel_metrics language=rust elapsed_ms=6619 presented=4 decoded=0 skipped=0

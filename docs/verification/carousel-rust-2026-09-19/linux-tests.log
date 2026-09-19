@@ -1,0 +1,48 @@
+   Compiling carousel-rust v0.1.0 (/work/apps/carousel-rust)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.06s
+     Running unittests src/main.rs (/tmp/carousel-target/debug/deps/carousel_rust-907d5418a478fa34)
+
+running 16 tests
+test tests::real_http_upload_validation_thumbnail_archive_and_shutdown ... ignored, requires CAROUSEL_RUST_TEST_BINARY pointing at a freshly built host executable
+test player::tests::pause_retains_remaining_time_and_no_static_busy_presentations ... ok
+test player::tests::absolute_deadlines_catch_up_without_adding_swap_time_and_return_after_last_frame ... ok
+test player::tests::pending_frames_do_not_advance_texture_serial_before_their_deadline ... ok
+test tests::metadata_matches_python_and_rejects_ambiguous_restores ... ok
+test tests::settings_exact_types_limits_and_serialization ... ok
+test tests::http_rejects_smuggling_rebinding_cross_origin_and_filename_traversal ... ok
+test tests::shuffle_visits_every_item_without_boundary_repeat_and_fit_letterboxes ... ok
+test tests::publication_collision_does_not_replace_a_blob_or_leave_hardlinks ... ok
+test tests::unsafe_roots_and_files_fail_before_mutation ... ok
+test tests::image_formats_are_sniffed_from_bytes_and_gif_timing_is_clamped ... ok
+test tests::atomic_failure_preserves_metadata_and_corruption_is_not_replaced ... ok
+test tests::binding_failure_keeps_native_navigation_available ... ok
+test tests::shared_flock_blocks_python_and_second_rust_writer ... ok
+test tests::uploads_and_deletion_round_trip_shared_python_schema ... ok
+test tests::keyboard_baseline_and_authenticated_management_round_trip ... ok
+
+test result: ok. 15 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+   Compiling carousel-rust v0.1.0 (/work/apps/carousel-rust)
+    Finished `release` profile [optimized] target(s) in 9.41s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running unittests src/main.rs (/tmp/carousel-target/debug/deps/carousel_rust-907d5418a478fa34)
+
+running 16 tests
+test player::tests::absolute_deadlines_catch_up_without_adding_swap_time_and_return_after_last_frame ... ok
+test player::tests::pause_retains_remaining_time_and_no_static_busy_presentations ... ok
+test player::tests::pending_frames_do_not_advance_texture_serial_before_their_deadline ... ok
+test tests::http_rejects_smuggling_rebinding_cross_origin_and_filename_traversal ... ok
+test tests::metadata_matches_python_and_rejects_ambiguous_restores ... ok
+test tests::shuffle_visits_every_item_without_boundary_repeat_and_fit_letterboxes ... ok
+test tests::settings_exact_types_limits_and_serialization ... ok
+test tests::publication_collision_does_not_replace_a_blob_or_leave_hardlinks ... ok
+test tests::unsafe_roots_and_files_fail_before_mutation ... ok
+test tests::image_formats_are_sniffed_from_bytes_and_gif_timing_is_clamped ... ok
+test tests::binding_failure_keeps_native_navigation_available ... ok
+test tests::atomic_failure_preserves_metadata_and_corruption_is_not_replaced ... ok
+test tests::shared_flock_blocks_python_and_second_rust_writer ... ok
+test tests::uploads_and_deletion_round_trip_shared_python_schema ... ok
+test tests::keyboard_baseline_and_authenticated_management_round_trip ... ok
+test tests::real_http_upload_validation_thumbnail_archive_and_shutdown ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.28s

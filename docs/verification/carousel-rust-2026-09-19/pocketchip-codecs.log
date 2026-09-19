@@ -1,0 +1,9 @@
+test_gif_disposal_transparency_and_complete_replays (test_runtime.CodecTests.test_gif_disposal_transparency_and_complete_replays) ... ok
+test_real_vp8_vp9_webm_and_replay_output (test_runtime.CodecTests.test_real_vp8_vp9_webm_and_replay_output) ... ok
+test_rejects_animated_png_webp_corruption_and_pixel_bombs (test_runtime.CodecTests.test_rejects_animated_png_webp_corruption_and_pixel_bombs) ... ok
+test_still_format_parity_orientation_and_signature_detection (test_runtime.CodecTests.test_still_format_parity_orientation_and_signature_detection) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 39.570s
+
+OK

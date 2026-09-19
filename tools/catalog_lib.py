@@ -98,7 +98,8 @@ def reject_constant(value):
 # keywords fail closed; this is not a general JSON Schema implementation.
 SCHEMA_KEYS = {'$schema', 'title', 'description', 'type', 'const', 'required',
                'properties', 'additionalProperties', 'items', 'minItems', 'maxItems',
-               'minLength', 'maxLength', 'minimum', 'maximum', 'pattern'}
+               'minLength', 'maxLength', 'minimum', 'maximum', 'pattern',
+               'oneOf', 'not', 'minProperties', 'maxProperties'}
 TYPES = {'object': dict, 'array': list, 'string': str, 'integer': int, 'boolean': bool}
 
 
@@ -116,7 +117,7 @@ def check_schema(schema, where='schema'):
             re.compile(schema['pattern'])
         except re.error as error:
             raise Invalid(f"{where}: invalid regex") from error
-    for key in ('minItems', 'maxItems', 'minLength', 'maxLength', 'minimum', 'maximum'):
+    for key in ('minItems', 'maxItems', 'minLength', 'maxLength', 'minimum', 'maximum', 'minProperties', 'maxProperties'):
         if key in schema:
             require(type(schema[key]) is int and schema[key] >= 0,
                     where, f"{key} must be a nonnegative integer")
@@ -132,9 +133,28 @@ def check_schema(schema, where='schema'):
             check_schema(child, f'{where}.{key}')
     if 'items' in schema:
         check_schema(schema['items'], f'{where}.items')
+    if 'not' in schema:
+        check_schema(schema['not'], f'{where}.not')
+    if 'oneOf' in schema:
+        require(type(schema['oneOf']) is list and bool(schema['oneOf']), where, 'oneOf needs alternatives')
+        for child in schema['oneOf']:
+            check_schema(child, f'{where}.oneOf')
+
+
+def schema_matches(value, schema, where):
+    try:
+        schema_value(value, schema, where)
+        return True
+    except Invalid:
+        return False
 
 
 def schema_value(value, schema, where):
+    if 'oneOf' in schema:
+        require(sum(schema_matches(value, child, where) for child in schema['oneOf']) == 1,
+                where, 'must match exactly one runtime alternative')
+    if 'not' in schema:
+        require(not schema_matches(value, schema['not'], where), where, 'forbidden fields')
     if 'type' in schema:
         require(type(value) is TYPES[schema['type']], where,
                 f"expected {schema['type']}")
@@ -143,6 +163,8 @@ def schema_value(value, schema, where):
         require(type(value) is type(expected) and value == expected,
                 where, f"expected {expected!r}")
     if isinstance(value, dict):
+        require(schema.get('minProperties', 0) <= len(value) <= schema.get('maxProperties', len(value)),
+                where, 'invalid property count')
         properties = schema.get('properties', {})
         for key in schema.get('required', []):
             require(key in value, where, f"missing {key}")
@@ -182,10 +204,11 @@ def catalog_metadata(catalog):
         match(app['source']['repository'], REPOSITORY, f'{where}.source.repository')
         match(app['source']['commit'], COMMIT, f'{where}.source.commit')
         match(app['source']['path'], SOURCE_PATH, f'{where}.source.path', 240)
-        safe_path(app['entry'], f'{where}.entry')
+        runtime_fields(app, where)
         paths = [row['path'] for row in app['files']]
         check_paths(paths, where)
-        require(app['entry'] in paths, where, "entry missing from files")
+        for entry in ([app['entry']] if app['runtime'] == 'python' else app['binaries'].values()):
+            require(entry in paths, where, 'entry missing from files (or native binary)')
         require(sum(row['size'] for row in app['files']) <= BUNDLE_LIMIT,
                 where, 'bundle exceeds 16 MiB')
     require(ids == sorted(ids), 'catalog.apps', 'must be sorted by ID')
@@ -337,8 +360,47 @@ def png_icon(data, where):
             where, 'invalid PNG scanline filter')
 
 
-def manifest(files, where):
-    required = {'app.toml', 'icon.png', 'main.py', 'requirements.txt', 'README.md', 'CHANGELOG.md'}
+RUST_TARGETS = {
+    'armv7-unknown-linux-gnueabihf': (1, 40),
+    'aarch64-unknown-linux-gnu': (2, 183),
+    'x86_64-unknown-linux-gnu': (2, 62),
+}
+
+
+def runtime_fields(data, where):
+    runtime = data.get('runtime')
+    require(runtime in ('python', 'rust'), where, 'runtime must be python or rust')
+    if runtime == 'python':
+        require('entry' in data and 'binaries' not in data, where, 'Python requires only entry')
+        safe_path(data['entry'], f'{where}.entry')
+    else:
+        require('entry' not in data, where, 'Rust must omit entry')
+        binaries = data.get('binaries')
+        require(type(binaries) is dict and 1 <= len(binaries) <= 3
+                and not set(binaries) - RUST_TARGETS.keys(), where, 'invalid Rust target mapping')
+        for path in binaries.values():
+            safe_path(path, f'{where}.binaries')
+            require(not path.startswith('tests/'), where, 'Rust binaries must be published')
+        require(len(set(binaries.values())) == len(binaries), where, 'duplicate Rust binary paths')
+
+
+def validate_elf(payload, target, where):
+    elf_class, machine = RUST_TARGETS[target]
+    minimum = 52 if elf_class == 1 else 64
+    require(len(payload) >= minimum and payload[:4] == b'\x7fELF'
+            and payload[4:7] == bytes((elf_class, 1, 1))
+            and struct.unpack_from('<H', payload, 16)[0] in (2, 3)
+            and struct.unpack_from('<H', payload, 18)[0] == machine
+            and struct.unpack_from('<I', payload, 20)[0] == 1,
+            where, 'binary must be a matching Linux ELF executable')
+    if machine == 40:
+        flags = struct.unpack_from('<I', payload, 36)[0]
+        require(flags & 0xff000000 == 0x05000000 and flags & 0x600 == 0x400,
+                where, 'ARM binary requires EABI5 hard float')
+
+
+def manifest(files, where, *, allow_unbuilt=False):
+    required = {'app.toml', 'icon.png', 'README.md', 'CHANGELOG.md'}
     require(required <= files.keys(), where,
             'missing package files: ' + ', '.join(sorted(required - files.keys())))
     for directory in ('assets/', 'tests/'):
@@ -348,17 +410,24 @@ def manifest(files, where):
         data = tomllib.loads(files['app.toml'].decode('utf-8'))
     except (ValueError, UnicodeError) as error:
         raise Invalid(f'{where}/app.toml: {error}') from error
-    keys = {'manifest_version', 'name', 'id', 'version', 'runtime', 'entry', 'permissions'}
+    keys = {'manifest_version', 'name', 'id', 'version', 'runtime', 'permissions'}
+    keys.add('binaries' if data.get('runtime') == 'rust' else 'entry')
     require(set(data) == keys, f'{where}/app.toml', 'missing or unknown manifest v1 fields')
     require(type(data['manifest_version']) is int and data['manifest_version'] == 1,
             where, 'unsupported manifest_version (expected integer 1)')
     text_value(data['name'], f'{where}.name')
     match(data['id'], ID, f'{where}.id', 128)
     match(data['version'], VERSION, f'{where}.version', 32)
-    require(data['runtime'] == 'python', where, 'runtime must be python')
-    safe_path(data['entry'], f'{where}.entry')
-    require(data['entry'].endswith('.py') and data['entry'] in files,
-            where, 'entry must be a published Python file')
+    runtime_fields(data, where)
+    if data['runtime'] == 'python':
+        require({'main.py', 'requirements.txt'} <= files.keys(), where, 'missing Python package files')
+        require(data['entry'].endswith('.py') and data['entry'] in files,
+                where, 'entry must be a published Python file')
+    else:
+        for target, path in data['binaries'].items():
+            require(path in files or allow_unbuilt, where, f'missing Rust binary: {path}')
+            if path in files:
+                validate_elf(files[path], target, where)
     permissions = data['permissions']
     require(type(permissions) is dict and set(permissions) == {'network', 'audio', 'storage'}
             and all(type(value) is bool for value in permissions.values()),
@@ -442,7 +511,8 @@ def check_app_source(app, repo):
         for actual, published in zip(expected, app['files']):
             require(actual == published, f"{where}/{actual['path']}", 'size or SHA-256 mismatch')
         package = manifest(files, where)
-        for key in ('id', 'name', 'version', 'runtime', 'entry', 'permissions'):
+        for key in ('id', 'name', 'version', 'runtime', 'permissions',
+                    'binaries' if package['runtime'] == 'rust' else 'entry'):
             require(app[key] == package[key], f'{where}.{key}', 'catalog/manifest mismatch')
     except (Invalid, SyntaxError, ValueError) as error:
         raise Invalid(f'{where}: {error}') from error

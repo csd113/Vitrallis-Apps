@@ -1,23 +1,53 @@
-# Experimental Rust application packages
+# Rust application packages
 
-Python remains the default Vitrallis app runtime. Experimental Rust applications
-use the same manifest v1, stable app IDs, icon/assets inventory, versioned catalog
-pins and App Center transactions. A small Python `main.py` supervises a precompiled
-Rust payload. This is an experimental packaging profile, not a new manifest
-runtime or an incompatible catalog schema.
+Native Rust applications use `runtime = "rust"` with a closed `binaries` mapping.
+The App Manager selects a precompiled target payload; Cargo is never run on the
+device. Manifest and catalog schema versions remain 1 with an explicit additive
+runtime alternative. Python packages retain their existing contract unchanged.
+
+```toml
+manifest_version = 1
+name = "Carousel-Rust"
+id = "io.vitrallis.carouselrust"
+version = "0.1.0"
+runtime = "rust"
+
+[binaries]
+armv7-unknown-linux-gnueabihf = "bin/armv7-unknown-linux-gnueabihf/app"
+
+[permissions]
+network = true
+audio = false
+storage = true
+```
+
+Native manifests and catalog entries omit `entry`; Python entries omit `binaries`.
+Mappings contain one to three unique safe published paths, keyed by exactly
+`armv7-unknown-linux-gnueabihf`, `aarch64-unknown-linux-gnu`, or
+`x86_64-unknown-linux-gnu`. Each payload must be a matching little-endian ELF
+executable. ARM additionally requires EABI5 hard float. Installed launchers exec
+the selected binary. Windowed apps must supply X11 process identity and satisfy
+the same rendering, keyboard, storage, and publication requirements as Python.
+
+`apps/carousel-rust` implements this native profile. The older
+`examples/hello-rust` remains a Python-supervised experimental example for older
+Shell versions; its shipped bytes and version are unchanged. It is not the native
+runtime template.
 
 ## Build and stage
 
-Copy `examples/hello-rust` and change its identity, Cargo/app version, icon, assets,
-README and changelog. Keep `runtime = "python"` and `entry = "main.py"`: those fields
-accurately describe the launcher-facing supervisor. No Cargo or Rust runtime is
-needed on the device; Python 3.8+ and the target's ordinary C runtime are required.
+For a native package, include `app.toml`, `icon.png`, `README.md`, `CHANGELOG.md`,
+populated `assets/` and `tests/`, Rust sources, Cargo metadata/lockfile and the
+mapped binaries. Native apps need neither `main.py` nor `requirements.txt`.
+Keep Cargo/app/changelog versions aligned. Build output stays outside the source
+package; stage only the final mapped executable payloads.
 
 On a build machine with the appropriate Rust target and cross linker:
 
 ```sh
-python3 tools/build_rust_app.py --source examples/hello-rust \
-  --output /absolute/fresh/staged-package --target armv7-unknown-linux-gnueabihf
+python3 tools/build_rust_app.py --source apps/carousel-rust \
+  --output /absolute/fresh/staged-package --target armv7-unknown-linux-gnueabihf \
+  --zig --glibc 2.36
 ```
 
 The optional `--zig` flag selects an already-installed `cargo-zigbuild` instead of
@@ -30,15 +60,17 @@ and x86-64. Repeat `--target` to include multiple payloads in one package, withi
 the existing 2 MiB/file and 16 MiB/package catalog limits. Do not use `target-cpu=native`
 for cross-device releases. Build directories remain outside the package.
 
-The staged package has `bin/<target>/app` with executable mode, plus its unchanged
-manifest, Python supervisor, source, assets, tests and documentation. The supervisor
-selects a closed host/architecture mapping, rejects wrong-architecture ELF payloads
-and symlinks, and reports missing/incompatible builds. It never chmods, writes to,
-or builds inside the installed package. Its Python process remains alive to forward
-termination to the child process group and reap it, so current App Center process
-matching can stop the app before update/removal. Graphical Rust applications must
-publish X11 process identity for focus integration and meet the normal rendering
-and keyboard requirements; the minimal example is a display-free packaging probe.
+The builder requires all declared native targets in one staging operation and
+validates the finished package before an atomic no-replace directory publication.
+It never commits, pushes, installs, or overwrites an existing output directory.
+Configure an image-matched SDL2 pkg-config/sysroot when the application uses SDL.
+`--glibc 2.36` pins the GNU libc baseline for Zig; it requires `--zig`. A binary
+can still depend on newer symbol versions in external libraries: target launch
+and dynamic-link inspection remain mandatory.
+
+The legacy Python example still stages its unchanged supervisor and a payload at
+`bin/<target>/app`. The supervisor remains alive for old App Center process
+matching. Native Rust packages use the new direct launcher instead.
 
 ## Publish, install, update and remove
 
@@ -52,7 +84,7 @@ Never republish different bytes under an existing version. Keep the entry disabl
 until its actual target launch and App Center lifecycle have been tested.
 
 Installation, update, repair and uninstall use the existing package inventories,
-Python launcher and receipt paths. The Rust executable and assets are ordinary
+runtime-specific launcher and receipt paths. The Rust executable and assets are ordinary
 managed package files. User data belongs outside the package and requires a
 storage permission declaration just as for Python apps. The builder's fixture
 tests prove inventory compatibility; the hardware report separately records actual

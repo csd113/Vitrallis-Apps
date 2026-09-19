@@ -1,0 +1,4 @@
+# SDL2 and image use incompatible bitflags major APIs. PNG/flate2 and
+# derive dependencies also require distinct internal versions; keep warnings
+# enabled for every other duplicate dependency.
+allowed-duplicate-crates = ["bitflags", "miniz_oxide", "syn"]

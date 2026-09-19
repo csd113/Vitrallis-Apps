@@ -39,15 +39,16 @@ packages and release history.
 ## Fields
 
 The root contains exactly `schema_version: 1` and `apps` (up to 1,000 entries).
-Each entry contains exactly these fields:
+Each entry contains the common fields plus exactly one runtime-specific alternative:
 
 | Field | Meaning |
 | --- | --- |
 | `id` | Stable lowercase reverse-domain ID, at most 128 characters. Each dot-separated component starts with a letter and contains lowercase letters/digits; at least two components. IDs are unique across the catalog. |
 | `name`, `description`, `compatibility_notes` | Nonempty display text, at most 1,000 characters each, without C0/C1 control characters. Never executable instructions or trusted markup. |
 | `version` | Stable `MAJOR.MINOR.PATCH`, numeric components without leading zeroes, at most 32 characters. No `v`, prerelease or build suffix. Compare components numerically. |
-| `runtime` | `python` in v1. Does not authorize invoking an arbitrary interpreter. |
-| `entry` | Safe app-relative entry file, included in `files`. Native packages require a `.py` entry. |
+| `runtime` | `python` or `rust` in v1. Closed runtime selection; never an arbitrary interpreter. |
+| `entry` | Python-only safe app-relative `.py` entry, included in `files`. Omitted for Rust. |
+| `binaries` | Rust-only map of supported target triples to unique safe ELF paths included in `files`. Omitted for Python. See [Rust packages](experimental-rust.md). |
 | `permissions` | Exactly boolean `network`, `audio`, `storage`. Requirements, not sandbox enforcement or proof of consent. |
 | `installable` | Publisher readiness flag. False forbids catalog-driven installation/update/repair. True still needs a compatible runtime, trusted source, reviewed client adapter, and the repository's mandatory keyboard-only baseline. |
 | `source.repository` | A GitHub `owner/repository` value. Owner: 1–39 ASCII letters/digits/hyphens, starts/ends with a letter or digit, no consecutive hyphens. Repository: 1–100 ASCII letters/digits/underscore/dot/hyphen, excluding `.` and `..`. No URL, credentials, port, path or `.git` suffix convention; use the actual repository name. The syntax check does not establish existence or trust. |
@@ -60,7 +61,7 @@ Format acceptance does not imply installer support or interaction usability. In
 addition to schema validation, catalog acceptance requires every production app
 to satisfy the [keyboard baseline](creating-apps.md#keyboard-baseline-catalog-acceptance-requirement); reviewers reject pointer/touch-only essential workflows. This is a repository
 acceptance policy, not a new wire-format field or a capability inferred by the
-validator. Schema v1 and its exact allowed keys remain unchanged.
+validator. Schema v1 includes the explicit Python/Rust alternatives; unknown fields still fail closed.
 
 ## Cross-field and byte rules
 

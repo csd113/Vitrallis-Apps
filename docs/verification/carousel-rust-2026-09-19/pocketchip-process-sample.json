@@ -1,0 +1,11 @@
+{
+  "elapsed_seconds": 21.37723437800014,
+  "cpu_percent_including_children": 52.57929908635596,
+  "peak_aggregate_rss_kib": 69880,
+  "last": {
+    "ticks": 5355,
+    "rss_kib": 55568,
+    "processes": 3,
+    "root_rss_kib": 40324
+  }
+}

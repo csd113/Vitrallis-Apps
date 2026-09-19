@@ -1,0 +1,13 @@
+manifest_version = 1
+name = "Carousel-Rust"
+id = "io.vitrallis.carouselrust"
+version = "0.1.0"
+runtime = "rust"
+
+[binaries]
+armv7-unknown-linux-gnueabihf = "bin/armv7-unknown-linux-gnueabihf/app"
+
+[permissions]
+network = true
+audio = false
+storage = true
