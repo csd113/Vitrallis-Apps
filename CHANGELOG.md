@@ -10,6 +10,7 @@ and place new records in the newest date section. See the
 
 ## 2026-09-19
 
+- Added `io.vitrallis.carouselrust` `0.1.0`: Publish an installable native ARMv7 Rust carousel with GPU-synchronized playback, LAN management and the shared Python photo library; requires Shell native Rust runtime support. [App changelog](apps/carousel-rust/CHANGELOG.md).
 - Updated `io.vitrallis.fireflyfield` `0.3.0`: Cache menu text, batch sprite rendering and prefer synchronized presentation. [App changelog](apps/firefly-field/CHANGELOG.md).
 - Updated `io.vitrallis.debug` `0.3.0`: Add live CPU/GPU Pulse overlays, scoped Lima telemetry and keyboard navigation fixes. [App changelog](apps/vitrallis-debug/CHANGELOG.md).
 - Updated `io.vitrallis.mediacarousel` `0.2.0`: Improve animation presentation, add QR connection details, parallel uploads, thumbnails, folder downloads and verified multimedia setup. [App changelog](apps/vitrallis-media-carousel/CHANGELOG.md).

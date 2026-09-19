@@ -69,6 +69,170 @@
       ]
     },
     {
+      "id": "io.vitrallis.carouselrust",
+      "installable": true,
+      "name": "Carousel-Rust",
+      "version": "0.1.0",
+      "runtime": "rust",
+      "binaries": {
+        "armv7-unknown-linux-gnueabihf": "bin/armv7-unknown-linux-gnueabihf/app"
+      },
+      "permissions": {
+        "network": true,
+        "audio": false,
+        "storage": true
+      },
+      "description": "Rust media carousel for PocketCHIP sharing the Python photo library, with accelerated playback and LAN management.",
+      "compatibility_notes": "Requires ARMv7 hard-float Linux, glibc 2.36+, SDL2, Mali/Lima graphics, a VSync X11 compositor and Vitrallis Shell 0.1.0-beta3.1 or newer with native Rust runtime support. WebM uses system ffmpeg/ffprobe. PocketCHIP GPU playback, physical moving-bar presentation, keyboard controls, codec parity and shared Python/Rust storage were verified. Close the Python carousel before launch.",
+      "source": {
+        "repository": "csd113/Vitrallis-Apps",
+        "commit": "d49a4aebf2605d353c24128a0a5aa4834626f1d4",
+        "path": "apps/carousel-rust"
+      },
+      "files": [
+        {
+          "path": "CHANGELOG.md",
+          "size": 420,
+          "sha256": "6b47caa210384ddf7b0ceaf7c3e1895cb8885d54994023bff6b7e87affe6f144"
+        },
+        {
+          "path": "Cargo.lock",
+          "size": 16331,
+          "sha256": "9b48535d1a1dcf1191926825264254bafef8a7092fd5f5334e4492fbd2573f8c"
+        },
+        {
+          "path": "Cargo.toml",
+          "size": 1031,
+          "sha256": "e2369e4e40d5d4288bdf78d81ab8967e274206e4eeb47611fcb54e945ac3cd28"
+        },
+        {
+          "path": "LICENSE-NOTICE",
+          "size": 269,
+          "sha256": "57eb0d413ae7c2a6f2710d3d094fd63f34715242e962cc896ce72bb127cb960c"
+        },
+        {
+          "path": "README.md",
+          "size": 10757,
+          "sha256": "5017384ea6133fe0825f7d94bf9f54e73f307a17252c06457d541da9398b0b87"
+        },
+        {
+          "path": "app.toml",
+          "size": 255,
+          "sha256": "e6e5a843280fe8af7392431c4a080eb3c7fa918b5042ba51c0ed7975deca0148"
+        },
+        {
+          "path": "assets/README.md",
+          "size": 235,
+          "sha256": "9147a5b347a5e8e853812ad80b90c3394854d2dfae1a6c75c5db020748a47906"
+        },
+        {
+          "path": "assets/capability-vp8.webm",
+          "size": 574,
+          "sha256": "60d922fc9b90688d517be18ee0fb7698d1cb06b2c4b5f3a50ec81965fa8b8a71"
+        },
+        {
+          "path": "assets/capability-vp9.webm",
+          "size": 560,
+          "sha256": "ebfb019d94bc23e724a39fe99f4fcf5e5c5d87858e5a72982d66cdc14134cecb"
+        },
+        {
+          "path": "assets/capability.webp",
+          "size": 68,
+          "sha256": "cfb8c87e21d85dccbe340906d17466566eeee0f4f6f0981c20054c9489b2b941"
+        },
+        {
+          "path": "bin/armv7-unknown-linux-gnueabihf/app",
+          "size": 1381964,
+          "sha256": "b8a135e6c56c20b0f1902cd193c785fc485049374beb7f85d9ab2e29ca4ac3a0"
+        },
+        {
+          "path": "clippy.toml",
+          "size": 257,
+          "sha256": "26e2d912db50468939393dbdd92f0f70358f5e3f7cf8a10315fba4f7c257842f"
+        },
+        {
+          "path": "icon.png",
+          "size": 6949,
+          "sha256": "2d2afb08969f1e4a03e6f4ff3864c9c30437663bbd63cd909761bf24de19e43c"
+        },
+        {
+          "path": "src/compositor.rs",
+          "size": 3340,
+          "sha256": "ed9e308e860281df65afb5558b67fbe19577e7dcb104567527d7417edc41483b"
+        },
+        {
+          "path": "src/http.rs",
+          "size": 7406,
+          "sha256": "2ef3283ff8e67ae0c958f0c7aecf6ee8f09fb15689cdb5d84c97f82127681295"
+        },
+        {
+          "path": "src/main.rs",
+          "size": 3428,
+          "sha256": "4144f7e30a297bfc270919b5eb5d9029bef4e38e04a6af3fcf9d930e9f8cd3cd"
+        },
+        {
+          "path": "src/media.rs",
+          "size": 14526,
+          "sha256": "6fab857ab9333ee507b715f28516d014843624570b7be800d0425ad76e8288db"
+        },
+        {
+          "path": "src/model.rs",
+          "size": 10786,
+          "sha256": "d9798df5d6cbdc5b298fb6f8849975a00b00a1e36b893fe6c9cfc51df726f9f5"
+        },
+        {
+          "path": "src/player.rs",
+          "size": 9096,
+          "sha256": "95e3ddc253565966839ca4de824521e51d1b50bcc88a3edb2e7cd81f90159542"
+        },
+        {
+          "path": "src/process.rs",
+          "size": 4687,
+          "sha256": "dab560836a056e83f0b7eaecbe42e2ae260d25177afd42afc213cd1cbbcb909a"
+        },
+        {
+          "path": "src/render.rs",
+          "size": 6809,
+          "sha256": "5fe2a471071a6ec7e0e48cf1a0d22412c78178f37f741acbd6efa0dc5c1c9c57"
+        },
+        {
+          "path": "src/server.rs",
+          "size": 18640,
+          "sha256": "7edac6d5251d39f556be0b2d660a3621353eb536034509e15c3ad40021de90ed"
+        },
+        {
+          "path": "src/storage.rs",
+          "size": 8649,
+          "sha256": "7c06d54e94b2c57cc4e11bc8541a8124f9b0906e22ee37ca9a0ac4f8af8fdd53"
+        },
+        {
+          "path": "src/support.rs",
+          "size": 5915,
+          "sha256": "16be64bb8f0b42397932d10d8a43ffa0780fae050f55e1348edf3d7069c72417"
+        },
+        {
+          "path": "src/ui.rs",
+          "size": 24351,
+          "sha256": "137d2b1607892f3479671cc51da51881eac7c93e3dcf5e587f7e26560107aea7"
+        },
+        {
+          "path": "web/app.js",
+          "size": 14702,
+          "sha256": "d8f6778672bf323994894dfba02429cd4eabe4bc14c9b6a43ec3f2459ada9b45"
+        },
+        {
+          "path": "web/index.html",
+          "size": 5202,
+          "sha256": "0b4b5c80077e25cab7f64628875a9c56b5b266af806b064dce26ad4d821211de"
+        },
+        {
+          "path": "web/style.css",
+          "size": 6217,
+          "sha256": "ae980e7cc1482a44b834ac486c40daef41e9de5b62fc46102d81902f255eddfe"
+        }
+      ]
+    },
+    {
       "id": "io.vitrallis.debug",
       "installable": true,
       "name": "Vitrallis Debug",
