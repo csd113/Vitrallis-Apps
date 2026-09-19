@@ -1,6 +1,6 @@
 # Carousel-Rust
 
-**0.1.0** · `io.vitrallis.carouselrust` · native Rust · PocketCHIP ARMv7.
+**0.1.1** · `io.vitrallis.carouselrust` · native Rust · PocketCHIP ARMv7.
 [Release notes](CHANGELOG.md).
 
 A Rust implementation of Media Carousel's native screens, playlist, settings,
@@ -106,7 +106,7 @@ Limits match Python: 64 MiB/file; 100 collections; 2,000 items; 2 MiB metadata;
 30 minutes; output capped at 1280×720; 256 MiB collection download. Four HTTP
 workers and two upload slots bound concurrency; one validation/preview decoder
 runs at a time. Raster validation and playback use isolated copies of the Rust
-executable with bounded output, memory (256 MiB on Linux), validation CPU/time,
+executable with bounded output, address space (256 MiB on 32-bit Linux, 512 MiB on 64-bit Linux), validation CPU/time,
 and cancellable process groups. Playback streams through two queued frames.
 
 ## Keyboard and touch controls

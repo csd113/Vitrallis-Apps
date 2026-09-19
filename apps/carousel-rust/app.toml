@@ -1,7 +1,7 @@
 manifest_version = 1
 name = "Carousel-Rust"
 id = "io.vitrallis.carouselrust"
-version = "0.1.0"
+version = "0.1.1"
 runtime = "rust"
 
 [binaries]

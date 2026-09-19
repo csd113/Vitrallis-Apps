@@ -33,17 +33,6 @@ jobs:
         run: |
           python tools/validate_catalog.py --catalog apps.json --package examples/hello-vitrallis
           python tools/validate_catalog.py --package examples/hello-rust
-      - name: Diagnose bounded FFmpeg runtime
-        run: |
-          python - <<'PYCODE'
-          import os, resource, subprocess
-          for limit in (256, 384, 512):
-              def bound():
-                  resource.setrlimit(resource.RLIMIT_AS, (limit * 1024 * 1024, limit * 1024 * 1024))
-              with open('apps/carousel-rust/assets/capability-vp8.webm', 'rb') as media:
-                  result = subprocess.run(['ffprobe', '-v', 'error', '-threads', '1', '-protocol_whitelist', 'file,pipe', '-show_streams', '-show_format', '-of', 'json', 'pipe:0'], stdin=media, capture_output=True, timeout=15, preexec_fn=bound, env=dict(os.environ, OPENBLAS_NUM_THREADS='1', OMP_NUM_THREADS='1'))
-              print('FFprobe memory MiB:', limit, 'exit:', result.returncode, 'stderr:', result.stderr.decode(errors='replace')[:4000])
-          PYCODE
       - name: Native Rust application validation
         env:
           CARGO_TARGET_DIR: ${{ runner.temp }}/carousel-rust-target

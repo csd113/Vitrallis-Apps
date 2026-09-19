@@ -138,9 +138,17 @@ fn capture_output(
 #[cfg(target_os = "linux")]
 pub fn limits(validation: bool) -> Result<()> {
     {
+        // 64-bit distro FFmpeg can map over 256 MiB of shared libraries before
+        // decoding (Ubuntu's ICU data is one example). Preserve the PocketCHIP
+        // cap; permit that library overhead on 64-bit development hosts.
+        let address_space = if cfg!(target_pointer_width = "64") {
+            512 * 1024 * 1024
+        } else {
+            256 * 1024 * 1024
+        };
         let space = libc::rlimit {
-            rlim_cur: 256 * 1024 * 1024,
-            rlim_max: 256 * 1024 * 1024,
+            rlim_cur: address_space,
+            rlim_max: address_space,
         };
         // SAFETY: valid rlimit pointer; applies only within the isolated child.
         ensure!(
