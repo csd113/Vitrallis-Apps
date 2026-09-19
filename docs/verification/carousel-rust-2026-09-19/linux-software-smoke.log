@@ -1,0 +1,2 @@
+event=media_renderer language=rust backend=software accelerated=false vsync=false cap_fps=30
+event=carousel_metrics language=rust elapsed_ms=3067 presented=1 decoded=0 skipped=0

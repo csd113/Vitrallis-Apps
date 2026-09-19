@@ -3,6 +3,7 @@
 import argparse
 import ctypes as c
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -49,7 +50,9 @@ def publish_directory(source, destination):
         raise OSError(error, os.strerror(error), str(destination))
 
 
-def build(source, destination, targets, zig=False):
+def build(source, destination, targets, zig=False, glibc=None):
+    if glibc is not None and (not zig or not re.fullmatch(r"2\.[0-9]{2}", glibc)):
+        raise Invalid("A 2.NN glibc baseline requires --zig")
     source = regular_path(source)
     destination = Path(os.path.abspath(destination))
     if destination.exists() or destination.is_symlink():
@@ -60,10 +63,14 @@ def build(source, destination, targets, zig=False):
     if not targets or len(targets) != len(set(targets)) or set(targets) - TARGETS:
         raise Invalid('Choose unique supported Linux targets')
     files = local_files(source)
-    metadata = manifest(files, source)
-    if metadata['runtime'] != 'python' or metadata['entry'] != 'main.py':
+    metadata = manifest(files, source, allow_unbuilt=True)
+    if metadata['runtime'] == 'python' and metadata['entry'] != 'main.py':
         raise Invalid('Experimental Rust uses the manifest v1 Python supervisor')
-    cargo = tomllib.loads(read_file(source / 'Cargo.toml', FILE_LIMIT).decode())
+    if metadata['runtime'] == 'rust' and set(targets) != set(metadata['binaries']):
+        raise Invalid('Build targets must match the native manifest binaries exactly')
+    if 'Cargo.toml' not in files:
+        raise Invalid('Rust source requires Cargo.toml')
+    cargo = tomllib.loads(files['Cargo.toml'].decode())
     name = cargo.get('package', {}).get('name', '')
     if not name or any(ch not in 'abcdefghijklmnopqrstuvwxyz0123456789-_' for ch in name):
         raise Invalid('Cargo package needs a simple binary name')
@@ -80,14 +87,16 @@ def build(source, destination, targets, zig=False):
                 target.write_bytes(data)
             for triple in targets:
                 command = ['cargo', 'zigbuild' if zig else 'build', '--locked', '--release',
-                           '--manifest-path', str(source / 'Cargo.toml'), '--target', triple,
+                           '--manifest-path', str(staged / 'Cargo.toml'), '--target',
+                           triple + (f'.{glibc}' if glibc else ''),
                            '--target-dir', build_dir]
                 subprocess.run(command, check=True)
                 binary = Path(build_dir) / triple / 'release' / name
                 payload = read_file(binary, FILE_LIMIT)
                 validate_binary(payload, triple)
-                target = staged / 'bin' / triple / 'app'
-                target.parent.mkdir(parents=True)
+                relative = metadata['binaries'][triple] if metadata['runtime'] == 'rust' else f'bin/{triple}/app'
+                target = staged / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(payload)
                 target.chmod(0o755)
             manifest(local_files(staged), staged)
@@ -105,9 +114,10 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--target', action='append', required=True, choices=sorted(TARGETS))
     parser.add_argument('--zig', action='store_true', help='Use optional cargo-zigbuild cross linker')
+    parser.add_argument('--glibc', help='GNU libc baseline for Zig builds, e.g. 2.36')
     args = parser.parse_args()
     try:
-        print(build(args.source, args.output, args.target, args.zig))
+        print(build(args.source, args.output, args.target, args.zig, args.glibc))
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         print(f'Cannot stage Rust app: {error}', file=sys.stderr)
         return 1

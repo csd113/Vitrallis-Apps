@@ -1,0 +1,12 @@
+test_browser_contract_matches_python (test_package.PackageTests.test_browser_contract_matches_python) ... ok
+test_keyboard_regressions_are_packaged_as_development_tests (test_package.PackageTests.test_keyboard_regressions_are_packaged_as_development_tests) ... ok
+test_native_package_and_version (test_package.PackageTests.test_native_package_and_version) ... ok
+test_gif_disposal_transparency_and_complete_replays (test_runtime.CodecTests.test_gif_disposal_transparency_and_complete_replays) ... ok
+test_real_vp8_vp9_webm_and_replay_output (test_runtime.CodecTests.test_real_vp8_vp9_webm_and_replay_output) ... ok
+test_rejects_animated_png_webp_corruption_and_pixel_bombs (test_runtime.CodecTests.test_rejects_animated_png_webp_corruption_and_pixel_bombs) ... ok
+test_still_format_parity_orientation_and_signature_detection (test_runtime.CodecTests.test_still_format_parity_orientation_and_signature_detection) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.805s
+
+OK

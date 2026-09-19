@@ -148,3 +148,20 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings -D clippy::
 Use `tools/build_rust_app.py` for a fresh staged target package and launch its
 Python supervisor on that target. Cross-compilation alone does not validate a
 foreign architecture at runtime. See [experimental Rust](experimental-rust.md).
+
+## Native Rust application checks
+
+For each app containing `Cargo.toml`, run the same format, strict Clippy and Cargo
+test commands above with `CARGO_TARGET_DIR` outside the package. Install host SDL2
+development files for Carousel-Rust. Build a host executable, then run its real
+codec parity tests with:
+
+```sh
+CAROUSEL_RUST_TEST_BINARY=/absolute/host/build/carousel-rust \
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/carousel-rust/tests -v
+```
+
+Pillow is the test oracle, not a Rust runtime dependency. Missing host binary or
+Pillow explicitly skips these tests; CI provides both. Package validation checks
+the shipped ARMv7 ELF independently from the host binary. Device presentation
+and performance remain separate from host/Xvfb tests.

@@ -24,7 +24,6 @@
           "version",
           "description",
           "runtime",
-          "entry",
           "permissions",
           "installable",
           "compatibility_notes",
@@ -53,7 +52,8 @@
             "maxLength": 1000
           },
           "runtime": {
-            "const": "python"
+            "type": "string",
+            "pattern": "^(python|rust)$"
           },
           "entry": {
             "type": "string",
@@ -142,8 +142,63 @@
                 }
               }
             }
+          },
+          "binaries": {
+            "type": "object",
+            "minProperties": 1,
+            "maxProperties": 3,
+            "additionalProperties": false,
+            "properties": {
+              "armv7-unknown-linux-gnueabihf": {
+                "type": "string",
+                "maxLength": 240,
+                "pattern": "^(?!.*(?:^|/)\\.{1,2}(?:/|$))[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$"
+              },
+              "aarch64-unknown-linux-gnu": {
+                "type": "string",
+                "maxLength": 240,
+                "pattern": "^(?!.*(?:^|/)\\.{1,2}(?:/|$))[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$"
+              },
+              "x86_64-unknown-linux-gnu": {
+                "type": "string",
+                "maxLength": 240,
+                "pattern": "^(?!.*(?:^|/)\\.{1,2}(?:/|$))[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$"
+              }
+            }
           }
-        }
+        },
+        "oneOf": [
+          {
+            "properties": {
+              "runtime": {
+                "const": "python"
+              }
+            },
+            "required": [
+              "entry"
+            ],
+            "not": {
+              "required": [
+                "binaries"
+              ]
+            }
+          },
+          {
+            "properties": {
+              "runtime": {
+                "const": "rust"
+              }
+            },
+            "required": [
+              "binaries"
+            ],
+            "not": {
+              "required": [
+                "entry"
+              ]
+            }
+          }
+        ]
       }
     }
   }

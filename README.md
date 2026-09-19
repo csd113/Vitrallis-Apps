@@ -14,7 +14,7 @@ through Vitrallis Shell's App Center, or build something of your own.
 
 Vitrallis Apps brings a Bitcoin dashboard, offline device diagnostics, and a
 locally managed media slideshow to small screens such as PocketCHIP. The apps
-use native Python/Tkinter windows with keyboard and touch controls. Each lives
+use native Python and Rust windows with keyboard and touch controls. Each lives
 in its own directory, with its source, artwork, instructions, and tests together.
 
 ### What is Vitrallis Apps?
@@ -49,6 +49,7 @@ manifest v1**. Runtime requirements and device verification vary by app; see
 | [Bitcoin Dashboard](apps/bitcoin-dashboard/README.md) | Bitcoin CAD price, chart, and network dashboard for the PocketCHIP. |
 | [Vitrallis Debug](apps/vitrallis-debug/README.md) | Offline network, CPU, temperature, and memory diagnostics for the PocketCHIP. |
 | [Vitrallis Media Carousel](apps/vitrallis-media-carousel/README.md) | Native media slideshow with LAN uploads, named collections and shared settings. |
+| [Carousel-Rust](apps/carousel-rust/README.md) | Rust media carousel sharing the Python photo library; requires the Shell native Rust runtime. |
 | [Firefly Field](apps/firefly-field/README.md) | A calm, fullscreen pixel-art firefly meadow rendered through SDL2. |
 
 [`apps.json`](apps.json) is authoritative for published versions, installation

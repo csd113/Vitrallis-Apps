@@ -1,0 +1,2 @@
+event=media_renderer language=rust backend=opengl gpu="Mali400" accelerated=true vsync_requested=true physical_scanout=unverified
+event=carousel_metrics language=rust elapsed_ms=90030 presented=448 decoded=435 skipped=207

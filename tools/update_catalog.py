@@ -22,7 +22,9 @@ def update(catalog, *, repo, mappings, repository, commit, path,
     app_id = package['id']
     previous = next((app for app in catalog['apps'] if app['id'] == app_id), None)
     entry = copy.deepcopy(previous) if previous else {'id': app_id, 'installable': False}
-    entry.update({key: package[key] for key in ('id', 'name', 'version', 'runtime', 'entry', 'permissions')})
+    entry.pop('entry' if package['runtime'] == 'rust' else 'binaries', None)
+    entry.update({key: package[key] for key in ('id', 'name', 'version', 'runtime',
+                                             'binaries' if package['runtime'] == 'rust' else 'entry', 'permissions')})
     for key, value in (('description', description), ('compatibility_notes', compatibility_notes),
                        ('installable', installable)):
         if value is not None:

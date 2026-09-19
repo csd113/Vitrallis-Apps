@@ -53,8 +53,9 @@ audio = false
 storage = false
 ```
 
-All seven top-level keys are required, including integer `manifest_version = 1`.
-Only the shown keys are accepted in v1; reject unknown keys/versions, duplicate
+Python requires the seven shown top-level keys, including integer `manifest_version = 1`.
+Native Rust replaces `entry` with a `binaries` table as specified in
+[Rust packages](experimental-rust.md). Only the keys for the selected runtime are accepted; reject unknown keys/versions, duplicate
 TOML assignments, extra permission keys and incorrect types. Future extensions
 require an explicit contract revision; do not add speculative SDK fields.
 
@@ -64,7 +65,7 @@ require an explicit contract revision; do not add speculative SDK fields.
   at most 128 characters. Example: `org.yourproject.myapp`.
 - `version` is stable SemVer `MAJOR.MINOR.PATCH`, no leading zeroes, prefix,
   prerelease or build suffix; at most 32 characters.
-- `runtime` is exactly `python`. The README states the supported Python/toolkit
+- `runtime` is exactly `python` or `rust`. The README states the supported runtime/toolkit
   versions; the tools' Python 3.11 minimum is not the app's minimum.
 - `entry` is a safe app-relative path to a published `.py` file. Use `main.py`
   normally. Absolute paths, traversal, backslashes, arguments and shell commands
@@ -73,7 +74,8 @@ require an explicit contract revision; do not add speculative SDK fields.
   It does not implement sandboxing, grant consent or establish platform enforcement.
   False means the app must not use that capability. Microphone access has no v1 contract.
 
-The canonical layout requires all shown files and both populated directories.
+The Python layout requires all shown files and both populated directories. Native
+Rust omits Python entry/requirements files and includes its mapped ELF payloads.
 An otherwise empty `assets/` should contain a README so Git retains it; `tests/`
 should contain meaningful app tests. `requirements.txt` may state that no pip
 dependencies are needed. Tkinter is a system prerequisite, not a pip dependency.

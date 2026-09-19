@@ -27,7 +27,9 @@ a pull request. Keep changes focused and do not overwrite another contributor's 
    `apps/<app-slug>/` for a new app; use an ID in a namespace you control.
 2. Follow the [manifest v1 contract](docs/creating-apps.md). Include `app.toml`,
    `main.py`, `icon.png`, `requirements.txt`, `README.md`, `CHANGELOG.md`, and
-   populated `assets/` and `tests/`. Preserve an existing app's stable ID.
+   populated `assets/` and `tests/`. Native Rust uses the
+   [Rust package contract](docs/experimental-rust.md), replacing Python entry/requirements
+   files with mapped precompiled ELF payloads. Preserve an existing app's stable ID.
 3. Meet the mandatory [keyboard baseline](docs/creating-apps.md#keyboard-baseline-catalog-acceptance-requirement): a user using only key presses can discover controls and complete every essential workflow, including normal exit. Document the complete key map in the app README and cover essential keyboard paths with regression tests. Pointer/touch-only essential controls are rejected.
 4. Document Python/toolkit requirements, controls, storage locations, declared
    permissions, and known device limits in the app README. Prefer existing
@@ -126,4 +128,4 @@ present once, and avoid direct visible-buffer drawing or unnecessary redraw loop
 Document and bound any unsynchronized fallback; arbitrary sleeps do not fix tearing.
 Follow the [rendering contract](docs/rendering.md) and verify the physical backend before publishing.
 
-Precompiled Rust payloads can use the [experimental Rust packaging profile](docs/experimental-rust.md). Python remains the default runtime and catalog v1 is unchanged.
+Precompiled Rust payloads can use the [Rust packaging profile](docs/experimental-rust.md). Python remains the default runtime and catalog v1 is unchanged.
