@@ -152,3 +152,16 @@ owned and documented by the coordinated GPU task.
 Final post-reboot overlay capture confirms CPU 48.2%, real GPU 97.0% and 297 MHz remain visible over Pulse:
 
 ![Debug live overlay](debug-overlay.png)
+
+## Source and catalog publication
+
+The tested source was committed and pushed to `updated-TO-DO` as
+`3e66e70d3eabd059930542abbc7e332648e165c2`. Firefly 0.3.0, Debug 0.3.0 and Carousel
+0.2.0 catalog inventories were generated from that pushed commit. A fresh clone
+resolved the source, and GitHub raw manifest bytes matched the pinned source.
+Existing installation flags are preserved; the staged hardware tests do not
+establish a managed App Center update to these versions.
+
+The coordinated Shell task published GPU/VSync setup and the multimedia helper in
+[Shell commit 4451a21](https://github.com/csd113/Vitrallis-Shell/commit/4451a21).
+The Python and Rust examples remain outside the production catalog.

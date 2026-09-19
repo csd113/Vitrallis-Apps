@@ -72,7 +72,7 @@
       "id": "io.vitrallis.debug",
       "installable": true,
       "name": "Vitrallis Debug",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -81,27 +81,27 @@
         "storage": false
       },
       "description": "Offline Linux hardware and driver diagnostics with CPU/GPU graphs and a hardware-rendered Pulse.",
-      "compatibility_notes": "Requires Linux, Python 3.8+ and system Tkinter. Pulse additionally requires X11/XWayland, EGL/GLES2 and a compatible hardware driver. Raspberry Pi and Allwinner driver detection is fixture-tested; physical GPU performance is unverified. GPU utilization requires a supported counter.",
+      "compatibility_notes": "Requires Linux, Python 3.8+ and system Tkinter. Pulse additionally requires X11/XWayland, EGL/GLES2 and a compatible hardware driver. Real Lima utilization, GPU frequency, keyboard controls and overlay performance were tested on PocketCHIP. GPU access and tear-free presentation require the Shell PocketCHIP platform setup with its private trace reader and VSync compositor. Managed App Center update to this version was not physically exercised.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "5e3583ccf20d8335c1edede4e0c748c89575c5dd",
+        "commit": "3e66e70d3eabd059930542abbc7e332648e165c2",
         "path": "apps/vitrallis-debug"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 1975,
-          "sha256": "d321e62d55477ad208cd5c145721c94808e182eee463ffed62004e65bd32646c"
+          "size": 2259,
+          "sha256": "f1d8498bd652675c2c23cdea90473836f907e20166ad48228153e55481a88e91"
         },
         {
           "path": "README.md",
-          "size": 14469,
-          "sha256": "0e8608e8e4b96ab5d1edb875d0a9cd0e859dc6a0577c00004fa04fd4b47167f0"
+          "size": 15186,
+          "sha256": "508096600fb77fc9cc7678a85cf3ffde520122fd3c32ea3db51f6e9a65404e87"
         },
         {
           "path": "app.toml",
           "size": 188,
-          "sha256": "10366f43aa19cab55571e31cb5a4448657402a6df2421d359202032268d7b01e"
+          "sha256": "f82686f899e4f3b28ca31da6a240c171ef9722fde208a7faa735a0355584bf7f"
         },
         {
           "path": "assets/README.md",
@@ -114,19 +114,19 @@
           "sha256": "2cbf3b87ab07680a878374d124b44b2534e73d388ef8eb9954a9fcb71669e5be"
         },
         {
-          "path": "devfreq.py",
-          "size": 6147,
-          "sha256": "8a4691d2fb67f7e806a31aac457637580e19f3ef9a8628dd60affd5fafe72730"
-        },
-        {
           "path": "diagnostics.py",
-          "size": 21541,
-          "sha256": "7af61e19817f12621aa471c9cf98084d9e7ac3b99c2dfc8a7499049534ee2f2a"
+          "size": 21494,
+          "sha256": "8991bda42b3202db419b6dfb26e6e35d3ac641c0d697250986d8b6e51c8f8a8b"
         },
         {
           "path": "gpu.py",
-          "size": 11450,
-          "sha256": "dce7ed16d536e527d7bdf49ef359bc72d2a20f3d840e7a2f366c7c9b12945e72"
+          "size": 15134,
+          "sha256": "387b64ecc0f54cda5435a7cc7033978a858f9c064e121cb888010a22980608cd"
+        },
+        {
+          "path": "gpu_metrics.py",
+          "size": 9806,
+          "sha256": "3d26dd3d4d608e7cb017382c2e9b4e4bc94adaca2f5f011140d0ca629766a707"
         },
         {
           "path": "hardware.py",
@@ -150,8 +150,8 @@
         },
         {
           "path": "ui.py",
-          "size": 35001,
-          "sha256": "bad96bbc647dd2dea7a718de2a1314324bcd4ceda8f5ddd177a2139445e9be1c"
+          "size": 36532,
+          "sha256": "6c187b924d4e0a0a58d231c91d5d7837f067be3e2178f9d727d46bca7050156e"
         }
       ]
     },
@@ -159,7 +159,7 @@
       "id": "io.vitrallis.fireflyfield",
       "installable": true,
       "name": "Firefly Field",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -168,27 +168,27 @@
         "storage": false
       },
       "description": "A calm, fullscreen pixel-art firefly meadow rendered through SDL2.",
-      "compatibility_notes": "Requires Python 3.8+ and system SDL2 2.0+ with an X11/Wayland/video driver. Auto prefers verified accelerated SDL renderers (GLES2 first) and falls back to software; hardware mode explicitly requires acceleration. Published as installable; target PocketCHIP Shell/App Center lifecycle and physical GPU performance remain follow-up verification.",
+      "compatibility_notes": "Requires Python 3.8+ and system SDL2 2.0+ with an X11/Wayland/video driver. Auto tries VSync accelerated renderers before bounded software fallback; SDL 2.0.18+ enables sprite batching. Physical Mali/Lima menu performance and synchronized presentation were tested on PocketCHIP with the Shell VSync compositor. Managed App Center update to this version was not physically exercised.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "5e3583ccf20d8335c1edede4e0c748c89575c5dd",
+        "commit": "3e66e70d3eabd059930542abbc7e332648e165c2",
         "path": "apps/firefly-field"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 2419,
-          "sha256": "1451593f1363cab7cb8f9aeecddb1cce21477c7eeba8a9f7c3fe8a852a9a163a"
+          "size": 2660,
+          "sha256": "f1b53b76bf6d7b98ea238527f35bfe7b64cf54719d0553e70bbb8aa0947aa751"
         },
         {
           "path": "README.md",
-          "size": 4309,
-          "sha256": "21ea3c25096e9350c056a682e336e82f076059dbd0b279fbe0f83f67b0dbdf13"
+          "size": 4718,
+          "sha256": "373354f33be77c832a0563d1c2182d5469f8ea9dbe4aa139a96eb0132647b478"
         },
         {
           "path": "app.toml",
           "size": 193,
-          "sha256": "2bd4d09340412f3bd84a3ea534c231e94f9332029287d0536c74bf8253cc0b32"
+          "sha256": "dbf8cfbaf19fe0ec5208657ee6b8b97b1c7689413ce975120892a05f3b98fa84"
         },
         {
           "path": "assets/README.md",
@@ -252,13 +252,18 @@
         },
         {
           "path": "main.py",
-          "size": 41093,
-          "sha256": "df1d23f71603573771315cf2b8b5214cfb65b86c504fd0d77c183b83aff37d75"
+          "size": 43777,
+          "sha256": "4c886f002b53b40f3dde1823829395b9e31cde1fde0ea06c462d2dbf6aff40df"
         },
         {
           "path": "requirements.txt",
           "size": 110,
           "sha256": "4c00f6ab9456b3fadae2653dbb385b874cdd0ce838d3730e90bd0dd4171c496e"
+        },
+        {
+          "path": "sprites.py",
+          "size": 4508,
+          "sha256": "3cac3cf8befcc58c086b3d88fb6d0a2cf0c01e83a1ba16e819dedb2855ab8bbe"
         }
       ]
     },
@@ -266,7 +271,7 @@
       "id": "io.vitrallis.mediacarousel",
       "installable": true,
       "name": "Vitrallis Media Carousel",
-      "version": "0.1.4",
+      "version": "0.2.0",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -275,32 +280,47 @@
         "storage": true
       },
       "description": "Native media slideshow with LAN uploads, named collections and shared settings.",
-      "compatibility_notes": "Requires Python 3.9+, Tk 8.6, Pillow >=10.4,<13 and installed packaging for App Center dependency checks. Optional system ffmpeg/ffprobe enables muted WebM. Available through the official main catalog. Version 0.1.1 adds X11 process identity for Shell focus/resume. Source-run playback, LAN uploads and physical touch/keyboard were tested on an ARMv7 PocketCHIP with Debian 13.6; device App Center install/update/repair verification remains pending.",
+      "compatibility_notes": "Requires Python 3.9+, Tk 8.6, Pillow >=10.4,<13, qrcode >=7.4,<9 and installed packaging for App Center dependency checks. Optional system ffmpeg/ffprobe must decode VP8, VP9 and WebP; one-click setup requires the Shell multimedia helper. PocketCHIP playback, uploads and keyboard controls were tested from staged source with the Shell VSync compositor. Managed App Center update to this version was not physically exercised.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "5e3583ccf20d8335c1edede4e0c748c89575c5dd",
+        "commit": "3e66e70d3eabd059930542abbc7e332648e165c2",
         "path": "apps/vitrallis-media-carousel"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 1679,
-          "sha256": "9a83f6708aafc3ee1899880150b027335ca444f60ef5d65c381d026d510ebf4c"
+          "size": 2036,
+          "sha256": "8607f3040776eec250740acdc7ff9209ea7f5ee5600cebc3d6e1b6486b6cadd1"
         },
         {
           "path": "README.md",
-          "size": 16960,
-          "sha256": "dc3883647f8de3dd5880b508524e13e57ecb71712881938e6cdc62a03e162a20"
+          "size": 19703,
+          "sha256": "2bf4646fc5e48d17bd016b561122c05f540e70dc86a6c3211d3eca378c470c9a"
         },
         {
           "path": "app.toml",
           "size": 203,
-          "sha256": "e6c84a0138ccaa98dc54c6036a84ed4be16ac40287895a782a303fc7d2aec344"
+          "sha256": "4ee82fdf94a994fc5ea77e57a0e9a071f22f523f945aafbe831fdcb6216f5797"
         },
         {
           "path": "assets/README.md",
-          "size": 338,
-          "sha256": "1f237745d0e66e6eabf78ac2d4972ce6787ea08b8a062c1fef80b95ad12a96f3"
+          "size": 542,
+          "sha256": "e3f1b8b80889c69f5aa7a336942eabc86aec3a1bde12dbbe2e994ccbaaab678d"
+        },
+        {
+          "path": "assets/capability-vp8.webm",
+          "size": 574,
+          "sha256": "60d922fc9b90688d517be18ee0fb7698d1cb06b2c4b5f3a50ec81965fa8b8a71"
+        },
+        {
+          "path": "assets/capability-vp9.webm",
+          "size": 560,
+          "sha256": "ebfb019d94bc23e724a39fe99f4fcf5e5c5d87858e5a72982d66cdc14134cecb"
+        },
+        {
+          "path": "assets/capability.webp",
+          "size": 68,
+          "sha256": "cfb8c87e21d85dccbe340906d17466566eeee0f4f6f0981c20054c9489b2b941"
         },
         {
           "path": "assets/icon.svg",
@@ -308,9 +328,19 @@
           "sha256": "3fb9850c9a1d8c6cf8a90bdbdf6831f50eeb25d0f2dff87c10860f31adcd452f"
         },
         {
+          "path": "connection.py",
+          "size": 818,
+          "sha256": "8990a49339924d3f3b1f132b2aa193fac92f374f8898480f6c6ac0b6fa4a690c"
+        },
+        {
+          "path": "dependencies.py",
+          "size": 3581,
+          "sha256": "200174dab58d5ce8bf8aa9dc9fb45fa3406ba3b03a02d365a24c15d5c7c0b0a5"
+        },
+        {
           "path": "gpu.py",
-          "size": 13832,
-          "sha256": "0405f2bfd3f3269515e6faf92f9d148c7e3f5ea19862e58e751be06300b3cdfe"
+          "size": 14370,
+          "sha256": "7b63a8b7483ab86119887993a740da8a416c6bfba11a59e9aa2d91594a870a77"
         },
         {
           "path": "icon.png",
@@ -325,22 +355,32 @@
         {
           "path": "main.py",
           "size": 1321,
-          "sha256": "3a8e869c2d664f71fb26a70834a2a20927614f8114ac3f02f90473215361323d"
+          "sha256": "1221b90249b73ad826c23ed91be472c15bde1d589c2fd7d5fa372ed1396adfbf"
         },
         {
           "path": "media.py",
-          "size": 9483,
-          "sha256": "2b4a4cadc5ad6aaa8ff4cdf26bb0e55015f90e09ff4fd341d204675062df6f3f"
+          "size": 9377,
+          "sha256": "ebd591b07b3667ff0fbddcc34bcc50ba1a04a332f647290ecb082e87561a47d3"
+        },
+        {
+          "path": "multimedia.py",
+          "size": 3324,
+          "sha256": "7ad5b4cc391733099b8b27f850f2b569c52ffc385c023007b7fe2c1a422fc5c1"
         },
         {
           "path": "player.py",
-          "size": 11384,
-          "sha256": "1d01c21d46a19ba270ec89e57f35d28b37937336684eb1f6bf3c478f497d6bb8"
+          "size": 11997,
+          "sha256": "af5543ee0349082e38783889eacfed46b9aa7cf25cd8f711ea9b2b7ae219ee68"
+        },
+        {
+          "path": "previews.py",
+          "size": 4204,
+          "sha256": "b351113aa93130139a9112063891df36c380d59778516cba77818e12ed90a1c1"
         },
         {
           "path": "requirements.txt",
-          "size": 95,
-          "sha256": "9bc4afb9ee335529c4c585b1bb11077cec5010a859c3244ee1799446a29a1c96"
+          "size": 175,
+          "sha256": "960c92e9c9083542e6bd16c57e0a89d3f54f9786ab5b7129e2272d53e9f9482d"
         },
         {
           "path": "settings.py",
@@ -354,28 +394,28 @@
         },
         {
           "path": "ui.py",
-          "size": 23256,
-          "sha256": "b9f53fb5e8c48dc6f7c6732c382de405c94811e6da38d054f056f9e642f82bd1"
+          "size": 25007,
+          "sha256": "f2fffa15cde4dcdf6cf52e1336ee9ff588da28e0920b08db72fedcc3d2b61217"
         },
         {
           "path": "web/app.js",
-          "size": 10874,
-          "sha256": "193db63c5961188a473e2a9a257a3161c657b80c76dcbbf56032bea425c8f037"
+          "size": 14702,
+          "sha256": "d8f6778672bf323994894dfba02429cd4eabe4bc14c9b6a43ec3f2459ada9b45"
         },
         {
           "path": "web/index.html",
-          "size": 4991,
-          "sha256": "6e506ae781dcbec21e3533b75f56e46441c68106bb73dae73faafc3b98bfec4d"
+          "size": 5202,
+          "sha256": "0b4b5c80077e25cab7f64628875a9c56b5b266af806b064dce26ad4d821211de"
         },
         {
           "path": "web/style.css",
-          "size": 5649,
-          "sha256": "86b79004f183321573e84bf556431d255f63eb0e34b81b76e1b4bb0ccdc9dcaf"
+          "size": 6217,
+          "sha256": "ae980e7cc1482a44b834ac486c40daef41e9de5b62fc46102d81902f255eddfe"
         },
         {
           "path": "web_server.py",
-          "size": 16471,
-          "sha256": "bf31eb0cc5b22f95f98ab1447ca30785c9d9435758de2e79b5e706c15c331366"
+          "size": 20935,
+          "sha256": "4475316899f012176fa2f5b779b9e72e56ae84e644f11318d6669ba4732eb24e"
         }
       ]
     }

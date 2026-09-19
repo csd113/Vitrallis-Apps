@@ -8,6 +8,12 @@ use America/Vancouver time. App IDs remain stable; each app ships its own
 and place new records in the newest date section. See the
 [changelog policy](docs/changelog-policy.md) for the required submission format.
 
+## 2026-09-19
+
+- Updated `io.vitrallis.fireflyfield` `0.3.0`: Cache menu text, batch sprite rendering and prefer synchronized presentation. [App changelog](apps/firefly-field/CHANGELOG.md).
+- Updated `io.vitrallis.debug` `0.3.0`: Add live CPU/GPU Pulse overlays, scoped Lima telemetry and keyboard navigation fixes. [App changelog](apps/vitrallis-debug/CHANGELOG.md).
+- Updated `io.vitrallis.mediacarousel` `0.2.0`: Improve animation presentation, add QR connection details, parallel uploads, thumbnails, folder downloads and verified multimedia setup. [App changelog](apps/vitrallis-media-carousel/CHANGELOG.md).
+
 ## 2026-09-14
 
 - Added `io.vitrallis.fireflyfield` `0.2.1`: Ship packaged meadow artwork, improve renderer selection and input handling, and enable catalog installation. [App changelog](apps/firefly-field/CHANGELOG.md).
