@@ -1,4 +1,4 @@
-"""Four bounded HTTP workers, one streamed upload, per-launch bearer access."""
+"""Four bounded HTTP workers, two streamed uploads, per-launch bearer access."""
 import hmac
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import ipaddress
@@ -12,11 +12,15 @@ from socketserver import ThreadingMixIn
 import subprocess
 import threading
 import time
+import tempfile
+import zipfile
 from urllib.parse import parse_qs, urlsplit
 
 from library import display_name, identifier
 from media import MAX_UPLOAD, Processes, capabilities, probe
 from storage import unique_keys
+from previews import Thumbnails
+from dependencies import Installation
 
 WEB = Path(__file__).resolve().parent / "web"
 ASSETS = {"/": ("index.html", "text/html; charset=utf-8"),
@@ -122,11 +126,17 @@ class WebServer:
         self.name = socket.gethostname()[:64]
         self.http = None
         self.thread = None
+        self.address_thread = None
         self.processes = Processes()
-        self.upload_slot = threading.Lock()
+        self.upload_slot = threading.BoundedSemaphore(2)
+        self.media_slot = threading.Lock()  # One expensive decoder across both uploads.
+
+        self.thumbnails = Thumbnails(library, self.processes, self.media_slot)
+        self.download_slot = threading.Lock()
         self.stopping = threading.Event()
         self.urls = []
         self.state = "Starting"
+        self.installation = Installation()
         self.auth_lock = threading.Lock()
         self.auth_window = 0
         self.auth_failures = 0
@@ -142,6 +152,19 @@ class WebServer:
                 raise
             self.http = BoundedServer((self.host, 0), self)
         self.port = self.http.server_port
+        self.refresh_addresses()
+        self.thread = threading.Thread(target=self.http.serve_forever, kwargs={"poll_interval": 0.1},
+                                       name="carousel-http")
+        self.thread.start()
+
+        self.address_thread = threading.Thread(target=self.watch_addresses, name="carousel-address")
+        self.address_thread.start()
+
+    def watch_addresses(self):
+        while not self.stopping.wait(10):
+            self.refresh_addresses()
+
+    def refresh_addresses(self):
         addresses = lan_addresses() if self.host == "0.0.0.0" else [self.host]
         self.urls = [f"http://{address}:{self.port}" for address in addresses]
         if not self.urls:
@@ -149,9 +172,6 @@ class WebServer:
             self.state = "Local only address · check Wi-Fi"
         else:
             self.state = "Ready"
-        self.thread = threading.Thread(target=self.http.serve_forever, kwargs={"poll_interval": 0.1},
-                                       name="carousel-http")
-        self.thread.start()
 
     def authenticated(self, header):
         valid = (isinstance(header, str) and header.isascii()
@@ -169,6 +189,8 @@ class WebServer:
 
     def close(self):
         self.stopping.set()
+        if self.address_thread is not None:
+            self.address_thread.join(timeout=3)
         if self.http is None:
             self.processes.close()
             return
@@ -220,7 +242,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; "
-                         "img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; "
+                         "img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; "
                          "frame-ancestors 'none'; form-action 'self'")
         self.send_header("Connection", "close")
         self.end_headers()
@@ -313,8 +335,12 @@ class Handler(BaseHTTPRequestHandler):
         if self.command == "GET" and parsed.path == "/api/state":
             self.reply(200, {"collections": library.snapshot(), "settings": settings.snapshot(),
                             "device": self.owner.name, "urls": self.owner.urls, "status": self.owner.state,
-                            "capabilities": capabilities(), "max_upload": MAX_UPLOAD,
+                            "capabilities": capabilities(blocking=False), "installation": self.owner.installation.snapshot(), "max_upload": MAX_UPLOAD,
                             "warning": library.warning or settings.warning})
+        elif self.command == "POST" and parsed.path == "/api/dependencies/install":
+            if self.json_body() != {"install": "ffmpeg"}:
+                raise ValueError("Expected explicit FFmpeg installation request")
+            self.reply(202, self.owner.installation.start())
         elif self.command == "PUT" and parsed.path == "/api/settings":
             self.reply(200, settings.save(self.json_body()))
         elif self.command == "POST" and parsed.path == "/api/collections":
@@ -339,6 +365,14 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError("Expected an ordered ID list")
                 library.reorder(cid, body["ids"])
                 self.reply(200, {"ok": True})
+            elif len(parts) == 4 and parts[3] == "download" and self.command == "GET":
+                self.download(cid)
+            elif len(parts) == 6 and parts[3] == "media" and parts[5] == "thumbnail" and self.command == "GET":
+                mid = identifier(parts[4])
+                item = next((item for item in library.playlist(cid) if item['id'] == mid), None)
+                if item is None:
+                    raise KeyError(mid)
+                self.reply(200, self.owner.thumbnails.get(item), 'image/png')
             elif len(parts) == 4 and parts[3] == "media" and self.command == "POST":
                 self.upload(cid, parsed.query)
             elif len(parts) == 5 and parts[3] == "media" and self.command == "DELETE":
@@ -348,6 +382,51 @@ class Handler(BaseHTTPRequestHandler):
                 raise HTTPError(404, "Unknown API route")
         else:
             raise HTTPError(404, "Unknown API route")
+
+    def download(self, cid):
+        items = self.owner.library.playlist(cid)
+        # Keep one bounded, unlinked staging archive on data storage, not a
+        # potentially RAM-backed /tmp. Disconnect and every error close it.
+        maximum = 256 * 1024 * 1024
+        if sum(item['size'] for item in items) > maximum:
+            raise HTTPError(413, "Collection exceeds the 256 MiB download limit")
+        if not self.owner.download_slot.acquire(blocking=False):
+            raise HTTPError(409, "Another folder download is active")
+        try:
+            with tempfile.TemporaryFile(dir=self.owner.library.paths.data) as temporary:
+                names = set()
+                with zipfile.ZipFile(temporary, 'w', compression=zipfile.ZIP_STORED) as archive:
+                    for item in items:
+                        if self.owner.stopping.is_set():
+                            raise HTTPError(503, "Server stopping")
+                        name = display_name(item['name'], 160)
+                        # Duplicate display names are valid in the existing library;
+                        # preserve each original basename in a distinct ID directory.
+                        member = name if name.casefold() not in names else item['id'] + '/' + name
+                        names.add(name.casefold())
+                        with self.owner.library.open_item(item) as source:
+                            if os.fstat(source.fileno()).st_size != item['size']:
+                                raise ValueError("Media size changed; refresh the collection")
+                            with archive.open(member, 'w') as target:
+                                remaining = item['size']
+                                while remaining:
+                                    chunk = source.read(min(65536, remaining))
+                                    if not chunk:
+                                        raise ValueError("Media changed during download")
+                                    target.write(chunk)
+                                    remaining -= len(chunk)
+                length = temporary.tell()
+                temporary.seek(0)
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/zip')
+                self.send_header('Content-Disposition', 'attachment; filename="collection.zip"')
+                self.send_header('Content-Length', str(length))
+                self.send_header('Cache-Control', 'no-store')
+                self.send_header('X-Content-Type-Options', 'nosniff')
+                self.end_headers()
+                shutil.copyfileobj(temporary, self.wfile, 65536)
+        finally:
+            self.owner.download_slot.release()
 
     def upload(self, cid, query):
         length = self.content_length(MAX_UPLOAD)
@@ -359,7 +438,7 @@ class Handler(BaseHTTPRequestHandler):
         name = display_name(names["name"][0], 160)
         self.owner.library.playlist(cid)  # Reject unknown collections before writing bytes.
         if not self.owner.upload_slot.acquire(blocking=False):
-            raise HTTPError(409, "Another upload is active; retry when it finishes")
+            raise HTTPError(409, "Two uploads are active; retry when one finishes")
         temporary = None
         try:
             stream, temporary = self.owner.library.temporary_upload()
@@ -375,7 +454,8 @@ class Handler(BaseHTTPRequestHandler):
                     remaining -= len(chunk)
                 stream.flush()
                 os.fsync(stream.fileno())
-            info = probe(temporary, self.owner.processes)
+            with self.owner.media_slot:
+                info = probe(temporary, self.owner.processes)
             if self.owner.stopping.is_set():
                 raise HTTPError(503, "Server stopping")
             item = self.owner.library.add_upload(cid, name, temporary, info)

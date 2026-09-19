@@ -60,3 +60,18 @@ class EglIntegrationTests(unittest.TestCase):
         renderer.close()
         self.assertIsNone(renderer.display)
         self.assertIsNone(renderer.xdisplay)
+
+class OverlayTests(unittest.TestCase):
+    def test_zero_load_is_visible_and_stale_samples_are_unavailable(self):
+        from types import SimpleNamespace
+        from ui import performance_lines
+        sample = SimpleNamespace(cpu_percent=0, gpu=SimpleNamespace(percent=0), gpu_frequency_hz=297000000)
+        self.assertEqual(performance_lines(sample), ('CPU 0.0%  GPU 0.0%', 'GPU 297 MHZ'))
+        self.assertEqual(performance_lines(sample, stale=True), ('CPU --%  GPU --%', 'GPU -- MHZ'))
+
+    def test_metrics_pixels_are_bounded_and_readable(self):
+        from gpu import metrics_pixels
+        width, height, raw = metrics_pixels(('CPU 40% GPU 72%', 'GPU 297 MHZ'))
+        self.assertEqual(len(raw), width * height * 4)
+        self.assertLessEqual(width, 460)
+        self.assertIn(bytes((220,245,236,255)), raw)

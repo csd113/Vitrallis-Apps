@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import tkinter.font as tkfont
+import math
 import queue
 import threading
 import time
@@ -24,6 +25,15 @@ MUTED = "#aebdcb"
 ACCENT = "#63d5c5"
 WARN = "#e2b75a"
 ERROR = "#d97979"
+
+
+def performance_lines(sample, stale=False):
+    cpu = sample.cpu_percent if sample and not stale else None
+    gpu = sample.gpu.percent if sample and sample.gpu and not stale else None
+    frequency = sample.gpu_frequency_hz if sample and not stale else None
+    percent = lambda value: "--%" if value is None else f"{value:.1f}%"
+    return (f"CPU {percent(cpu)}  GPU {percent(gpu)}",
+            "GPU " + (f"{frequency / 1000000:.0f} MHZ" if frequency is not None else "-- MHZ"))
 
 
 @dataclass
@@ -145,7 +155,7 @@ class Dashboard:
         self.canvas.bind("<MouseWheel>", self._wheel)
         self.canvas.bind("<Button-4>", lambda event: self._scroll(-36))
         self.canvas.bind("<Button-5>", lambda event: self._scroll(36))
-        self.canvas.bind("<Key>", self._key)
+        self.root.bind("<Key>", self._key)
         self.canvas.focus_set()
         self.root.bind("<Unmap>", self._hidden, add="+")
 
@@ -174,6 +184,12 @@ class Dashboard:
         if self.worker is None or not self.worker.is_alive():
             self.worker = threading.Thread(target=self._collect_once, name="vitrallis-metrics", daemon=True)
             self.worker.start()
+        if self.model.pulse.active and self.renderer is not None:
+            stale = self.last_snapshot_at is None or self.clock() - self.last_snapshot_at > 3
+            try:
+                self.renderer.set_metrics(performance_lines(self.snapshot, stale))
+            except GpuUnavailable as error:
+                self._pulse_failed(error)
         self._render()
         self._schedule(1000, self._tick)
 
@@ -533,7 +549,10 @@ class Dashboard:
             return (identities or [("GPU model", "Hardware name unavailable")]) + [
                     ("Kernel", sample.hardware.kernel_release or "Unavailable"),
                     ("Graphics modules present", (modules + "\nPresence alone does not prove a device is bound.") if modules else "No module metadata exported"),
-                    ("Utilization", f"{reading.percent:.1f}%" if reading else "Unavailable — this driver has no supported utilization counter."),
+                    ("GPU driver", sample.gpu_driver or "See detected kernel driver above"),
+                    ("GPU device", ("Mali-400 / " if sample.gpu_driver == "Lima" and sample.gpu_device == "1c40000.gpu" else "") + sample.gpu_device or "See detected hardware above"),
+                    ("Current GPU frequency", f"{sample.gpu_frequency_hz / 1000000:.1f} MHz" if sample.gpu_frequency_hz is not None else "Unavailable"),
+                    ("Utilization", f"{reading.percent:.1f}%" if reading else sample.errors.get("gpu", "GPU metrics unavailable")),
                     ("Sampled device", sample.hardware.gpu_name(reading.name) if reading else "No counter selected"),
                     ("Counter source", reading.source if reading else sample.errors.get("gpu", "No readable GPU counter")),
                     ("Pulse renderer", self.renderer_name),
@@ -576,6 +595,7 @@ class Dashboard:
                 self.renderer = self.renderer_factory(self.pulse_surface)
                 self.renderer_name = self.renderer.renderer
                 self.renderer_api = getattr(self.renderer, "api_version", "Not exported")
+            self.renderer.set_metrics(performance_lines(self.snapshot))
             self.model.pulse.started = self.clock()
             self.pulse_caption.configure(text="8 SECOND PULSE  ·  HARDWARE GLES2  ·  ESC TO STOP")
             self._pulse_frame()
@@ -604,15 +624,18 @@ class Dashboard:
             self.model.pulse.cancel()
             self._clear_pulse()
             return
+        frame_started = self.clock()
         try:
             if self.renderer is not None:
-                self.renderer.draw(self.clock()-self.model.pulse.started,
+                self.renderer.draw(frame_started-self.model.pulse.started,
                                    self.pulse_surface.winfo_width(), self.pulse_surface.winfo_height())
         except GpuUnavailable as error:
             self._pulse_failed(error)
             return
-        # At most 30 FPS. Schedule after submission, never catch up in a busy loop.
-        self.pulse_after = self._schedule(34, self._pulse_frame)
+        # Cap work at 30 FPS without adding a full interval after a blocking swap.
+        # Late frames restart the deadline; never accumulate catch-up submissions.
+        delay = max(1, math.ceil((frame_started + 1 / 30 - self.clock()) * 1000))
+        self.pulse_after = self._schedule(delay, self._pulse_frame)
 
     def _clear_pulse(self) -> None:
         if self.pulse_after is not None:

@@ -117,3 +117,13 @@ Vitrallis is pre-release. Target the current layouts, APIs, manifests, and paths
 When replacing an obsolete design, update affected code and remove superseded
 implementations. Compatibility layers or migration support need an explicit
 requirement agreed as part of the change.
+
+## Graphical presentation requirement
+
+All graphical apps must use double buffering and synchronize completed-frame
+presentation to VSync/vblank whenever supported. Compose a full backbuffer frame,
+present once, and avoid direct visible-buffer drawing or unnecessary redraw loops.
+Document and bound any unsynchronized fallback; arbitrary sleeps do not fix tearing.
+Follow the [rendering contract](docs/rendering.md) and verify the physical backend before publishing.
+
+Precompiled Rust payloads can use the [experimental Rust packaging profile](docs/experimental-rust.md). Python remains the default runtime and catalog v1 is unchanged.

@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from catalog_fixture import copy_example
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -160,7 +161,7 @@ class PackageTests(unittest.TestCase):
                               ('manifest_version = 1', 'manifest_version = 1\nfuture = true'),
                               ('manifest_version = 1', 'manifest_version = 1\nmanifest_version = 1'),
                               ('io.vitrallis.hello', 'io.Bad'),
-                              ('0.1.0', '01.1.0'), ('python', 'shell'),
+                              (lib.manifest(self.files, 'hello')['version'], '01.1.0'), ('python', 'shell'),
                               ('entry = "main.py"', 'entry = "../main.py"'),
                               ('entry = "main.py"', 'entry = "missing.py"'),
                               ('network = false', 'network = "false"'),
@@ -213,7 +214,7 @@ class PublicationTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.repo = Path(self.temporary.name).resolve()
         self.app = self.repo / 'apps/hello'
-        shutil.copytree(EXAMPLE, self.app)
+        copy_example(self.app)
         self.run_git('init', '-q')
         self.run_git('config', 'user.name', 'Fixture')
         self.run_git('config', 'user.email', 'fixture@example.invalid')

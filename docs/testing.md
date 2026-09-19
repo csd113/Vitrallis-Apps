@@ -13,7 +13,7 @@ The catalog and changelog tools need no pip packages. Full app tests also need:
 
 - Tkinter with Tk 8.6 and a graphical session; Linux CI uses Xvfb.
 - Media Carousel's [requirements](../apps/vitrallis-media-carousel/requirements.txt)
-  (Pillow with ImageTk support).
+  (Pillow with ImageTk support and qrcode).
 - `ffmpeg` and `ffprobe` on `PATH` for real WebM tests. These tests skip when the
   tools are absent; CI installs them.
 
@@ -46,6 +46,8 @@ same names do not interfere with one another.
   python3 tools/validate_catalog.py --catalog apps.json --package examples/hello-vitrallis
   python3 -m unittest discover -s tools/tests -v
   python3 -m unittest discover -s examples/hello-vitrallis/tests -v
+  python3 tools/validate_catalog.py --package examples/hello-rust
+  python3 -m unittest discover -s examples/hello-rust/tests -v
   for package in apps/*; do
     [ -e "$package" ] || [ -L "$package" ] || continue
     python3 tools/validate_catalog.py --package "$package"
@@ -132,3 +134,17 @@ failures, and skips in the PR. Live remote availability checks, physical input,
 performance, and installation/update/repair on a device are separate verification
 steps described in [publishing](publishing-apps.md) and
 [runtime integration](runtime-integration.md).
+
+## Experimental Rust build checks
+
+Run `cargo fmt --all --check`, the strict Clippy command below, and
+`cargo test --workspace --all-features` from `examples/hello-rust`. Set
+`CARGO_TARGET_DIR` outside the package for compilation and tests:
+
+```sh
+cargo clippy --workspace --all-targets --all-features -- -D warnings -D clippy::all -D clippy::pedantic -D clippy::nursery -D clippy::cargo
+```
+
+Use `tools/build_rust_app.py` for a fresh staged target package and launch its
+Python supervisor on that target. Cross-compilation alone does not validate a
+foreign architecture at runtime. See [experimental Rust](experimental-rust.md).

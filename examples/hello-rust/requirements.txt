@@ -1,0 +1,2 @@
+# No pip dependencies. Python 3.8+ supervises the precompiled Rust executable.
+# Rust and Cargo are build-host tools, never device runtime requirements.

@@ -1,7 +1,7 @@
 manifest_version = 1
 name = "Hello Vitrallis"
 id = "io.vitrallis.hello"
-version = "0.1.0"
+version = "0.1.1"
 runtime = "python"
 entry = "main.py"
 

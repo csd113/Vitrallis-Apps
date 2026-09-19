@@ -2,6 +2,11 @@
 
 Changes are listed newest first. Dates use America/Vancouver time.
 
+## 0.3.0 — 2026-09-19
+
+- Read fresh Lima devfreq metrics through the private platform trace pipe without changing global tracefs permissions.
+- Composite live CPU, GPU utilization and frequency into the GPU Pulse backbuffer, and retain keyboard control over native child surfaces.
+
 ## 0.2.1 — 2026-09-14
 
 - Discover Lima/Mali GPU identities and aliases through GPU devfreq class devices.

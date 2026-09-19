@@ -26,9 +26,7 @@ class MediaError(ValueError):
     pass
 
 
-def capabilities():
-    return {"webm": bool(shutil.which("ffmpeg") and shutil.which("ffprobe")),
-            "webm_note": "Muted WebM requires system ffmpeg and ffprobe."}
+from multimedia import capabilities
 
 
 def terminate(process):
@@ -139,7 +137,7 @@ def webm_header(stream):
 
 
 def video_info(stream):
-    if not capabilities()["webm"]:
+    if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
         raise MediaError("WebM unavailable: install system ffmpeg and ffprobe")
     stream.seek(0)
     args = [shutil.which("ffprobe"), "-v", "error", "-threads", "1", "-protocol_whitelist", "file,pipe",

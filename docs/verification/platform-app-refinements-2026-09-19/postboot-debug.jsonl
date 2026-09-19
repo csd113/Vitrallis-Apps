@@ -1,0 +1,2 @@
+{"idle_samples": [{"gpu": null, "hz": 297000000}, {"gpu": null, "hz": 297000000}, {"gpu": null, "hz": 297000000}, {"gpu": null, "hz": 297000000}, {"gpu": null, "hz": 297000000}], "sampling_process_cpu_seconds": 0.25446953799999994, "seconds": 6.0262409169999955}
+{"keyboard_panels": ["Network", "CPU", "Temperature", "Memory", "GPU"], "native_child_escape": true, "tab": true, "keyboard_exit": true, "errors": []}

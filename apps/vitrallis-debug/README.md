@@ -1,9 +1,9 @@
 # Vitrallis Debug
 
-Current package: **0.2.1** · [Changelog](CHANGELOG.md).
+Current package: **0.3.0** · [Changelog](CHANGELOG.md).
 
 Vitrallis Debug is an offline instrument panel for a 480×272 Vitrallis/PocketCHIP
-profile. Version 0.2.1 retains the X11 process identity so Vitrallis Shell can
+profile. Version 0.3.0 retains the X11 process identity so Vitrallis Shell can
 focus and resume its window. It presents expandable Network, CPU, GPU, Temperature
 and Memory cards using local Linux system interfaces. Hardware and driver
 identification covers desktop Linux, Raspberry Pi and Allwinner/PocketCHIP sources.
@@ -136,20 +136,14 @@ kernel modules, installs drivers, or alters their configuration.
   Discovery is cached for 30 seconds. `/sys/class/devfreq/*gpu*` identities are
   matched to GPU sysfs devices and their device-tree/driver names, including
   Lima/Mali. Frequency alone is never treated as utilization.
-  For devfreq, the app creates its own tracefs instance under
-  `/sys/kernel/tracing/instances/` (or the legacy debug/tracing mount), enables
-  only `devfreq:devfreq_monitor`, and reads bounded nonblocking event batches.
-  The kernel's `load` percentage is averaged over two seconds, weighted by each
-  event's `polling_ms`. Only discovered GPU names and fresh 0–100 readings are
-  accepted; malformed, duplicate and stale records are ignored. Missing samples
-  expire to unavailable rather than holding the last value forever.
-  This needs kernel trace-event support and administrator-delegated access to
-  create/configure tracefs instances. The app never invokes sudo, mounts tracefs,
-  changes permissions, changes GPU governors, enables global tracing, or consumes
-  another tracer's stream. Permission denial is explained in the GPU details.
-  Its own instance is disabled and removed on normal exit and handled SIGTERM/
-  SIGINT. SIGKILL or power loss cannot run cleanup; an administrator can remove a
-  leftover `vitrallis-debug-*` instance after confirming its app has stopped.
+  On PocketCHIP, the platform installer configures a root-owned service with a
+  GPU-filtered private trace instance. The normal `chip` user reads only its
+  `/run/vitrallis-gpu/trace_pipe` bind mount and the device's read-only current
+  frequency. The tracefs root remains private. The app never configures tracefs,
+  invokes sudo, changes permissions or changes GPU governors. An exclusive
+  reader lock prevents consuming another app reader's stream. Samples expire
+  after two seconds using monotonic time; malformed and stale values show as
+  unavailable. Re-running platform setup repairs the same scoped configuration.
   Other GPU counters continue working without tracefs access. The selected
   device/source appears in details and may differ from Pulse's rendering GPU.
   Charts retain a 60-sample window with gaps for unavailable readings.
@@ -165,8 +159,7 @@ kernel modules, installs drivers, or alters their configuration.
 Each graph holds up to 60 in-memory sample slots, with gaps for missing readings. Slow or failed refreshes retain a
 last valid view with a visible STALE marker and age threshold; no samples, settings,
 caches, telemetry, uploads, update checks, audio, or persistent files are created.
-The package directory is treated as read-only. The devfreq monitor changes only its temporary kernel trace instance; it writes
-no app storage. All declared manifest permissions are false.
+The package directory is treated as read-only. The GPU reader writes no app storage. All declared manifest permissions are false.
 
 ## Verification and limitations
 
@@ -213,7 +206,7 @@ and [CPU sysfs ABI](https://github.com/torvalds/linux/blob/master/Documentation/
 
 ## Publication
 
-The source package is version 0.2.1. The repository catalog pins the published
+The source package is version 0.3.0. The repository catalog pins the published
 source commit and its file hashes through the two-commit publication workflow.
 App Center receives an update only after the corresponding catalog publication
 is merged into the configured catalog branch.
@@ -223,3 +216,11 @@ is merged into the configured catalog branch.
 `icon.png` is original raster artwork created for Vitrallis Debug: a dark diagnostic
 chip with a mint pulse trace. The app has no external assets. This repository has
 no established license; no license is asserted for this new app.
+
+## Private Lima telemetry and Pulse overlay
+
+Current platform setup provides `/run/vitrallis-gpu/trace_pipe`, a read-only bind mount of a filtered private tracefs instance. Debug opens it as the desktop user, takes an exclusive reader lock, rejects stale records, and preserves valid zero utilization. It does not create instances or modify global tracefs. The Shell PocketCHIP installer owns GPU OPP configuration and the boot service that recreates access. No manual permission commands belong in the app's startup path.
+
+Pulse composites CPU utilization, real GPU utilization and GPU frequency directly into its completed EGL frame. Metrics upload once per second from the existing worker sample; unavailable/stale values show `--`. Tab/Shift-Tab, arrows, Enter/Space, Page Up/Down and Escape cover the dashboard, detail panels and Pulse start/stop. EGL requests backbuffer VSync; physical scanout still requires the platform presentation path described in the [rendering contract](../../docs/rendering.md).
+
+See the [2026-09-19 verification report](../../docs/verification/platform-app-refinements-2026-09-19/README.md) for measured app performance, physical tearing confirmation, reboot evidence and installation-validation limits.

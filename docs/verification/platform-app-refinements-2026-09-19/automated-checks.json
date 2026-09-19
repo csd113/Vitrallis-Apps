@@ -1,0 +1,169 @@
+[
+  {
+    "command": [
+      "python3",
+      "tools/validate_catalog.py"
+    ],
+    "exit": 0,
+    "log": "validation-0.log"
+  },
+  {
+    "command": [
+      "python3",
+      "tools/validate_changelogs.py"
+    ],
+    "exit": 0,
+    "log": "validation-1.log"
+  },
+  {
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-q"
+    ],
+    "exit": 0,
+    "log": "validation-2.log"
+  },
+  {
+    "command": [
+      "python3",
+      "tools/validate_catalog.py",
+      "--package",
+      "apps/bitcoin-dashboard"
+    ],
+    "exit": 0,
+    "log": "validation-3.log"
+  },
+  {
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "apps/bitcoin-dashboard/tests",
+      "-q"
+    ],
+    "exit": 0,
+    "log": "validation-4.log"
+  },
+  {
+    "command": [
+      "python3",
+      "tools/validate_catalog.py",
+      "--package",
+      "apps/firefly-field"
+    ],
+    "exit": 0,
+    "log": "validation-5.log"
+  },
+  {
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "apps/firefly-field/tests",
+      "-q"
+    ],
+    "exit": 0,
+    "log": "validation-6.log"
+  },
+  {
+    "command": [
+      "python3",
+      "tools/validate_catalog.py",
+      "--package",
+      "apps/vitrallis-debug"
+    ],
+    "exit": 0,
+    "log": "validation-7.log"
+  },
+  {
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "apps/vitrallis-debug/tests",
+      "-q"
+    ],
+    "exit": 0,
+    "log": "validation-8.log"
+  },
+  {
+    "command": [
+      "python3",
+      "tools/validate_catalog.py",
+      "--package",
+      "apps/vitrallis-media-carousel"
+    ],
+    "exit": 0,
+    "log": "validation-9.log"
+  },
+  {
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "apps/vitrallis-media-carousel/tests",
+      "-q"
+    ],
+    "exit": 0,
+    "log": "validation-10.log"
+  },
+  {
+    "command": [
+      "python3",
+      "tools/validate_catalog.py",
+      "--package",
+      "examples/hello-vitrallis"
+    ],
+    "exit": 0,
+    "log": "validation-11.log"
+  },
+  {
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "examples/hello-vitrallis/tests",
+      "-q"
+    ],
+    "exit": 0,
+    "log": "validation-12.log"
+  },
+  {
+    "command": [
+      "python3",
+      "tools/validate_catalog.py",
+      "--package",
+      "examples/hello-rust"
+    ],
+    "exit": 0,
+    "log": "validation-13.log"
+  },
+  {
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "examples/hello-rust/tests",
+      "-q"
+    ],
+    "exit": 0,
+    "log": "validation-14.log"
+  }
+]

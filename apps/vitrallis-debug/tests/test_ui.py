@@ -64,6 +64,9 @@ class GuiSmokeTests(unittest.TestCase):
 
 
 class FakeRenderer:
+    def set_metrics(self, lines):
+        self.metrics = lines
+
     def __init__(self, widget):
         self.renderer = 'Test hardware renderer'
         self.frames = []

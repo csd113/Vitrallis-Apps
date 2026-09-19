@@ -1,0 +1,21 @@
+active
+3418 /usr/bin/picom --config /dev/null --backend xrender --vsync
+root root 755 /usr/local/libexec/vitrallis-carousel-install-media
+root root 440 /etc/sudoers.d/vitrallis-carousel-media-chip
+root chip 440 /run/vitrallis-gpu/trace_pipe
+4369e557aa43a72cfb4351ace1293af6da180a42ba239478ec983757f9ea521a  /home/chip/.local/share/vitrallis/media-setup.py
+cea2668226ca9637d1f23f697429c9f3041503a55508e76721ab5bb8bd4978fa  /usr/local/libexec/vitrallis-carousel-install-media
+Would remove: /home/chip/.local/share/vitrallis/install-session.py
+Would remove: /home/chip/.local/share/vitrallis/uninstall.py
+Would remove: /home/chip/.local/share/vitrallis/vitrallis-session.py
+Would remove: /home/chip/.local/share/vitrallis/platform-setup.py
+Would remove: /home/chip/.local/share/vitrallis/media-setup.py
+Would remove: /home/chip/.local/share/vitrallis/launch
+Would remove: /home/chip/.local/share/applications/vitrallis.desktop
+Would remove: /home/chip/.local/share/vitrallis/generations/5487971547cd91f527b61634b47c34288478f0ab9270d9a48b41732cd3ce7aca/vitrallis
+Would remove: /home/chip/.local/share/vitrallis/generations/5487971547cd91f527b61634b47c34288478f0ab9270d9a48b41732cd3ce7aca/vitrallis-terminal
+Would remove: /home/chip/.local/share/vitrallis/generations/5487971547cd91f527b61634b47c34288478f0ab9270d9a48b41732cd3ce7aca/vitrallis-notepad
+Would remove: /home/chip/.local/share/vitrallis/generations/5487971547cd91f527b61634b47c34288478f0ab9270d9a48b41732cd3ce7aca/vitrallis-files
+Would remove: /home/chip/.local/share/vitrallis/current
+Would remove: /home/chip/.local/share/vitrallis/installed.json
+Warning: stopping Vitrallis closes its owned apps. Save unsaved work first.

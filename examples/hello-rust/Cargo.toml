@@ -1,0 +1,18 @@
+[package]
+name = "hello-vitrallis-rust"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.74"
+description = "Experimental dependency-free Vitrallis app packaging example"
+license = "MIT"
+repository = "https://github.com/csd113/Vitrallis-Apps"
+readme = "README.md"
+keywords = ["vitrallis", "example"]
+categories = ["command-line-utilities"]
+publish = false
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true

@@ -1,5 +1,6 @@
 """Pure playlist/timing logic and one bounded decoder worker; no Tk calls here."""
 import math
+from dataclasses import dataclass
 import os
 import queue
 import random
@@ -15,6 +16,32 @@ from media import (FORMATS, MAX_FRAMES, MAX_GIF_PIXELS, MAX_PIXELS,
 
 
 MAX_GIF_CACHE_BYTES = 8 * 1024 * 1024
+
+
+@dataclass(frozen=True)
+class GpuFrame:
+    """RGBA bytes prepared off the UI thread and reused across GIF repeats."""
+    size: tuple
+    pixels: bytes
+    mode = "RGBA"
+
+    @property
+    def width(self):
+        return self.size[0]
+
+    @property
+    def height(self):
+        return self.size[1]
+
+    def tobytes(self):
+        return self.pixels
+
+    def convert(self, mode):
+        return Image.frombytes("RGBA", self.size, self.pixels).convert(mode)
+
+    @classmethod
+    def from_image(cls, image):
+        return cls(image.size, image.convert("RGBA").tobytes())
 
 
 class Playlist:
@@ -209,7 +236,7 @@ class Decoder:
                         raise MediaError("GIF frame exceeds pixel limit")
                     seconds = gif_seconds(source.info.get("duration", 100))
                     # Pillow composites disposal/transparency into the current frame.
-                    frame = source.convert("RGBA") if settings.get("gpu") else display_copy(source, size)
+                    frame = GpuFrame.from_image(source) if settings.get("gpu") else display_copy(source, size)
                     frames += 1
                     pixels += source.width * source.height
                     if frames > MAX_FRAMES or pixels > MAX_ANIMATION_PIXELS:

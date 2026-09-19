@@ -12,7 +12,7 @@ class PackageTests(unittest.TestCase):
     def test_manifest_contract_identity_and_package_validator(self):
         manifest = tomllib.loads((PACKAGE / "app.toml").read_text())
         self.assertEqual(manifest["id"], "io.vitrallis.mediacarousel")
-        self.assertEqual(manifest["version"], "0.1.4")
+        self.assertEqual(manifest["version"], "0.2.0")
         self.assertEqual(manifest["name"], "Vitrallis Media Carousel")
         self.assertEqual(manifest["permissions"], {"network": True, "storage": True, "audio": False})
         repo = PACKAGE.parents[1]
@@ -35,7 +35,8 @@ with patch.object(tkinter, 'Tk', side_effect=AssertionError('Tk on import')), \\
      patch.object(Path, 'mkdir', side_effect=AssertionError('mkdir on import')), \\
      patch.object(os, 'open', side_effect=AssertionError('open on import')):
     import main, storage, settings, library, media, player, web_server, ui, gpu
-assert main.VERSION == '0.1.4'
+    import connection, dependencies, multimedia, previews
+assert main.VERSION == '0.2.0'
 '''
         with tempfile.TemporaryDirectory() as directory:
             result = subprocess.run([sys.executable, "-B", "-c", code, str(PACKAGE)], cwd=directory,

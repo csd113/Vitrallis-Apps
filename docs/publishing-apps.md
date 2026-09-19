@@ -138,3 +138,11 @@ The existing Bitcoin entry is enabled, and the updater preserves that flag unles
 explicitly overridden. For a new target or an unverified integration, keep
 installation disabled until the required checks pass. See
 [runtime integration](runtime-integration.md) for current catalog status.
+
+## Graphical presentation requirement
+
+All graphical apps must use double buffering and synchronize completed-frame
+presentation to VSync/vblank whenever supported. Compose a full backbuffer frame,
+present once, and avoid direct visible-buffer drawing or unnecessary redraw loops.
+Document and bound any unsynchronized fallback; arbitrary sleeps do not fix tearing.
+Follow the [rendering contract](rendering.md) and verify the physical backend before publishing.

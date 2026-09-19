@@ -18,6 +18,7 @@ import re
 import zlib
 import sys
 import time
+from sprites import SpriteBatch
 from typing import List, Optional, Sequence, Tuple
 
 
@@ -144,6 +145,7 @@ class SDL:
         self.SetTextureAlphaMod = _bind(self.lib, "SDL_SetTextureAlphaMod", integer, ptr, u8)
         self.SetTextureColorMod = _bind(self.lib, "SDL_SetTextureColorMod", integer, ptr, u8, u8, u8)
         self.RenderSetLogicalSize = _bind(self.lib, "SDL_RenderSetLogicalSize", integer, ptr, integer, integer)
+        self.WaitEventTimeout = _bind(self.lib, "SDL_WaitEventTimeout", integer, c.c_void_p, integer)
         self.PollEvent = _bind(self.lib, "SDL_PollEvent", integer, c.c_void_p)
         self.GetMouseState = _bind(self.lib, "SDL_GetMouseState", uint, c.POINTER(integer), c.POINTER(integer))
         self.RenderReadPixels = _bind(self.lib, "SDL_RenderReadPixels", integer, ptr, c.POINTER(SDLRect), uint, ptr, integer)
@@ -431,10 +433,29 @@ FONT = {
 }
 
 
+def text_pixels(text: str, scale: int, color):
+    """Rasterize the existing pixel font once, preserving exact glyph geometry."""
+    if not 1 <= scale <= 4 or len(text) > 80:
+        raise ValueError("Text texture exceeds label budget")
+    width, height = max(1, len(text) * 6 * scale), 7 * scale
+    pixels = bytearray(width * height * 4)
+    ink = bytes(color)
+    for index, char in enumerate(text.upper()):
+        for row, bits in enumerate(FONT.get(char, FONT[" "])):
+            for column in range(5):
+                if bits & (1 << (4 - column)):
+                    for dy in range(scale):
+                        offset = ((row * scale + dy) * width + (index * 6 + column) * scale) * 4
+                        pixels[offset:offset + scale * 4] = ink * scale
+    return width, height, pixels
+
+
 class FireflyApp:
     def __init__(self, sdl: SDL, fullscreen: bool = True, renderer: str = "auto") -> None:
         self.sdl, self.window, self.renderer = sdl, None, None
         self.textures: List[c.c_void_p] = []
+        self.text_cache = {}
+        self.sprite_batch = None
         self.field = Field()
         self.show_status = True
         self.show_performance = False
@@ -464,6 +485,11 @@ class FireflyApp:
             self.glow_texture = self.texture(*load_artwork("glow", 64, 64), SDL_BLENDMODE_ADD)
             self.fly_texture = self.texture(*load_artwork("firefly", 20, 14), SDL_BLENDMODE_BLEND)
             self.grass_texture = self.texture(*load_artwork("grass", 18, 42), SDL_BLENDMODE_BLEND)
+            if self.accelerated:
+                try:
+                    self.sprite_batch = SpriteBatch(self, load_artwork, MAX_FIREFLIES * 2 + 24)
+                except RuntimeError as error:
+                    print("event=sprite_batch mode=individual reason=%r" % str(error), file=sys.stderr)
         except BaseException:
             self.close()
             raise
@@ -541,9 +567,9 @@ class FireflyApp:
             hardware = [(index, info) for index, info in drivers if valid_renderer("hardware", info)]
             # Vitrallis Shell's GLES2 compatibility floor is preferred when SDL advertises it.
             hardware.sort(key=lambda item: (item[1].name or b"").decode("utf-8", "replace") != "opengles2")
-            for index, advertised in hardware:
-                name = (advertised.name or b"unknown").decode("utf-8", "replace")
-                for vsync in (True, False):
+            for vsync in (True, False):
+                for index, advertised in hardware:
+                    name = (advertised.name or b"unknown").decode("utf-8", "replace")
                     try:
                         window, renderer, info, output = self.attempt_renderer(index, "hardware", vsync)
                         self.window = window
@@ -596,24 +622,31 @@ class FireflyApp:
         return texture
 
     def copy(self, texture, x: float, y: float, width: float, height: float, alpha: int = 255, angle: float = 0) -> None:
+        if self.sprite_batch is not None:
+            name = "glow" if texture == self.glow_texture else "firefly" if texture == self.fly_texture else "grass"
+            self.sprite_batch.add(name, x, y, width, height, alpha, angle)
+            return
         self.sdl.SetTextureAlphaMod(texture, int(clamp(alpha, 0, 255)))
         destination = SDLRect(int(x - width / 2), int(y - height / 2), max(1, int(width)), max(1, int(height)))
         self.sdl.RenderCopyEx(self.renderer, texture, None, c.byref(destination), angle, None, SDL_FLIP_NONE)
 
     def draw_text(self, x: int, y: int, text: str, scale: int = 1, color=(209, 239, 183, 255)) -> None:
-        self.sdl.SetRenderDrawColor(self.renderer, *color)
-        cursor = x
-        blocks = []
-        for char in text.upper():
-            rows = FONT.get(char, FONT[" "])
-            for row, bits in enumerate(rows):
-                for column in range(5):
-                    if bits & (1 << (4 - column)):
-                        blocks.append(SDLRect(cursor + column * scale, y + row * scale, scale, scale))
-            cursor += 6 * scale
-        if blocks:
-            rectangles = (SDLRect * len(blocks))(*blocks)
-            self.sdl.RenderFillRects(self.renderer, rectangles, len(blocks))
+        # Cache by label position, replacing a texture only when its text changes.
+        # This bounds resource count and removes thousands of per-frame glyph
+        # rectangles and their Python/ctypes allocations from the menu path.
+        slot = (x, y)
+        key = (text, scale, color)
+        cached = self.text_cache.get(slot)
+        if cached is None or cached[0] != key:
+            width, height, pixels = text_pixels(text, scale, color)
+            texture = self.texture(width, height, pixels, SDL_BLENDMODE_BLEND)
+            if cached is not None:
+                self.sdl.DestroyTexture(cached[1])
+                self.textures.remove(cached[1])
+            cached = (key, texture, width, height)
+            self.text_cache[slot] = cached
+        destination = SDLRect(x, y, cached[2], cached[3])
+        self.sdl.RenderCopy(self.renderer, cached[1], None, c.byref(destination))
 
     def draw_status(self) -> None:
         # H exposes the complete keyboard path without cluttering the resting scene.
@@ -706,6 +739,8 @@ class FireflyApp:
             sway = math.sin(self.field.time * .75 + index * .91) * (2 + index % 3) * WIND_LEVELS[self.wind_index]
             self.copy(self.grass_texture, x, 257, 20, 46, 180, sway)
         self.draw_shooting_star()
+        if self.sprite_batch is not None:
+            self.sprite_batch.present()
         if self.show_status:
             self.draw_status()
         if self.show_performance:
@@ -729,9 +764,11 @@ class FireflyApp:
         elif sym == SDLK_LEFT: self.field.glow = clamp(self.field.glow - .1, .2, 1.4)
         elif sym == SDLK_RIGHT: self.field.glow = clamp(self.field.glow + .1, .2, 1.4)
 
-    def events(self) -> None:
+    def events(self, wait_ms=0) -> bool:
         event = (c.c_ubyte * 56)()
-        while self.sdl.PollEvent(c.byref(event)):
+        ready = self.sdl.WaitEventTimeout(c.byref(event), wait_ms) if wait_ms else self.sdl.PollEvent(c.byref(event))
+        changed = bool(ready)
+        while ready:
             kind = c.c_uint32.from_buffer(event, 0).value
             if kind == SDL_QUIT:
                 self.running = False
@@ -744,20 +781,31 @@ class FireflyApp:
             elif kind == SDL_MOUSEBUTTONDOWN:
                 x, y = c.c_int32.from_buffer(event, 16).value, c.c_int32.from_buffer(event, 20).value
                 self.field.pulse(float(x), float(y))
+            ready = self.sdl.PollEvent(c.byref(event))
+        return changed
 
     def run(self) -> None:
         previous = time.monotonic()
+        redraw = True
         while self.running:
+            # A paused scene waits on native events. Live counters refresh at
+            # one second; unchanged pixels do not generate GPU work.
+            paused = self.field.paused
+            changed = self.events(1000 if paused and not redraw else 0)
             now = time.monotonic()
             self.field.update(now - previous)
             previous = now
-            self.events()
-            self.render()
-            self.frames += 1
             if now - self.fps_then >= 1:
                 self.fps, self.frames, self.fps_then = self.frames, 0, now
-            remaining = 1.0 / 60.0 - (time.monotonic() - now)
-            if remaining > 0:
+                redraw = self.show_status or self.show_performance
+            if not self.running:
+                break
+            if not self.field.paused or redraw or changed:
+                self.render()
+                self.frames += 1
+                redraw = False
+            remaining = 1.0 / 30.0 - (time.monotonic() - now)
+            if not self.renderer_snapshot.vsync and not self.field.paused and remaining > 0:
                 self.sdl.Delay(max(1, math.ceil(remaining * 1000)))
 
     def close(self) -> None:

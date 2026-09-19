@@ -121,3 +121,11 @@ request, list validation results and remaining integration limits, distinguishin
 desktop tests from device testing. Keep `installable: false` until the target
 client and runtime have been verified. Repository licensing is currently
 unresolved; confirm reuse and distribution rights with the owner.
+
+## Graphical presentation requirement
+
+All graphical apps must use double buffering and synchronize completed-frame
+presentation to VSync/vblank whenever supported. Compose a full backbuffer frame,
+present once, and avoid direct visible-buffer drawing or unnecessary redraw loops.
+Document and bound any unsynchronized fallback; arbitrary sleeps do not fix tearing.
+Follow the [rendering contract](docs/rendering.md) and verify the physical backend before publishing.
