@@ -1,10 +1,14 @@
 "use strict";
 const $ = id => document.getElementById(id);
+let previewURLs = [], previewQueue = [], previewActive = 0;
 let token = "", state = null, selected = null, uploading = false, busy = false;
 try { token = sessionStorage.getItem("carousel-code") || ""; } catch (_) { /* Private mode may deny storage. */ }
 function notice(message, error = false) { $("notice").textContent = message; $("notice").classList.toggle("error", error); }
 function lock() {
   token = ""; state = null; selected = null;
+  previewObserver.disconnect(); previewQueue = [];
+  previewURLs.forEach(url => URL.revokeObjectURL(url)); previewURLs = [];
+  $("media").replaceChildren();
   try { sessionStorage.removeItem("carousel-code"); } catch (_) { /* In-memory access still works. */ }
   $("workspace").hidden = true; $("login").hidden = false; $("connection").textContent = "Locked";
 }
@@ -52,6 +56,8 @@ function renderFolder() {
   const row = folder();
   if (!row) { selected = null; show("collections"); return; }
   $("folder-title").textContent = row.name; $("item-count").textContent = `· ${row.items.length}`;
+  previewURLs.forEach(url => URL.revokeObjectURL(url)); previewURLs = [];
+  previewQueue = []; previewObserver.disconnect();
   $("media").replaceChildren();
   if (!row.items.length) { const empty = document.createElement("p"); empty.className = "muted"; empty.textContent = "Nothing here yet. Choose a few files to begin."; $("media").append(empty); }
   row.items.forEach((item, index) => {
@@ -65,8 +71,38 @@ function renderFolder() {
       if (!confirm(`Delete “${item.name}” from this device?`)) return;
       await api(`/api/collections/${selected}/media/${item.id}`, "DELETE"); await refresh(); notice("File deleted.");
     }, "danger"); remove.disabled = uploading;
-    controls.append(up, down, remove); li.append(details, controls); $("media").append(li);
+    const preview = document.createElement("img"); preview.className = "thumbnail";
+    preview.alt = `${item.kind.toUpperCase()} preview`; preview.width = 128; preview.height = 80;
+    controls.append(up, down, remove); li.append(preview, details, controls); $("media").append(li);
+    preview.dataset.path = `/api/collections/${row.id}/media/${item.id}/thumbnail`;
+    previewObserver.observe(preview);
   });
+}
+const previewObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) { previewObserver.unobserve(entry.target); previewQueue.push(entry.target); }
+  });
+  loadPreviews();
+}, {rootMargin: "100px"});
+async function binary(path, timeout = 15000) {
+  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(path, {headers: {Authorization: `Bearer ${token}`}, signal: controller.signal});
+    if (!response.ok) { const data = await response.json(); throw new Error(data.error || "Download failed"); }
+    return await response.blob();
+  } finally { clearTimeout(timer); }
+}
+function loadPreviews() {
+  while (previewActive < 2 && previewQueue.length) {
+    const image = previewQueue.shift();
+    if (!image.isConnected) continue;
+    previewActive++;
+    binary(image.dataset.path).then(blob => {
+      if (!image.isConnected) return;
+      const url = URL.createObjectURL(blob); previewURLs.push(url); image.src = url;
+    }).catch(() => { image.alt = "Preview unavailable"; })
+      .finally(() => { previewActive--; loadPreviews(); });
+  }
 }
 async function move(index, direction) {
   const ids = folder().items.map(item => item.id); [ids[index], ids[index + direction]] = [ids[index + direction], ids[index]];
@@ -79,35 +115,53 @@ async function refresh() {
   $("workspace").hidden = false; $("login").hidden = true; $("connection").textContent = state.status;
   $("device").textContent = `${state.device} · ${state.urls.join(" · ")}`;
   $("decoder-note").textContent = `${state.capabilities.webm ? "WebM decoder available." : "WebM unavailable."} ${state.capabilities.webm_note}`;
+  $("install-media").hidden = state.capabilities.ready;
+  $("install-media").disabled = state.installation.status === "running" || !state.installation.available;
+  $("install-status").textContent = state.installation.message || (!state.capabilities.ready && !state.installation.available ? "Administrator setup is required to enable installation." : "");
   renderCollections(); if (selected) renderFolder(); if (state.warning) notice(state.warning, true);
 }
 function renderSettings() {
   const config = state.settings; $("image-seconds").value = config.image_seconds; $("repeats").value = config.repeats;
   $("order").value = config.order; $("loop").value = String(config.loop); show("settings");
 }
-function sendFile(file, cid, index, total) {
+function sendFile(file, cid, progress) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest(); xhr.open("POST", `/api/collections/${cid}/media?name=${encodeURIComponent(file.name)}`);
     xhr.setRequestHeader("Authorization", `Bearer ${token}`); xhr.setRequestHeader("Content-Type", "application/octet-stream"); xhr.timeout = 160000;
-    xhr.upload.onprogress = event => { if (event.lengthComputable) { $("progress").value = event.loaded / event.total * 100; $("upload-label").textContent = `${index}/${total} · ${file.name} · ${event.loaded === event.total ? "Checking media…" : Math.round($("progress").value) + "%"}`; } };
+    xhr.upload.onprogress = event => { if (event.lengthComputable) progress(event.loaded, event.total); };
     xhr.onload = () => { try { const data = JSON.parse(xhr.responseText); if (xhr.status === 401) lock(); if (xhr.status !== 201) throw new Error(data.error || "Upload failed"); resolve(data); } catch (error) { reject(error); } };
     xhr.onerror = () => reject(new Error("Connection lost during upload")); xhr.ontimeout = () => reject(new Error("Upload timed out")); xhr.send(file);
   });
 }
 async function upload(files) {
   if (uploading || !selected || !files.length) return;
+  $("progress").value = 0;
   uploading = true; const cid = selected; $("files").disabled = true; $("delete-folder").disabled = true;
   $("upload-status").hidden = false; $("upload-results").replaceChildren(); renderFolder(); let success = 0;
   // Retain at most 100 File references/results per batch; library limits remain server enforced.
   const batch = Array.from(files).slice(0, 100);
   try {
-    for (const [index, file] of batch.entries()) {
-      $("progress").value = 0; $("upload-label").textContent = `${index + 1}/${batch.length} · ${file.name}`;
-      const result = document.createElement("li");
-      try { if (file.size > state.max_upload) throw new Error("Over the 64 MiB limit"); await sendFile(file, cid, index + 1, batch.length); result.textContent = `${file.name}: saved`; success++; }
-      catch (error) { result.textContent = `${file.name}: ${error.message}`; }
-      $("upload-results").append(result); if (!token) break;
-    }
+    const loaded = batch.map(() => 0), totalBytes = batch.reduce((sum, file) => sum + file.size, 0);
+    let next = 0, finished = 0;
+    const rows = batch.map(file => { const row = document.createElement("li"); row.textContent = `${file.name}: queued`; $("upload-results").append(row); return row; });
+    const worker = async () => {
+      while (next < batch.length && token) {
+        const index = next++, file = batch[index], result = rows[index];
+        try {
+          if (file.size > state.max_upload) throw new Error("Over the 64 MiB limit");
+          result.textContent = `${file.name}: uploading`;
+          await sendFile(file, cid, (bytes, total) => {
+            loaded[index] = bytes;
+            $("progress").value = totalBytes ? loaded.reduce((sum, value) => sum + value, 0) / totalBytes * 100 : 0;
+            result.textContent = `${file.name}: ${bytes === total ? "checking media…" : Math.round(bytes / total * 100) + "%"}`;
+          });
+          result.textContent = `${file.name}: saved`; success++;
+        } catch (error) { result.textContent = `${file.name}: ${error.message}`; }
+        finished++; $("upload-label").textContent = `${finished}/${batch.length} files checked · ${success} saved`;
+      }
+    };
+    // Two transfers overlap; server serializes expensive media validation.
+    await Promise.all([worker(), worker()]);
     if (token) await refresh(); notice(`${success} of ${batch.length} files saved.${files.length > 100 ? " Select remaining files in another batch (100 maximum)." : ""}`, success !== batch.length);
   } catch (error) { notice(error.message, true); }
   finally { uploading = false; $("files").disabled = false; $("delete-folder").disabled = false; $("files").value = ""; $("upload-label").textContent = "Batch finished"; if (state && selected) renderFolder(); }
@@ -128,3 +182,25 @@ $("drop-zone").addEventListener("dragleave", () => $("drop-zone").classList.remo
 $("drop-zone").addEventListener("drop", event => { event.preventDefault(); $("drop-zone").classList.remove("dragover"); upload(event.dataTransfer.files); });
 window.addEventListener("beforeunload", event => { if (uploading) { event.preventDefault(); event.returnValue = ""; } });
 if (token) guarded(async () => { await refresh(); show("collections"); })();
+
+$("download-folder").onclick = guarded(async () => {
+  const name = folder().name, cid = selected;
+  $("download-folder").disabled = true; notice("Preparing folder download…");
+  try {
+    const blob = await binary(`/api/collections/${cid}/download`, 160000);
+    const url = URL.createObjectURL(blob), link = document.createElement("a");
+    link.href = url; link.download = `${name}.zip`; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    notice("Folder download ready.");
+  } finally { $("download-folder").disabled = false; }
+});
+
+$("install-media").onclick = guarded(async () => {
+  const result = await api("/api/dependencies/install", "POST", {install: "ffmpeg"});
+  $("install-status").textContent = result.message; $("install-media").disabled = true;
+  const poll = async () => {
+    try { await refresh(); if (state.installation.status === "running") setTimeout(poll, 2000); }
+    catch (error) { notice(error.message, true); }
+  };
+  setTimeout(poll, 1000);
+});

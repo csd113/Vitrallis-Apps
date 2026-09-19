@@ -1,0 +1,2 @@
+services ready 13.725803084999825
+{"presented": 1155, "elapsed": 109.53793147099987, "process_cpu": 17.018172902, "average_interval_ms": 80.00483583448855, "average_present_ms": 6.798619278788662, "last_error": "", "home_notice": "Scan to manage uploads", "services": true}

@@ -1,3 +1,4 @@
+import gc
 import os
 import signal
 import threading
@@ -39,6 +40,7 @@ class NativeTests(StorageCase):
             self.app.close()
             self.wait_for(lambda: self.app.finished)
         self.app.finish()
+        gc.collect()
 
     def test_home_480_layout_large_touch_targets_and_keyboard_focus(self):
         self.root.update_idletasks()
@@ -57,6 +59,17 @@ class NativeTests(StorageCase):
         self.assertEqual(self.root.focus_get(), self.app.folder_buttons[1])
         self.app.move_focus(1)
         self.assertEqual(self.app.page, 1)
+
+    def test_prepared_gpu_frame_can_fall_back_to_tk(self):
+        from PIL import Image
+        from player import GpuFrame
+        self.app.canvas = tk.Canvas(self.app.frame)
+        self.app.canvas.pack()
+        self.app.image_id = self.app.canvas.create_image(0, 0)
+        self.root.update_idletasks()
+        self.app.close_gpu()
+        self.app.present_frame(GpuFrame.from_image(Image.new("RGBA", (8, 8), "red")))
+        self.assertIsNotNone(self.app.photo)
 
     def test_settings_fit_and_persist_and_invalid_input(self):
         self.app.settings_screen()

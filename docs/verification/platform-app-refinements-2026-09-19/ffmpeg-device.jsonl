@@ -1,0 +1,2 @@
+{"capabilities": {"vp8": true, "vp9": true, "webp": true, "webm": true, "ready": true, "missing": [], "webm_note": "VP8/VP9 WebM and static WebP decode verified."}, "helper_ready": true}
+{"ready_system_http_status": 202, "action": {"status": "ready", "message": "Compatible FFmpeg is already ready."}, "installer_skipped": true}

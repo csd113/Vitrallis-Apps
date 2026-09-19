@@ -7,6 +7,7 @@ import sys
 import tempfile
 import tomllib
 import unittest
+from catalog_fixture import copy_example
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import catalog_lib as lib
@@ -52,7 +53,7 @@ class MergePolicyTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.repo = Path(self.temp.name).resolve()
         self.app = self.repo / 'apps/hello'
-        shutil.copytree(ROOT / 'examples/hello-vitrallis', self.app)
+        copy_example(self.app)
         self.git('init', '-q')
         self.git('config', 'user.name', 'Fixture')
         self.git('config', 'user.email', 'fixture@example.invalid')

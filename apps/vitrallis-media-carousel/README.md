@@ -4,7 +4,7 @@ A locally managed slideshow for the screen running Vitrallis. Upload from your
 phone/computer, organize collections, then select one in the native Python app.
 Playback does not open a browser.
 
-**0.1.4** · `io.vitrallis.mediacarousel` · manifest v1.
+**0.2.0** · `io.vitrallis.mediacarousel` · manifest v1.
 
 [Changelog](CHANGELOG.md).
 
@@ -63,16 +63,17 @@ package is read-only, including interpreter bytecode.
 
 The bundled responsive phone/desktop site shows device name/IP/status, filename,
 actual type, size and shared settings. JavaScript is required. Batch size is 100
-files, uploaded sequentially: each accepted file commits independently, failures
+files, with two concurrent transfers: each accepted file commits independently, failures
 are reported, and earlier successes remain saved. Refresh reads other browsers'
-changes; the native folder list updates automatically. There is no web polling,
+changes; the native folder list updates automatically. Only a requested dependency installation polls its status. There is no
 cloud functionality or telemetry.
 
 Codes change at every launch and are kept only in the browser tab's session
 storage (or memory when storage is denied). Lock removes the saved code. Codes
 never appear in URLs, logs, cookies or persistent device storage. Every API read
 and mutation requires bearer authorization; only the login page/CSS/JS are public.
-There is no media download, directory listing or package file-serving API.
+Authenticated collection downloads and thumbnail previews are available. There is
+no arbitrary directory listing or package file-serving API.
 
 HTTP is unencrypted: use a trusted LAN and never forward this port to the Internet.
 Someone observing LAN traffic can observe the code. This app does not provide TLS.
@@ -138,7 +139,7 @@ Resize refits the current GPU texture. Tk fallback recenters its current frame;
 the next item or previous/next action decodes at the new size. High-resolution
 and high-frame-rate video can exceed PocketCHIP decoding capacity.
 
-The 0.1.4 GPU path and timing fixes have desktop/fake-device regression coverage;
+The 0.2.0 GPU path and timing fixes have desktop/fake-device regression coverage;
 physical Lima/Mali throughput and overlay behavior still need target verification.
 The following device evidence describes the earlier playback implementation.
 
@@ -185,7 +186,7 @@ to save user content.
 
 ## Limits and security
 
-- **64 MiB/file**, streamed in at most 64 KiB chunks; one active upload and four
+- **64 MiB/file**, streamed in at most 64 KiB chunks; two active uploads, one validation decoder and four
   HTTP handlers. Five-second socket idle timeout, 120-second transfer deadline,
   then at most 35 seconds for isolated validation. A 160-second overall connection
   deadline also bounds slow-dripped request headers.
@@ -269,3 +270,17 @@ Reference APIs: [Pillow Image](https://pillow.readthedocs.io/en/stable/reference
 Original geometric artwork is included as SVG/PNG; reproduce with
 `python3 tests/make_icon.py`. No third-party artwork or guessed license metadata.
 Repository licensing remains an owner decision.
+
+## Refined management and presentation
+
+The home screen shows the current local URL, a QR code and a separate per-launch access code. Interface addresses refresh every ten seconds. QR generation uses the small pure-Python `qrcode` dependency alongside Pillow. Loopback-only service addresses do not produce a misleading LAN QR code.
+
+Drag/drop or select up to 100 files per batch. Two transfers run concurrently; one media decoder validates at a time. Individual progress and errors retain successful uploads. Thumbnails are generated on demand in bounded subprocesses and cached in at most 2 MiB of memory. Static first-frame previews cover images/GIF/WebP, with muted WebM previews where FFmpeg works; unsupported previews show a small placeholder.
+
+Download a collection in one action as a ZIP, limited to 256 MiB of media. The current library has flat logical collections, not user-controlled filesystem folders. Original basenames are preserved; duplicate names get separate internal-ID subdirectories so neither file is lost. Names and IDs are validated, symlinks rejected, and the unlinked staging archive is closed after success, failure or disconnect. No persistent archive copy is kept.
+
+Multimedia readiness runs actual 16×16 VP8, VP9 and static WebP decode probes, with cached results. When missing, the authenticated web interface offers one explicit installation action through a no-argument root-owned helper configured at platform installation. It installs Debian `ffmpeg` with necessary dependencies only, without update/upgrade/autoremove, then repeats decode checks. On older platform installations an administrator must provision the helper using `tools/install_carousel_media_support.py --user chip`; app startup never grants itself privileges. Installation failure and missing decoder capabilities are reported separately. Do not interrupt an active package-manager operation.
+
+EGL now requests backbuffer presentation synchronized to VSync and uses absolute GIF deadlines. A bounded 8 MiB GIF cache stores prepared RGBA bytes off the UI thread. Unsynchronized/Tk fallback is limited to 30 presentations per second while media time continues correctly. The physical display test exposed tearing even with an accepted EGL swap interval; see the [rendering contract](../../docs/rendering.md) and device verification report for platform limitations.
+
+See the [2026-09-19 verification report](../../docs/verification/platform-app-refinements-2026-09-19/README.md) for measured app performance, physical tearing confirmation, reboot evidence and installation-validation limits.

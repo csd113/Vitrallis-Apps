@@ -50,3 +50,7 @@ should disable or redirect them outside the package. No telemetry or update chec
 
 No license is asserted by this example; the repository owner must establish reuse
 rights. Artwork was created for this example and has no external asset attribution.
+
+## Presentation contract
+
+Graphical derivatives must follow [double buffering and VSync requirements](../../docs/rendering.md). This static Tk example redraws only when widgets change or are exposed. Tk has no portable app-level VSync request; synchronized physical presentation depends on a verified platform compositor. Treat a noncomposited Tk desktop as an unconfirmed, event-driven fallback, not tear-free certification. Use an EGL/SDL backbuffer surface for continuous animation.

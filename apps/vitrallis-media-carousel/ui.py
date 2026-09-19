@@ -8,10 +8,11 @@ import tkinter as tk
 from tkinter import ttk
 
 from PIL import ImageTk
+from connection import qr_image
 from gpu import GpuUnavailable, ImageRenderer
 from library import Library
 from media import capabilities
-from player import Decoder, PlaybackClock, Playlist, display_copy
+from player import Decoder, GpuFrame, PlaybackClock, Playlist, display_copy
 from settings import Settings
 from storage import InstanceLock, Paths
 from web_server import WebServer
@@ -27,6 +28,8 @@ class Services:
             self.instance = InstanceLock(self.paths.data)
             self.library = Library(self.paths)
             self.settings = Settings(self.paths.config)
+            # Cold decoder probes run on the service worker, never Tk's thread.
+            capabilities()
             self.server = WebServer(self.library, self.settings, host, port)
             try:
                 self.server.start()
@@ -64,6 +67,7 @@ class App:
         self.screen = "home"
         self.playlist = None
         self.photo = None
+        self.next_present = 0.0
         self.gpu_renderer = None
         self.gpu_surface = None
         self.last_frame = None
@@ -144,12 +148,19 @@ class App:
         self.header("Media Carousel", settings=True)
         server = self.services.server if self.services else None
         address = server.urls[0] if server and server.urls else "Management address pending…"
-        self.url_label = self.label(self.frame, address, font=("DejaVu Sans", -16, "bold"))
-        self.url_label.pack(fill="x", padx=10)
-        code = "Access code: " + server.token if server else "A new access code will appear here."
-        self.label(self.frame, code, font=("DejaVu Sans Mono", -14)).pack(fill="x", padx=10)
-        self.status_label = self.label(self.frame, self.home_notice, font=("DejaVu Sans", -12))
-        self.status_label.pack(fill="x", padx=10, pady=(1, 2))
+        connection = tk.Frame(self.frame, bg=BG)
+        connection.pack(fill="x", padx=10)
+        self.qr_label = self.label(connection, "")
+        self.qr_label.pack(side="right", padx=(4, 0))
+        self.url_label = self.label(connection, address, font=("DejaVu Sans", -14, "bold"))
+        self.url_label.pack(fill="x", pady=(4, 0))
+        code = "Access code: " + server.token if server else "Access code pending…"
+        self.label(connection, code, font=("DejaVu Sans Mono", -14)).pack(fill="x")
+        self.status_label = self.label(connection, self.home_notice, font=("DejaVu Sans", -12),
+                                       wraplength=340, justify="left")
+        self.status_label.pack(fill="x", pady=(1, 2))
+        self.qr_url = None
+        self.update_address()
         footer = tk.Frame(self.frame, bg=BG, height=34)
         footer.pack(side="bottom", fill="x", padx=8, pady=4)
         footer.pack_propagate(False)
@@ -160,6 +171,21 @@ class App:
         self.folder_frame = tk.Frame(self.frame, bg=BG)
         self.folder_frame.pack(fill="both", expand=True, padx=8)
         self.draw_folders()
+
+    def update_address(self):
+        if not self.services or not self.services.server.urls:
+            return
+        url = self.services.server.urls[0]
+        if url == self.qr_url:
+            return
+        self.qr_url = url
+        self.url_label.configure(text=url)
+        try:
+            image = qr_image(url)
+        except ImportError:
+            image = None
+        self.qr_photo = ImageTk.PhotoImage(image, master=self.root) if image else None
+        self.qr_label.configure(image=self.qr_photo or "", text="" if image else "QR unavailable")
 
     def draw_folders(self):
         for child in self.folder_frame.winfo_children():
@@ -308,6 +334,10 @@ class App:
             self.gpu_surface = None
 
     def present_frame(self, image):
+        if self.gpu_renderer is None or not getattr(self.gpu_renderer, 'vsync', False):
+            self.next_present = time.monotonic() + 1 / 30
+        else:
+            self.next_present = 0.0
         self.last_frame = image
         size = (self.canvas.winfo_width(), self.canvas.winfo_height())
         if self.gpu_renderer is not None:
@@ -317,6 +347,8 @@ class App:
             except GpuUnavailable as error:
                 print("event=media_renderer mode=tk reason=%r" % str(error), file=sys.stderr)
                 self.close_gpu()
+        if isinstance(image, GpuFrame):
+            image = image.convert("RGBA")
         fitted = display_copy(image, size) if image.width > size[0] or image.height > size[1] else image
         self.photo = ImageTk.PhotoImage(fitted, master=self.root)
         self.canvas.itemconfigure(self.image_id, image=self.photo)
@@ -342,6 +374,7 @@ class App:
             self.home(message)
             return
         self.clock = PlaybackClock()
+        self.next_present = 0.0
         self.animated = item["kind"] in ("gif", "webm")
         self.last_frame = None
         if self.gpu_renderer is not None:
@@ -396,7 +429,7 @@ class App:
         if (time.monotonic() > self.overlay_until and not self.clock.paused
                 and self.root.focus_get() not in self.overlay.winfo_children()):
             self.overlay.place_forget()
-        if not self.clock.ready():
+        if not self.clock.ready() or time.monotonic() < self.next_present:
             return
         try:
             generation, kind, value, seconds = self.services.decoder.events.get_nowait()
@@ -428,6 +461,8 @@ class App:
     def schedule(self):
         if not self.finished:
             delay = self.clock.delay_ms() if self.screen == "playback" else 200
+            if self.screen == "playback" and self.next_present > time.monotonic():
+                delay = max(delay, int((self.next_present - time.monotonic()) * 1000) + 1)
             self.poll_id = self.root.after(delay, self.poll)
 
     def poll(self):
@@ -469,8 +504,10 @@ class App:
                 self.pending = self.executor.submit(self.services.close if self.services else lambda: None)
         elif self.screen == "playback":
             self.playback_tick()
-        elif self.screen == "home" and self.services and self.revision != self.services.library.revision:
-            self.draw_folders()
+        elif self.screen == "home" and self.services:
+            self.update_address()
+            if self.revision != self.services.library.revision:
+                self.draw_folders()
         self.schedule()
 
     def escape(self, event=None):
@@ -495,6 +532,8 @@ class App:
         if self.poll_id is not None:
             self.root.after_cancel(self.poll_id)
             self.poll_id = None
+        # Release Tcl image handles on the UI thread before the interpreter dies.
+        self.photo = self.qr_photo = self.icon = None
         self.root.destroy()
 
     def finish(self):
@@ -502,7 +541,7 @@ class App:
         # Handles an external mainloop quit as well as normal Home/WM close.
         if not self.finished:
             if self.pending is not None:
-                result = self.pending.result(timeout=45)
+                result = self.pending.result(timeout=100)
                 if self.pending_action == "startup":
                     self.services = result
             if self.services:

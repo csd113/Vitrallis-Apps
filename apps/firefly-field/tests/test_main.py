@@ -6,6 +6,7 @@ import unittest
 
 
 MODULE = Path(__file__).resolve().parents[1] / "main.py"
+sys.path.insert(0, str(MODULE.parent))
 SPEC = importlib.util.spec_from_file_location("firefly_main", MODULE)
 firefly = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
@@ -216,3 +217,23 @@ class PolishTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class MenuTextureTests(unittest.TestCase):
+    def test_cached_label_uploads_only_when_value_changes(self):
+        from unittest.mock import Mock
+        app = object.__new__(firefly.FireflyApp)
+        app.sdl = Mock()
+        app.renderer = 1
+        app.textures = []
+        app.text_cache = {}
+        app.sdl.CreateTexture.side_effect = [10,11]
+        app.sdl.UpdateTexture.return_value = 0
+        app.sdl.SetTextureBlendMode.return_value = 0
+        app.draw_text(10,10,'FPS: 30')
+        app.draw_text(10,10,'FPS: 30')
+        self.assertEqual(app.sdl.UpdateTexture.call_count,1)
+        app.draw_text(10,10,'FPS: 31')
+        self.assertEqual(app.sdl.UpdateTexture.call_count,2)
+        app.sdl.DestroyTexture.assert_called_once_with(10)
+        self.assertEqual(len(app.text_cache),1)
+        self.assertEqual(len(app.textures),1)

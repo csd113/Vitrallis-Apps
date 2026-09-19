@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0 — 2026-09-19
+
+- Cache menu glyph textures and batch ordered glow/body/grass sprites while preserving particle count and controls.
+- Use backend VSync first, bound unsynchronized rendering and wait for native events while paused.
+
 ## 0.2.1 — 2026-09-14
 
 - Ship a painted pixel-art meadow and prebuilt RGBA scene, firefly, glow and grass textures; remove startup pixel generation.

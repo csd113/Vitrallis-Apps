@@ -1,0 +1,10 @@
+event=media_renderer mode=tk reason='Accelerated playback needs an X11 desktop with EGL and OpenGL ES 2.'
+event=media_renderer mode=hardware renderer='Mali-400'
+event=media_renderer mode=tk reason='surface lost'
+event=media_renderer mode=tk reason='Accelerated playback needs an X11 desktop with EGL and OpenGL ES 2.'
+event=media_renderer mode=tk reason='Accelerated playback needs an X11 desktop with EGL and OpenGL ES 2.'
+event=media_renderer mode=tk reason='Accelerated playback needs an X11 desktop with EGL and OpenGL ES 2.'
+----------------------------------------------------------------------
+Ran 91 tests in 14.672s
+
+OK (skipped=1)

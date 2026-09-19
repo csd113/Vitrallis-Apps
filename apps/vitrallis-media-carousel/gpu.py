@@ -8,6 +8,7 @@ from __future__ import annotations
 import ctypes as c
 from ctypes.util import find_library
 import re
+import logging
 
 
 class GpuUnavailable(RuntimeError):
@@ -164,15 +165,21 @@ class ImageRenderer:
             raise GpuUnavailable("EGL cannot match the desktop's window visual.")
         context_attributes = (c.c_int * 3)(0x3098, 2, 0x3038)
         self.context = self.egl.eglCreateContext(self.display, chosen, None, context_attributes)
-        self.surface = self.egl.eglCreateWindowSurface(self.display, chosen, widget.winfo_id(), None)
+        surface_attributes = (c.c_int * 3)(0x3086, 0x3084, 0x3038)  # RENDER_BUFFER, BACK_BUFFER, NONE
+        self.surface = self.egl.eglCreateWindowSurface(self.display, chosen, widget.winfo_id(), surface_attributes)
         if not self.context or not self.surface or not self.egl.eglMakeCurrent(self.display, self.surface, self.surface, self.context):
             raise GpuUnavailable("Cannot create an OpenGL ES window surface.")
         self.renderer = (self.gl.glGetString(0x1F01) or b"").decode("utf-8", "replace")
         self.api_version = (self.gl.glGetString(0x1F02) or b"").decode("utf-8", "replace")
         if not hardware_renderer(self.renderer):
             raise GpuUnavailable(f"Hardware rendering is unavailable ({self.renderer or 'unknown renderer'}). Using Tk presentation.")
-        # Tk owns frame scheduling; avoid adding a blocking vsync to GIF delays.
-        self.egl.eglSwapInterval(self.display, 0)
+        # EGL window surfaces render into a backbuffer. Keep animation deadlines
+        # independent of swap completion; the backend owns vblank synchronization.
+        maximum_swap = c.c_int()
+        supports_sync = self.egl.eglGetConfigAttrib(self.display, chosen, 0x303C, c.byref(maximum_swap))
+        self.vsync = bool(supports_sync and maximum_swap.value >= 1 and self.egl.eglSwapInterval(self.display, 1))
+        if not self.vsync:
+            logging.warning("EGL VSync unavailable; buffered playback is limited to 30 FPS")
 
     def _shader(self, kind: int, source: bytes) -> int:
         shader = self.gl.glCreateShader(kind)

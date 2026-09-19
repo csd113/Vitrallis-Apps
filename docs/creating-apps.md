@@ -143,3 +143,13 @@ the complete keyboard-only baseline and close behavior, and exercise relevant
 failures.
 The validator checks data and files; it does not prove application behavior or
 permissions compliance. Continue with [publishing apps](publishing-apps.md).
+
+## Graphical presentation requirement
+
+All graphical apps must use double buffering and synchronize completed-frame
+presentation to VSync/vblank whenever supported. Compose a full backbuffer frame,
+present once, and avoid direct visible-buffer drawing or unnecessary redraw loops.
+Document and bound any unsynchronized fallback; arbitrary sleeps do not fix tearing.
+Follow the [rendering contract](rendering.md) and verify the physical backend before publishing.
+
+Precompiled Rust payloads can use the [experimental Rust packaging profile](experimental-rust.md). Python remains the default runtime and catalog v1 is unchanged.

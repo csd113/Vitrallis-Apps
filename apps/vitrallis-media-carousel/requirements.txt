@@ -1,2 +1,4 @@
 # Tk 8.6, optional ffmpeg/ffprobe and X11/EGL/GLES2 are system prerequisites.
 Pillow>=10.4,<13
+# Pure-Python QR generation; reuses Pillow for the device image.
+qrcode>=7.4,<9

@@ -32,3 +32,6 @@ catalog compatibility notes and [runtime integration](runtime-integration.md)
 for installation status that may have changed since a package was published.
 Device reports describe the dated setup and operations tested, not blanket
 certification for later releases or other hardware.
+
+- [Graphical buffering and presentation](rendering.md)
+- [Experimental Rust application packaging](experimental-rust.md)

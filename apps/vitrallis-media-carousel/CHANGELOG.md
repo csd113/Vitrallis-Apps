@@ -2,6 +2,12 @@
 
 Changes are listed newest first. Dates use America/Vancouver time.
 
+## 0.2.0 — 2026-09-19
+
+- Request EGL backbuffer VSync and retain media deadlines; cache prepared GIF bytes off the UI thread.
+- Add two concurrent streamed uploads, bounded thumbnail caching and authenticated folder archive downloads.
+- Display a current-address QR code and verify real WebM/WebP decoding before offering scoped multimedia installation.
+
 ## 0.1.4 — 2026-09-14
 
 - Present GIF frames through optional hardware EGL/GLES2 textures on X11, moving proportional scaling and display composition off Tk/Pillow.

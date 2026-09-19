@@ -42,3 +42,36 @@ class StorageCase(unittest.TestCase):
         with stream:
             stream.write(png_bytes() if content is None else content)
         return self.library.add_upload(self.cid, name, path, {"kind": kind})
+
+
+import http.client
+import json
+from urllib.parse import quote
+from web_server import WebServer
+
+class WebCase(StorageCase):
+    def setUp(self):
+        super().setUp()
+        self.server = WebServer(self.library, self.settings, "127.0.0.1", 0)
+        self.server.start()
+        self.addCleanup(self.server.close)
+
+    def request(self, method, path, body=None, authorized=True, headers=None):
+        connection = http.client.HTTPConnection("127.0.0.1", self.server.port, timeout=10)
+        supplied = {"Authorization": "Bearer " + self.server.token} if authorized else {}
+        supplied.update(headers or {})
+        if isinstance(body, dict):
+            body = json.dumps(body).encode()
+            supplied["Content-Type"] = "application/json"
+        try:
+            connection.request(method, path, body=body, headers=supplied)
+            response = connection.getresponse()
+            raw = response.read()
+            data = json.loads(raw) if response.getheader("Content-Type", "").startswith("application/json") else raw
+            return response.status, data, dict(response.getheaders())
+        finally:
+            connection.close()
+
+    def upload(self, name="image.png", raw=None):
+        return self.request("POST", f"/api/collections/{self.cid}/media?name={quote(name, safe='')}",
+                            png_bytes() if raw is None else raw, headers={"Content-Type": "application/octet-stream"})
