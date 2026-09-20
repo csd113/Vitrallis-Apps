@@ -11,6 +11,7 @@ import threading
 import time
 
 from PIL import Image, ImageOps
+from gif_cache import GifCache, WINDOW
 from media import (FORMATS, MAX_FRAMES, MAX_GIF_PIXELS, MAX_PIXELS,
                    MAX_ANIMATION_PIXELS, MAX_VIDEO_SECONDS, MediaError, Processes, video_command)
 
@@ -91,6 +92,20 @@ class Playlist:
             self.bad.add(self.current["id"])
         return self.next()
 
+    def upcoming(self):
+        """Known playback order only; do not consume RNG for a future shuffle."""
+        items = self.cycle[max(0, self.index):]
+        if self.settings["loop"] and self.settings["order"] == "ordered":
+            items += self.cycle[:max(0, self.index)]
+        result, gifs = [], 0
+        for item in items:
+            if item["id"] not in self.bad:
+                result.append(item)
+                gifs += item.get("kind") == "gif"
+                if gifs == WINDOW:
+                    break
+        return result
+
 
 class PlaybackClock:
     def __init__(self, now=time.monotonic):
@@ -113,10 +128,11 @@ class PlaybackClock:
         return max(1, min(20, math.ceil((self.deadline - self.now()) * 1000)))
 
     def toggle(self):
-        if self.paused:
-            self.deadline = self.now() + self.remaining
-        elif self.deadline is not None:
-            self.remaining = max(0, self.deadline - self.now())
+        if self.deadline is not None:
+            if self.paused:
+                self.deadline = self.now() + self.remaining
+            else:
+                self.remaining = max(0, self.deadline - self.now())
         self.paused = not self.paused
 
     def ready(self):
@@ -154,10 +170,11 @@ class Decoder:
         self.processes = Processes()
         self.process = None
         self.generation = 0
+        self.gif_cache = GifCache(self._prepare_gif, lambda: MAX_GIF_CACHE_BYTES)
         self.thread = threading.Thread(target=self._work, name="carousel-decoder")
         self.thread.start()
 
-    def stop(self):
+    def stop(self, clear_cache=True):
         with self.lock:
             self.generation += 1
             self.cancel.set()
@@ -168,9 +185,11 @@ class Decoder:
                     pass
             drain(self.commands)
             drain(self.events)
+        if clear_cache:
+            self.gif_cache.clear()
 
-    def request(self, item, size, settings, gpu=False):
-        self.stop()
+    def request(self, item, size, settings, gpu=False, upcoming=None):
+        self.stop(clear_cache=False)
         with self.lock:
             self.cancel = threading.Event()
             # Bound display copies even on large external desktops.
@@ -178,6 +197,7 @@ class Decoder:
             scale = min(1, 1280 / width, 720 / height)
             bounded = (max(2, int(width * scale) // 2 * 2), max(2, int(height * scale) // 2 * 2))
             options = dict(settings, gpu=bool(gpu))
+            self.gif_cache.update(upcoming if upcoming is not None else [item], bounded, bool(gpu))
             self.commands.put_nowait((self.generation, item, bounded, options, self.cancel))
             return self.generation
 
@@ -198,17 +218,19 @@ class Decoder:
                 continue
             try:
                 with self.library.open_item(item) as stream:
+                    if os.fstat(stream.fileno()).st_size != item["size"]:
+                        raise MediaError("Media size no longer matches the library")
                     if item["kind"] == "webm":
                         self._video(stream, size, settings, cancel, generation)
                     else:
-                        self._image(stream, size, settings, cancel, generation)
+                        self._image(stream, size, settings, cancel, generation, item)
                 self._emit(cancel, generation, "done")
             except (OSError, ValueError, EOFError, SyntaxError, subprocess.SubprocessError,
                     Image.DecompressionBombError) as error:
                 message = str(error) if isinstance(error, MediaError) else "File missing, corrupt or no longer readable"
                 self._emit(cancel, generation, "error", message)
 
-    def _image(self, stream, size, settings, cancel, generation):
+    def _image(self, stream, size, settings, cancel, generation, item):
         with Image.open(stream, formats=FORMATS) as source:
             if source.width * source.height > MAX_PIXELS:
                 raise MediaError("Image exceeds pixel limit")
@@ -222,6 +244,16 @@ class Decoder:
                 return
             if source.width * source.height > MAX_GIF_PIXELS:
                 raise MediaError("GIF exceeds pixel limit")
+            prepared = self.gif_cache.wait(item=item, size=size,
+                                           gpu=bool(settings.get("gpu")), cancel=cancel)
+            if cancel.is_set():
+                return
+            if prepared:
+                for _ in range(settings["repeats"]):
+                    for frame, seconds in prepared:
+                        if not self._emit(cancel, generation, "frame", frame, seconds):
+                            return
+                return
             cache, cached_bytes, cache_complete = [], 0, False
             for _ in range(settings["repeats"]):
                 if cache_complete:
@@ -255,6 +287,28 @@ class Decoder:
                         cache_complete = cache is not None
                         break
                 if cancel.is_set():
+                    return
+
+    def _prepare_gif(self, item, size, gpu, cancel):
+        with self.library.open_item(item) as stream, Image.open(stream, formats=("GIF",)) as source:
+            if os.fstat(stream.fileno()).st_size != item["size"]:
+                raise MediaError("Media size no longer matches the library")
+            frames, pixels = 0, 0
+            deadline = time.monotonic() + 30
+            while not cancel.is_set() and not self.closed.is_set():
+                if source.width * source.height > MAX_GIF_PIXELS:
+                    raise MediaError("GIF frame exceeds pixel limit")
+                frames += 1
+                pixels += source.width * source.height
+                if (frames > MAX_FRAMES or pixels > MAX_ANIMATION_PIXELS
+                        or time.monotonic() >= deadline):
+                    raise MediaError("GIF exceeds frame/decode budget")
+                seconds = gif_seconds(source.info.get("duration", 100))
+                frame = GpuFrame.from_image(source) if gpu else display_copy(source, size)
+                yield frame, seconds
+                try:
+                    source.seek(frames)
+                except EOFError:
                     return
 
     def _video(self, stream, size, settings, cancel, generation):
@@ -301,6 +355,7 @@ class Decoder:
     def close(self):
         self.closed.set()
         self.stop()
+        self.gif_cache.close()
         self.processes.close()
         self.thread.join(timeout=3)
         if self.thread.is_alive():

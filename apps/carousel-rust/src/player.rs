@@ -1,5 +1,6 @@
 //! Stable playlist snapshots, bounded decoding, absolute media deadlines.
 use crate::{
+    gif_cache::{Animation, Cache, Prepared},
     media::{self, Frame},
     model::{Item, Kind, Order, Settings},
     process,
@@ -16,7 +17,7 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 struct Decoder {
-    frames: Receiver<Result<Frame>>,
+    frames: Receiver<Result<Arc<Frame>>>,
     cancel: Arc<AtomicBool>,
     thread: Option<JoinHandle<()>>,
 }
@@ -58,7 +59,7 @@ impl Decoder {
                     Instant::now() + Duration::from_secs(15),
                 ) {
                     Ok(Some(frame)) => {
-                        if !send_frame(Ok(frame)) {
+                        if !send_frame(Ok(Arc::new(frame))) {
                             break;
                         }
                     }
@@ -99,6 +100,43 @@ impl Decoder {
             thread: Some(thread),
         })
     }
+
+    fn cached(paths: &Paths, item: &Item, animation: Animation, repeats: u32) -> Result<Self> {
+        // Cached pixels do not authorize playback of a removed/replaced item.
+        let file = storage::regular(&paths.media.join(&item.id), storage::MAX_UPLOAD)?;
+        anyhow::ensure!(
+            file.metadata()?.len() == item.size,
+            "Media size no longer matches the library"
+        );
+        let cancel = process::stopped();
+        let stop = Arc::clone(&cancel);
+        let (send, frames) = mpsc::sync_channel(2);
+        let thread = std::thread::spawn(move || {
+            for _ in 0..repeats {
+                for frame in animation.iter() {
+                    let mut value = Ok(Arc::clone(frame));
+                    loop {
+                        if stop.load(Ordering::Relaxed) {
+                            return;
+                        }
+                        match send.try_send(value) {
+                            Ok(()) => break,
+                            Err(TrySendError::Disconnected(_)) => return,
+                            Err(TrySendError::Full(frame)) => {
+                                value = frame;
+                                std::thread::sleep(Duration::from_millis(5));
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        Ok(Self {
+            frames,
+            cancel,
+            thread: Some(thread),
+        })
+    }
 }
 
 impl Drop for Decoder {
@@ -114,7 +152,7 @@ pub struct Player {
     pub items: Vec<Item>,
     pub index: usize,
     pub paused: bool,
-    pub current: Option<Frame>,
+    pub current: Option<Arc<Frame>>,
     pub warning: String,
     pub frame_serial: u64,
     pub decoded: u64,
@@ -122,11 +160,13 @@ pub struct Player {
     settings: Settings,
     paths: Paths,
     decoder: Option<Decoder>,
-    pending: Option<Frame>,
+    pending: Option<Arc<Frame>>,
     deadline: Option<Instant>,
     paused_at: Option<Instant>,
     size: (u32, u32),
     failures: usize,
+    cache: Cache,
+    preparing: bool,
 }
 
 impl Player {
@@ -151,6 +191,8 @@ impl Player {
             paused_at: None,
             size,
             failures: 0,
+            cache: Cache::default(),
+            preparing: false,
         };
         player.start();
         player
@@ -163,7 +205,17 @@ impl Player {
         self.deadline = None;
         self.paused = false;
         self.paused_at = None;
+        self.cache.plan(
+            &self.items,
+            self.index,
+            self.settings.looping && self.settings.order == Order::Ordered,
+        );
+        self.preparing = false;
         if let Some(item) = self.items.get(self.index) {
+            if item.kind == Kind::Gif {
+                self.preparing = true;
+                return;
+            }
             match Decoder::start(&self.paths, item, self.size, self.settings.repeats) {
                 Ok(decoder) => self.decoder = Some(decoder),
                 Err(e) => self.warning = e.to_string(),
@@ -209,6 +261,26 @@ impl Player {
             self.warning = "No playable media in this collection".into();
             return false;
         }
+        self.cache.tick(&self.paths, self.size);
+        if self.preparing {
+            let item = &self.items[self.index];
+            let Some(prepared) = self.cache.get(item) else {
+                return true;
+            };
+            let decoder = match prepared {
+                Prepared::Frames(frames) => {
+                    Decoder::cached(&self.paths, item, frames, self.settings.repeats)
+                }
+                Prepared::Streaming | Prepared::NoRoom => {
+                    Decoder::start(&self.paths, item, self.size, self.settings.repeats)
+                }
+            };
+            self.preparing = false;
+            match decoder {
+                Ok(decoder) => self.decoder = Some(decoder),
+                Err(e) => self.warning = e.to_string(),
+            }
+        }
         if self.paused {
             return true;
         }
@@ -240,13 +312,15 @@ impl Player {
             if self.deadline.is_some_and(|d| now < d) {
                 break;
             }
-            let Some(mut frame) = self.pending.take() else {
+            let Some(frame) = self.pending.take() else {
                 break;
             };
-            if !matches!(self.items[self.index].kind, Kind::Gif | Kind::Webm) {
-                frame.delay = Duration::from_secs(u64::from(self.settings.image_seconds));
-            }
-            let deadline = self.deadline.unwrap_or(now) + frame.delay;
+            let delay = if matches!(self.items[self.index].kind, Kind::Gif | Kind::Webm) {
+                frame.delay
+            } else {
+                Duration::from_secs(u64::from(self.settings.image_seconds))
+            };
+            let deadline = self.deadline.unwrap_or(now) + delay;
             self.deadline = Some(deadline);
             self.failures = 0;
             if deadline <= now {

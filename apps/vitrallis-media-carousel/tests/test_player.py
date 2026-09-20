@@ -98,6 +98,18 @@ class SequencingTests(unittest.TestCase):
         self.assertTrue(clock.ready())
         self.assertEqual(clock.delay_ms(), 1)
 
+    def test_pause_while_preparing_does_not_start_the_animation_clock(self):
+        now = [0.0]
+        clock = PlaybackClock(lambda: now[0])
+        clock.toggle()
+        now[0] = 10.0
+        clock.toggle()
+        self.assertIsNone(clock.deadline)
+        now[0] = 20.0
+        clock.arm(.04, continuous=True)
+        self.assertAlmostEqual(clock.deadline, 20.04)
+        self.assertFalse(clock.ready())
+
     def test_gif_timing_bounds(self):
         self.assertEqual(gif_seconds(80), .08)
         self.assertEqual(gif_seconds(1), .02)

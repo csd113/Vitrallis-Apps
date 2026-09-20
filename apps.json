@@ -72,7 +72,7 @@
       "id": "io.vitrallis.carouselrust",
       "installable": true,
       "name": "Carousel-Rust",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "runtime": "rust",
       "binaries": {
         "armv7-unknown-linux-gnueabihf": "bin/armv7-unknown-linux-gnueabihf/app"
@@ -86,24 +86,24 @@
       "compatibility_notes": "Requires ARMv7 hard-float Linux, glibc 2.36+, SDL2, Mali/Lima graphics, a VSync X11 compositor and Vitrallis Shell 0.1.0-beta3.1 or newer with native Rust runtime support. WebM uses system ffmpeg/ffprobe. PocketCHIP GPU playback, physical moving-bar presentation, keyboard controls, codec parity and shared Python/Rust storage were verified. Close the Python carousel before launch.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "a7e7b5b39aa052c94ead80a7b89e6a4592bf5620",
+        "commit": "7eaa137f5e17199dbbd720ea9d9df0db2a492194",
         "path": "apps/carousel-rust"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 617,
-          "sha256": "83af1467db8187ba0d7f3346f44b5627751014cf3ef872af3a2f68160de6dbb7"
+          "size": 958,
+          "sha256": "6c0a99444518238106e11d3eb56c285ccd19d373921841415e6eb2124a732d68"
         },
         {
           "path": "Cargo.lock",
           "size": 16331,
-          "sha256": "e00d7fcb2c84c35fc940250a0e4c656aa28cfb89ce3c71433c7e5ed55bdcddec"
+          "sha256": "94ba1767a3b3543780bfbeabc41aa3a101529ca695da563811428f87a82ca4f1"
         },
         {
           "path": "Cargo.toml",
           "size": 1031,
-          "sha256": "ee74ed225aac6717558751e1bddb12e3a098518a0fa0847fc096c90e9a760c69"
+          "sha256": "359fc6f0bf39071cd6bd209e52199e871c0ee76fadad132d6e6a22fd5627cc04"
         },
         {
           "path": "LICENSE-NOTICE",
@@ -112,13 +112,13 @@
         },
         {
           "path": "README.md",
-          "size": 10796,
-          "sha256": "29bfda10352ee0edd7d79c0c1727538b72650027eaae53df2bef61346a85a2cf"
+          "size": 11936,
+          "sha256": "8435edee9fd50068b4ff566cdf8c628ec25d4b596642055cc364a3ac3a8ffd06"
         },
         {
           "path": "app.toml",
           "size": 255,
-          "sha256": "42f99e7a2aa67725027d505bf5962fe0ad65657fcf6f6d9dbf2ced4367cea5dc"
+          "sha256": "428037e8aa730b4ecfd37a23885d9a5fc60911eeae4449184dc52f8bda0ddd8b"
         },
         {
           "path": "assets/README.md",
@@ -142,8 +142,8 @@
         },
         {
           "path": "bin/armv7-unknown-linux-gnueabihf/app",
-          "size": 1381964,
-          "sha256": "9b31520240dbeb58667a4cd44eeda549a869218f2d1d4f2a6775c896e7415504"
+          "size": 1398316,
+          "sha256": "9ebb4d07b8d8b19790aedf078696dfb8cb11ced46234c07d302dfbd5ce1d4c6a"
         },
         {
           "path": "clippy.toml",
@@ -161,19 +161,24 @@
           "sha256": "ed9e308e860281df65afb5558b67fbe19577e7dcb104567527d7417edc41483b"
         },
         {
+          "path": "src/gif_cache.rs",
+          "size": 7116,
+          "sha256": "7c7a6a79646c24bdde6e2c8d0567c09f8f5ba74939f0507ae7065ff3aba959f4"
+        },
+        {
           "path": "src/http.rs",
           "size": 7406,
           "sha256": "2ef3283ff8e67ae0c958f0c7aecf6ee8f09fb15689cdb5d84c97f82127681295"
         },
         {
           "path": "src/main.rs",
-          "size": 3428,
-          "sha256": "4144f7e30a297bfc270919b5eb5d9029bef4e38e04a6af3fcf9d930e9f8cd3cd"
+          "size": 3443,
+          "sha256": "973c84f68cb3995a1f3baa6af589567e1d7c67c3de917e883293c0ec02e5bea9"
         },
         {
           "path": "src/media.rs",
-          "size": 14526,
-          "sha256": "6fab857ab9333ee507b715f28516d014843624570b7be800d0425ad76e8288db"
+          "size": 14541,
+          "sha256": "c72287348b757f04d89716625fdd736021cda0f25fc80f3f3d1b38b4173a877e"
         },
         {
           "path": "src/model.rs",
@@ -182,8 +187,8 @@
         },
         {
           "path": "src/player.rs",
-          "size": 9096,
-          "sha256": "95e3ddc253565966839ca4de824521e51d1b50bcc88a3edb2e7cd81f90159542"
+          "size": 11894,
+          "sha256": "53c754df7c563d1b670240955ca7bfb0c7fa04d31c1d45cbccd0fe8c6b2aa136"
         },
         {
           "path": "src/process.rs",
@@ -435,7 +440,7 @@
       "id": "io.vitrallis.mediacarousel",
       "installable": true,
       "name": "Vitrallis Media Carousel",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -447,24 +452,24 @@
       "compatibility_notes": "Requires Python 3.9+, Tk 8.6, Pillow >=10.4,<13, qrcode >=7.4,<9 and installed packaging for App Center dependency checks. Optional system ffmpeg/ffprobe must decode VP8, VP9 and WebP; one-click setup requires the Shell multimedia helper. PocketCHIP playback, uploads and keyboard controls were tested from staged source with the Shell VSync compositor. Managed App Center update to this version was not physically exercised.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "3e66e70d3eabd059930542abbc7e332648e165c2",
+        "commit": "7eaa137f5e17199dbbd720ea9d9df0db2a492194",
         "path": "apps/vitrallis-media-carousel"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 2036,
-          "sha256": "8607f3040776eec250740acdc7ff9209ea7f5ee5600cebc3d6e1b6486b6cadd1"
+          "size": 2377,
+          "sha256": "3ee4d73c2bcac441e427788c8a89fbdf9077f68c8aad3baae9e767f13f431c23"
         },
         {
           "path": "README.md",
-          "size": 19703,
-          "sha256": "2bf4646fc5e48d17bd016b561122c05f540e70dc86a6c3211d3eca378c470c9a"
+          "size": 20915,
+          "sha256": "9eafc8cdb6da44b511f8b75e655552a3498fdb33b5b7a48c9614e8a7e82b98f4"
         },
         {
           "path": "app.toml",
           "size": 203,
-          "sha256": "4ee82fdf94a994fc5ea77e57a0e9a071f22f523f945aafbe831fdcb6216f5797"
+          "sha256": "82eb9c155438e7ba1e2658f50229bec9b816d63106abd0eb240646c85352be44"
         },
         {
           "path": "assets/README.md",
@@ -502,6 +507,11 @@
           "sha256": "200174dab58d5ce8bf8aa9dc9fb45fa3406ba3b03a02d365a24c15d5c7c0b0a5"
         },
         {
+          "path": "gif_cache.py",
+          "size": 4999,
+          "sha256": "d3e9da5e873e68d2dd0f42967d3470e4c576056960bdc5417242a69d71d979ed"
+        },
+        {
           "path": "gpu.py",
           "size": 14370,
           "sha256": "7b63a8b7483ab86119887993a740da8a416c6bfba11a59e9aa2d91594a870a77"
@@ -519,7 +529,7 @@
         {
           "path": "main.py",
           "size": 1321,
-          "sha256": "1221b90249b73ad826c23ed91be472c15bde1d589c2fd7d5fa372ed1396adfbf"
+          "sha256": "5a6444b88b614f160169aeee325590cbad12fab8a0f7d08d6099e9625cd2bd90"
         },
         {
           "path": "media.py",
@@ -533,8 +543,8 @@
         },
         {
           "path": "player.py",
-          "size": 11997,
-          "sha256": "af5543ee0349082e38783889eacfed46b9aa7cf25cd8f711ea9b2b7ae219ee68"
+          "size": 14780,
+          "sha256": "b36c5e66b0fdddf4b2c8fdc1f786be9edbef2cc2a430548f03d23fe6a3d7e0ea"
         },
         {
           "path": "previews.py",
@@ -558,8 +568,8 @@
         },
         {
           "path": "ui.py",
-          "size": 25007,
-          "sha256": "f2fffa15cde4dcdf6cf52e1336ee9ff588da28e0920b08db72fedcc3d2b61217"
+          "size": 25042,
+          "sha256": "3d71285daa1f9080defa87b37356751fe7e825f8c20401cb7b35f6dabaa1032f"
         },
         {
           "path": "web/app.js",

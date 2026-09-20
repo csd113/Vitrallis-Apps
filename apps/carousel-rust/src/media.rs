@@ -344,7 +344,7 @@ pub fn child(arguments: &[String]) -> Result<()> {
             gif(&file, &mut |frame| {
                 emit(&frame)?;
                 bytes += frame.pixels.len();
-                if bytes <= 8 * 1024 * 1024 {
+                if repeats > 1 && bytes <= 8 * 1024 * 1024 {
                     cache.push(frame);
                 } else {
                     cache.clear();

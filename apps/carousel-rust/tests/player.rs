@@ -3,7 +3,7 @@ use super::*;
 use crate::model::{Kind, Order};
 use image::{Rgba, RgbaImage};
 
-fn scripted() -> (Player, mpsc::SyncSender<Result<Frame>>, Instant) {
+fn scripted() -> (Player, mpsc::SyncSender<Result<Arc<Frame>>>, Instant) {
     let now = Instant::now();
     let (send, frames) = mpsc::sync_channel(2);
     let item = Item {
@@ -45,16 +45,18 @@ fn scripted() -> (Player, mpsc::SyncSender<Result<Frame>>, Instant) {
             paused_at: None,
             size: (480, 272),
             failures: 0,
+            cache: Cache::default(),
+            preparing: false,
         },
         send,
         now,
     )
 }
-fn frame(value: u8) -> Frame {
-    Frame {
+fn frame(value: u8) -> Arc<Frame> {
+    Arc::new(Frame {
         pixels: RgbaImage::from_pixel(1, 1, Rgba([value, 0, 0, 255])),
         delay: Duration::from_millis(100),
-    }
+    })
 }
 
 #[test]
@@ -105,4 +107,16 @@ fn absolute_deadlines_catch_up_without_adding_swap_time_and_return_after_last_fr
     drop(send);
     assert!(!player.tick(now + Duration::from_millis(250)));
     Ok(())
+}
+
+#[test]
+fn preparing_gif_does_not_start_the_clock_or_count_a_failure() {
+    let (mut player, _send, now) = scripted();
+    player.decoder = None;
+    player.preparing = true;
+    assert!(player.tick(now));
+    assert!(player.tick(now + Duration::from_secs(20)));
+    assert!(player.deadline.is_none());
+    assert!(player.current.is_none());
+    assert_eq!(player.failures, 0);
 }

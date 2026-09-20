@@ -86,6 +86,22 @@ Someone observing LAN traffic can observe the code. This app does not provide TL
 | GIF | Sequential Pillow frame compositing with disposal/transparency. Original timing clamped to 20 ms–10 s; missing/zero timing uses 100 ms. Complete replays override embedded loop hints. |
 | WebM | Real muted VP8/VP9/AV1 video where the system decoder supports it. Proportional scale/letterboxing, 20 fps RGB output toward the actual display, capped at 1280×720. Reopen the stream for every complete replay. |
 
+GIF preparation follows the current playlist order and starts as early as cache
+space allows, rather than waiting for a fixed item number. The current GIF waits
+for complete preparation before its playback clock starts; upcoming GIFs are
+prepared by one worker with a 10 ms pause between speculative frames. Finished
+items leave the window, while upcoming cached items remain available. Ordered
+loops can prepare across the playlist boundary; shuffled loops prepare the next
+cycle only once its order is chosen. Navigation prioritizes the newly selected
+GIF and exit cancels preparation. The cache lives only in memory for playback.
+
+The initial GIF may show a loading delay. The limits count decoded pixels, not
+compressed file sizes, so fewer than ten GIFs may fit. Oversized animations and
+preparation failures fall back to the existing bounded streaming decoder;
+preparation has a 30-second deadline. The 32 MiB limit covers retained/preparing
+cache pixels, not decoder work buffers, queued frames, or renderer textures.
+Smoothness under background decoding still requires a device performance check.
+
 Animated PNG/WebP are rejected; use GIF/WebM for animation. Missing ffmpeg or
 ffprobe disables WebM with an explanation while images/GIF continue working.
 WebM upload validation checks EBML DocType, stream metadata and a decoded first
@@ -129,8 +145,9 @@ initialization logs `mode=hardware` and the GL renderer name.
 Animation deadlines follow media time, so uploads and UI polling do not add a
 new delay to every frame. Expired frames can be skipped to catch up; decoded
 replay counts and frame delays are preserved. Pause retains remaining frame time.
-Small GIFs reuse composited frames across repeats within an **8 MiB** cache;
-larger animations stream with two queued frames. GPU GIF frames retain native
+GIFs are prepared ahead of playback in a rolling window of up to **10 GIFs**,
+with an **8 MiB per-GIF** and **32 MiB total** decoded-frame cache.
+Larger animations stream with two queued frames. GPU GIF frames retain native
 resolution (within the existing one-million-pixel limit) for GPU filtering.
 Neither GIF decompression nor WebM decoding is claimed to be hardware accelerated.
 A GPU cannot guarantee full speed when CPU decoding exceeds the frame budget.
@@ -281,6 +298,6 @@ Download a collection in one action as a ZIP, limited to 256 MiB of media. The c
 
 Multimedia readiness runs actual 16×16 VP8, VP9 and static WebP decode probes, with cached results. When missing, the authenticated web interface offers one explicit installation action through a no-argument root-owned helper configured at platform installation. It installs Debian `ffmpeg` with necessary dependencies only, without update/upgrade/autoremove, then repeats decode checks. On older platform installations an administrator must provision the helper using `tools/install_carousel_media_support.py --user chip`; app startup never grants itself privileges. Installation failure and missing decoder capabilities are reported separately. Do not interrupt an active package-manager operation.
 
-EGL now requests backbuffer presentation synchronized to VSync and uses absolute GIF deadlines. A bounded 8 MiB GIF cache stores prepared RGBA bytes off the UI thread. Unsynchronized/Tk fallback is limited to 30 presentations per second while media time continues correctly. The physical display test exposed tearing even with an accepted EGL swap interval; see the [rendering contract](../../docs/rendering.md) and device verification report for platform limitations.
+EGL now requests backbuffer presentation synchronized to VSync and uses absolute GIF deadlines. A rolling GIF cache stores prepared RGBA bytes off the UI thread, bounded to 8 MiB per GIF and 32 MiB total. Unsynchronized/Tk fallback is limited to 30 presentations per second while media time continues correctly. The physical display test exposed tearing even with an accepted EGL swap interval; see the [rendering contract](../../docs/rendering.md) and device verification report for platform limitations.
 
 See the [2026-09-19 verification report](../../docs/verification/platform-app-refinements-2026-09-19/README.md) for measured app performance, physical tearing confirmation, reboot evidence and installation-validation limits.
