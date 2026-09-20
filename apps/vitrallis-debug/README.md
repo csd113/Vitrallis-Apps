@@ -215,7 +215,8 @@ is merged into the configured catalog branch.
 
 `icon.png` is original raster artwork created for Vitrallis Debug: a dark diagnostic
 chip with a mint pulse trace. The app has no external assets. This repository has
-no established license; no license is asserted for this new app.
+an MIT license for project-owned content; see the root LICENSE and
+THIRD_PARTY_NOTICES.md for scope and dependency terms.
 
 ## Private Lima telemetry and Pulse overlay
 

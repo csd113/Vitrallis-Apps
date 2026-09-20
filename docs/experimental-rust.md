@@ -1,7 +1,7 @@
 # Rust application packages
 
 Native Rust applications use `runtime = "rust"` with a closed `binaries` mapping.
-The App Manager selects a precompiled target payload; Cargo is never run on the
+App Center selects a precompiled target payload; Cargo is never run on the
 device. Manifest and catalog schema versions remain 1 with an explicit additive
 runtime alternative. Python packages retain their existing contract unchanged.
 
@@ -29,10 +29,9 @@ executable. ARM additionally requires EABI5 hard float. Installed launchers exec
 the selected binary. Windowed apps must supply X11 process identity and satisfy
 the same rendering, keyboard, storage, and publication requirements as Python.
 
-`apps/carousel-rust` implements this native profile. The older
-`examples/hello-rust` remains a Python-supervised experimental example for older
-Shell versions; its shipped bytes and version are unchanged. It is not the native
-runtime template.
+`apps/carousel-rust` implements this profile for new Rust apps.
+`examples/hello-rust` is a historical
+Python-supervised experiment, not the current native runtime template.
 
 ## Build and stage
 
@@ -67,10 +66,6 @@ Configure an image-matched SDL2 pkg-config/sysroot when the application uses SDL
 `--glibc 2.36` pins the GNU libc baseline for Zig; it requires `--zig`. A binary
 can still depend on newer symbol versions in external libraries: target launch
 and dynamic-link inspection remain mandatory.
-
-The legacy Python example still stages its unchanged supervisor and a payload at
-`bin/<target>/app`. The supervisor remains alive for old App Center process
-matching. Native Rust packages use the new direct launcher instead.
 
 ## Publish, install, update and remove
 

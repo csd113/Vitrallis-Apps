@@ -41,8 +41,9 @@ a pull request. Keep changes focused and do not overwrite another contributor's 
 
 Do not commit credentials, caches, device runtimes, or generated build artifacts.
 All committed app files outside `tests/` are published, including documentation.
-No repository-wide license has been established. Confirm licensing and imported
-content rights with the owner before distributing repository content.
+Include the project license and applicable third-party notices with distributed
+packages; see the licensing section below. Root notices are not automatically
+included by app-local catalog inventories.
 
 ## Version and changelog requirements
 
@@ -129,3 +130,12 @@ Document and bound any unsynchronized fallback; arbitrary sleeps do not fix tear
 Follow the [rendering contract](docs/rendering.md) and verify the physical backend before publishing.
 
 Precompiled Rust payloads can use the [Rust packaging profile](docs/experimental-rust.md). Python remains the default runtime and catalog v1 is unchanged.
+
+## Licensing contributions
+
+Project-owned contributions are accepted under [MIT](LICENSE). Submit only work
+that you can license on those terms. Preserve third-party copyright, license and
+NOTICE files; record imported code/assets, exact source revisions and terms in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Public availability or a supplied
+image is not permission to redistribute it. Unresolved items listed there are
+excluded from the project MIT grant until their rights are established.

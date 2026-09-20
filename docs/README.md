@@ -35,3 +35,5 @@ certification for later releases or other hardware.
 
 - [Graphical buffering and presentation](rendering.md)
 - [Experimental Rust application packaging](experimental-rust.md)
+
+- [Licensing, attribution and unresolved provenance](../THIRD_PARTY_NOTICES.md)
