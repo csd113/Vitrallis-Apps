@@ -14,16 +14,16 @@ use std::os::unix::fs::{DirBuilderExt, PermissionsExt, symlink};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-struct Fixture(std::path::PathBuf);
+pub struct Fixture(std::path::PathBuf);
 impl Fixture {
-    fn new() -> Result<Self> {
+    pub fn new() -> Result<Self> {
         let base = std::env::temp_dir()
             .canonicalize()?
             .join(format!("carousel-test-{}", storage::random_id()));
         fs::DirBuilder::new().mode(0o700).create(&base)?;
         Ok(Self(base))
     }
-    fn paths(&self) -> Result<storage::Paths> {
+    pub fn paths(&self) -> Result<storage::Paths> {
         storage::Paths::create(
             self.0.join("config"),
             self.0.join("data"),

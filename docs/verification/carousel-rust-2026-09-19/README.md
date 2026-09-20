@@ -2,8 +2,8 @@
 
 Before publication, Carousel-Rust 0.1.0 was built and exercised from the working branch
 `rust-app-demo`. At the time of these device checks, no source commit, catalog
-pin, installed app receipt or catalog release had been created. These results identify the tested executable by its bytes,
-not by a fictitious source revision.
+pin, installed app receipt or catalog release had been created. These results
+identify the tested executable by its size and SHA-256.
 
 ## Artifact and physical device
 
@@ -108,12 +108,12 @@ The app's HOME was a private fixture directory below it, exercising the normal
 The original Shell process was preserved and restored to focus. Final checks
 found only its window, no running QA executable and no listener on port 8765.
 The temporary Linux validation container was stopped; fixture files and logs are
-retained for review. The unrelated Shell task's isolated
-fixture installation/update/uninstall tests establish its native runtime contract;
+retained for review. The isolated Shell fixture installation/update/uninstall
+tests establish its native runtime contract;
 the later real-package lifecycle checks below establish Carousel coverage.
 
 Catalog publication retains the source commits and uses generated pins and root
-release history. Installation is enabled as requested, with native Shell
+release history. Installation is enabled, with native Shell
 0.1.0-beta3.1 or newer required. The later publication checks below supplement
 the initial source-run evidence. Touch interaction also needs
 physical coverage. A quantitative language comparison requires repeated alternating
@@ -170,3 +170,44 @@ to test saturation. Production Python files are unchanged. Twenty repeated
 regression runs passed, followed by all 91 Python carousel tests (one documented
 opt-in EGL skip on the host). No app version change is needed for this test-only
 correction. Required GitHub checks are attached to the publication pull request.
+
+
+## Presentation fixes in 0.1.3
+
+The renderer retains its last uploaded frame while the next item prepares or
+starts decoding. Next/previous navigation uses the same behavior. Initial startup
+can still show a loading message; leaving playback clears the retained texture.
+Button labels, headings and Home connection details use visible glyph bounds for
+centering. QR modules use integer pixel sizes with equal four-module quiet margins
+inside the 100×100 header area.
+
+The following 480×272 screenshots come from the real SDL drawing functions on
+host software surfaces. The URL and access code are fixed test fixtures. The
+playback image is a solid-color test frame, not user media.
+
+![Home with centered connection details and square QR code](home-0.1.3.png)
+![Centered settings labels](settings-0.1.3.png)
+![Centered playback controls](playback-0.1.3.png)
+
+Validation on macOS with Python 3.13 and host SDL2 2.32.72:
+
+- `cargo fmt --all --check` and the repository's strict Clippy command passed.
+- `cargo test --workspace --all-features` passed 24 tests with two opt-in tests
+  ignored. With a fresh host binary and `--include-ignored`, all 26 passed.
+  This includes keyboard navigation and actual rendered-pixel checks for text
+  centering, QR margins, retained transition frames and cleanup on exit.
+- All seven native package/codec Python tests passed with the fresh host binary.
+  All 67 tooling tests passed. The other app/example suites passed with three
+  existing skips: two opt-in EGL checks and one Linux FIFO/flock check.
+- Package/catalog validation, committed-history changelog validation, Python
+  compilation and whitespace checks passed before publication. The publication
+  commits and required GitHub checks establish catalog agreement for this release.
+- Apple's Vision QR reader decoded the rendered Home QR back to the fixture URL.
+- An isolated three-second host Metal/VSync smoke from `/` passed, presenting two
+  static Home frames. No production library or device state was changed.
+
+The rebuilt ARMv7 EABI5 hard-float payload has SHA-256
+`80e9cb53fdc60b6fcb25e09085d0bfed4c42be9bf4ee2df1f1f3817cbcd01bc6`.
+It was cross-built with the existing device-matched SDL2 sysroot and glibc 2.36
+baseline. Physical playback, touch and App Center lifecycle were not repeated
+for 0.1.3; earlier device evidence above applies to its stated versions.

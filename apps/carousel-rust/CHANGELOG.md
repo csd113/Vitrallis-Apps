@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3 — 2026-09-19
+
+- Keep the last displayed media frame visible while the next item prepares or decodes, preventing loading-message flashes during automatic and manual transitions.
+- Size the management QR code to whole pixels in a square header area with equal four-module quiet margins.
+- Center button labels, screen headings, and Home connection details using visible glyph bounds, including truncated labels and narrow characters.
+
 ## 0.1.2 — 2026-09-19
 
 - Prepare a rolling window of up to 10 GIFs before playback, sharing complete frames across first plays and repeats within a 32 MiB total and 8 MiB per-GIF cache.

@@ -1,6 +1,6 @@
 # Carousel-Rust
 
-**0.1.1** · `io.vitrallis.carouselrust` · native Rust · PocketCHIP ARMv7.
+**0.1.3** · `io.vitrallis.carouselrust` · native Rust · PocketCHIP ARMv7.
 [Release notes](CHANGELOG.md).
 
 A Rust implementation of Media Carousel's native screens, playlist, settings,
@@ -118,7 +118,9 @@ loops can prepare across the playlist boundary; shuffled loops prepare the next
 cycle only once its order is chosen. Navigation prioritizes the newly selected
 GIF and exit cancels preparation. The cache lives only in memory for playback.
 
-The initial GIF may show a loading delay. The limits count decoded pixels, not
+The initial GIF may show a loading delay. Between items, the last displayed frame
+remains visible until the next frame is ready, including next/previous navigation.
+The limits count decoded pixels, not
 compressed file sizes, so fewer than ten GIFs may fit. Oversized animations and
 preparation failures fall back to the existing bounded streaming decoder;
 preparation has a 30-second deadline. The 32 MiB limit covers retained/preparing

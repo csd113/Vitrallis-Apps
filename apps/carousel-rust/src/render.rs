@@ -1,7 +1,11 @@
 //! One complete SDL backbuffer presentation per changed frame.
 use anyhow::{Result, bail, ensure};
 use font8x8::UnicodeFonts;
-use sdl2::{pixels::Color, rect::Rect, render::WindowCanvas};
+use sdl2::{
+    pixels::Color,
+    rect::Rect,
+    render::{Canvas, RenderTarget, WindowCanvas},
+};
 
 pub fn open(video: &sdl2::VideoSubsystem, software: bool) -> Result<WindowCanvas> {
     sdl2::hint::set("SDL_RENDER_SCALE_QUALITY", "linear");
@@ -113,8 +117,15 @@ fn hardware_name(video: &sdl2::VideoSubsystem, backend: &str) -> Result<String> 
     Ok(name)
 }
 
-pub fn text(
-    canvas: &mut WindowCanvas,
+fn glyph(ch: char) -> [u8; 8] {
+    font8x8::BASIC_FONTS
+        .get(ch)
+        .or_else(|| font8x8::LATIN_FONTS.get(ch))
+        .unwrap_or([0x7e, 0x42, 0x02, 0x0c, 0x10, 0, 0x10, 0])
+}
+
+pub fn text<T: RenderTarget>(
+    canvas: &mut Canvas<T>,
     value: &str,
     x: i32,
     y: i32,
@@ -125,10 +136,7 @@ pub fn text(
     canvas.set_draw_color(color);
     let step = i32::try_from(scale)?;
     for (index, ch) in value.chars().take(maximum).enumerate() {
-        let bitmap = font8x8::BASIC_FONTS
-            .get(ch)
-            .or_else(|| font8x8::LATIN_FONTS.get(ch))
-            .unwrap_or([0x7e, 0x42, 0x02, 0x0c, 0x10, 0, 0x10, 0]);
+        let bitmap = glyph(ch);
         let offset = i32::try_from(index)? * 8 * step;
         for (row, bits) in bitmap.iter().enumerate() {
             for column in 0..8 {
@@ -148,21 +156,70 @@ pub fn text(
     Ok(())
 }
 
-pub fn button(canvas: &mut WindowCanvas, label: &str, rect: Rect, focused: bool) -> Result<()> {
+pub fn centered_text<T: RenderTarget>(
+    canvas: &mut Canvas<T>,
+    value: &str,
+    rect: Rect,
+    scale: u32,
+    color: Color,
+) -> Result<()> {
+    ensure!(
+        scale > 0 && scale <= rect.height() / 8,
+        "Invalid text scale"
+    );
+    let maximum = usize::try_from(rect.width() / (8 * scale))?;
+    // Center visible ink, including narrow glyphs and descenders, rather than
+    // the font's padded cells. Measure the same truncated text that is drawn.
+    let mut bounds = None::<Rect>;
+    for (index, ch) in value.chars().take(maximum).enumerate() {
+        for (row, bits) in glyph(ch).iter().enumerate() {
+            for column in 0..8 {
+                if bits & (1 << column) != 0 {
+                    let pixel = Rect::new(
+                        i32::try_from(index * 8 + column)?,
+                        i32::try_from(row)?,
+                        1,
+                        1,
+                    );
+                    bounds = Some(bounds.map_or(pixel, |b| b.union(pixel)));
+                }
+            }
+        }
+    }
+    if let Some(bounds) = bounds {
+        text(
+            canvas,
+            value,
+            rect.x() + i32::try_from((rect.width() - bounds.width() * scale) / 2)?
+                - bounds.x() * i32::try_from(scale)?,
+            rect.y() + i32::try_from((rect.height() - bounds.height() * scale) / 2)?
+                - bounds.y() * i32::try_from(scale)?,
+            scale,
+            color,
+            maximum,
+        )?;
+    }
+    Ok(())
+}
+
+pub fn button<T: RenderTarget>(
+    canvas: &mut Canvas<T>,
+    label: &str,
+    rect: Rect,
+    focused: bool,
+) -> Result<()> {
     canvas.set_draw_color(if focused {
         Color::RGB(42, 111, 115)
     } else {
         Color::RGB(35, 42, 50)
     });
     canvas.fill_rect(rect).map_err(anyhow::Error::msg)?;
-    text(
+    centered_text(
         canvas,
         label,
-        rect.x() + 10,
-        rect.y() + 12,
+        Rect::new(rect.x() + 8, rect.y(), rect.width() - 16, rect.height()),
         2,
         Color::RGB(240, 242, 238),
-        usize::try_from(rect.width() / 16)?.saturating_sub(1),
     )
 }
 
