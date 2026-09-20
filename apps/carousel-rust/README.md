@@ -91,7 +91,7 @@ root-owned no-argument platform helper; startup never installs dependencies.
 | Format | Behavior |
 | --- | --- |
 | PNG/JPEG/static WebP | Detect actual bytes, EXIF orientation, proportional GPU fit and transparency over black. |
-| GIF | Rust compositing/disposal, 20 ms–10 s frame delays (100 ms for absent/zero), complete replay counts, bounded 8 MiB cache. |
+| GIF | Rust compositing/disposal, 20 ms–10 s frame delays (100 ms for absent/zero), complete replay counts, rolling GIF preparation (8 MiB per GIF, 32 MiB total). |
 | WebM | Muted VP8/VP9/AV1 where system FFmpeg supports the codec, 20 fps RGBA, proportional scale/letterbox, one decoder/filter thread. |
 
 Animated PNG/WebP and other formats are rejected. WebM requires EBML WebM DocType,
@@ -108,6 +108,22 @@ workers and two upload slots bound concurrency; one validation/preview decoder
 runs at a time. Raster validation and playback use isolated copies of the Rust
 executable with bounded output, address space (256 MiB on 32-bit Linux, 512 MiB on 64-bit Linux), validation CPU/time,
 and cancellable process groups. Playback streams through two queued frames.
+
+GIF preparation follows the current playlist order and starts as early as cache
+space allows, rather than waiting for a fixed item number. The current GIF waits
+for complete preparation before its playback clock starts; upcoming GIFs are
+prepared by one worker with a 10 ms pause between speculative frames. Finished
+items leave the window, while upcoming cached items remain available. Ordered
+loops can prepare across the playlist boundary; shuffled loops prepare the next
+cycle only once its order is chosen. Navigation prioritizes the newly selected
+GIF and exit cancels preparation. The cache lives only in memory for playback.
+
+The initial GIF may show a loading delay. The limits count decoded pixels, not
+compressed file sizes, so fewer than ten GIFs may fit. Oversized animations and
+preparation failures fall back to the existing bounded streaming decoder;
+preparation has a 30-second deadline. The 32 MiB limit covers retained/preparing
+cache pixels, not decoder work buffers, queued frames, or renderer textures.
+Smoothness under background decoding still requires a device performance check.
 
 ## Keyboard and touch controls
 

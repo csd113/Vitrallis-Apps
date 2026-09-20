@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2 — 2026-09-19
+
+- Prepare a rolling window of up to 10 GIFs before playback, sharing complete frames across first plays and repeats within a 32 MiB total and 8 MiB per-GIF cache.
+- Prioritize the current GIF, evict finished items, cancel obsolete preparation on navigation/exit, and stream animations that exceed the cache budget.
+
 ## 0.1.1 — 2026-09-19
 
 - Allow the shared-library address space required by 64-bit Linux FFmpeg builds while retaining the 256 MiB PocketCHIP decoder limit and existing media-allocation bounds.

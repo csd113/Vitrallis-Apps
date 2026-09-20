@@ -1,5 +1,6 @@
 //! Carousel-Rust application entry and isolated decoder dispatch.
 mod compositor;
+mod gif_cache;
 mod http;
 mod media;
 mod model;

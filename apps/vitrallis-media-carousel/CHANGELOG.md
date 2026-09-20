@@ -2,6 +2,11 @@
 
 Changes are listed newest first. Dates use America/Vancouver time.
 
+## 0.2.1 — 2026-09-19
+
+- Prepare a rolling window of up to 10 GIFs before playback, sharing complete frames across first plays and repeats within a 32 MiB total and 8 MiB per-GIF cache.
+- Prioritize the current GIF, evict finished items, cancel obsolete preparation on navigation/exit, and stream animations that exceed the cache budget.
+
 ## 0.2.0 — 2026-09-19
 
 - Request EGL backbuffer VSync and retain media deadlines; cache prepared GIF bytes off the UI thread.

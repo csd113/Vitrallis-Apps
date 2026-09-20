@@ -387,7 +387,7 @@ class App:
         self.photo = None
         self.generation = self.services.decoder.request(item,
             (self.canvas.winfo_width(), self.canvas.winfo_height()), self.playlist.settings,
-            gpu=self.gpu_renderer is not None)
+            gpu=self.gpu_renderer is not None, upcoming=self.playlist.upcoming())
         self.pause_button.configure(text="Pause")
 
     def advance(self, direction=1):
