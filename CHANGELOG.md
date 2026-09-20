@@ -10,6 +10,7 @@ and place new records in the newest date section. See the
 
 ## 2026-09-19
 
+- Updated `io.vitrallis.carouselrust` `0.1.3`: Retain the displayed frame between media items, correct QR sizing and margins, and center native labels and connection details. [App changelog](apps/carousel-rust/CHANGELOG.md).
 - Updated `io.vitrallis.carouselrust` `0.1.2`: Prepare up to ten upcoming GIFs within a bounded rolling cache, reuse decoded frames from the first play, and prioritize newly selected animations. [App changelog](apps/carousel-rust/CHANGELOG.md).
 - Updated `io.vitrallis.mediacarousel` `0.2.1`: Prepare upcoming GIFs before playback with bounded caching, cancel obsolete preparation on navigation, and preserve the playback clock when paused during loading. [App changelog](apps/vitrallis-media-carousel/CHANGELOG.md).
 - Added `io.vitrallis.carouselrust` `0.1.1`: Publish an installable native ARMv7 Rust carousel with GPU-synchronized playback, LAN management and the shared Python photo library; retain PocketCHIP decoder bounds while accommodating 64-bit FFmpeg libraries. [App changelog](apps/carousel-rust/CHANGELOG.md).

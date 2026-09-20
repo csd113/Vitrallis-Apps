@@ -14,7 +14,7 @@ source, without changing installed App Center package receipts.
 The first moving-rectangle test **failed**: the owner reported massive tearing
 even though EGL accepted swap interval 1. The stock X11 session lacked a
 compositor. With Picom's XRender backend and VSync, the owner repeated the test
-and reported **“No visible tearing”**. The coordinated Shell task instrumented
+and reported **“No visible tearing”**. Shell instrumentation recorded
 actual X Present completion: awake display events used FLIP, with approximately
 16.8 ms per refresh. Accepted EGL/SDL flags alone were not counted as proof.
 Picom runs without shadows, fades, blur or fullscreen unredirect. Session
@@ -63,8 +63,7 @@ measure overlay impact; whole-dashboard CPU is not attributed solely to telemetr
 | Thumbnails | Two browser fetches, bounded subprocess generation, 2 MiB memory cache, first-frame images/animations and FFmpeg video, placeholder on failure |
 | FFmpeg capabilities/action | Real bundled VP8, VP9 and WebP inspection + pixel decode; cached readiness; fixed no-argument root helper provisioned by platform setup; background install rechecks support before success |
 
-Collections are flat in the existing library. Download preserves that structure;
-it does not invent nested collection support or flatten accepted nested paths.
+Collections are flat in the library; downloads preserve that structure.
 
 ## Automated checks
 
@@ -99,7 +98,7 @@ The coordinated normal Shell installation and reboot restored the enabled root
 oneshot, GPU devfreq at 297 MHz, and the private `root:chip` mode 0440 trace reader.
 The normal user still cannot read the global trace pipe. DTB hashes remained
 unchanged on idempotent setup. The desktop automatically restarted Shell and its
-owned Picom compositor. The Shell task's detailed evidence is in its
+owned Picom compositor. Detailed evidence is in the Shell repository's
 `docs/devices/pocketchip/gpu-utilization.md` and adjacent `evidence/gpu-vsync/`.
 
 Staged Debug passed real X11 event injection for opening/backing out of all five
@@ -131,7 +130,7 @@ still depends on the configured Debian repositories and their availability.
 
 ## Combined platform installation
 
-After the Shell task's handoff, the multimedia helper was added to its normal
+The multimedia helper was added to the Shell's normal
 bootstrap, installer, receipt/uninstaller and release inventories. The combined
 normal-user installation was tested using the existing validated ARM bundle
 `5487971547cd91f527b61634b47c34288478f0ab9270d9a48b41732cd3ce7aca` and
@@ -147,7 +146,7 @@ atomic no-replace publication on macOS/Linux; failures leave no partial package.
 
 The [changed-file inventory](changed-files.txt) lists Apps files and the separately
 coordinated Shell multimedia files. Shell GPU/provider/presentation changes are
-owned and documented by the coordinated GPU task.
+documented in the Shell repository's device evidence referenced above.
 
 Final post-reboot overlay capture confirms CPU 48.2%, real GPU 97.0% and 297 MHz remain visible over Pulse:
 
@@ -162,6 +161,6 @@ resolved the source, and GitHub raw manifest bytes matched the pinned source.
 Existing installation flags are preserved; the staged hardware tests do not
 establish a managed App Center update to these versions.
 
-The coordinated Shell task published GPU/VSync setup and the multimedia helper in
+GPU/VSync setup and the multimedia helper were published in
 [Shell commit 4451a21](https://github.com/csd113/Vitrallis-Shell/commit/4451a21).
 The Python and Rust examples remain outside the production catalog.

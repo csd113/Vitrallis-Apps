@@ -11,7 +11,7 @@ use sdl2::{
     keyboard::{Keycode, Mod},
     pixels::{Color, PixelFormatEnum},
     rect::Rect,
-    render::WindowCanvas,
+    render::{Canvas, RenderTarget, WindowCanvas},
 };
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -454,16 +454,15 @@ fn events_step(events: &mut sdl2::EventPump, ui: &mut Ui, service: &Service) {
     }
 }
 
-fn update_texture<'a>(
+fn update_texture<'a, T>(
     ui: &mut Ui,
-    creator: &'a sdl2::render::TextureCreator<sdl2::video::WindowContext>,
+    creator: &'a sdl2::render::TextureCreator<T>,
     texture: &mut Option<sdl2::render::Texture<'a>>,
     last_frame: &mut u64,
 ) -> Result<()> {
     if let Some(player) = &ui.player {
-        if player.current.is_none() && texture.take().is_some() {
-            ui.dirty = true;
-        }
+        // Keep the last uploaded frame while the next item prepares/decodes.
+        // Only leaving playback clears it; a new frame replaces it atomically.
         if (*last_frame != player.frame_serial || texture.is_none())
             && let Some(frame) = &player.current
         {
@@ -507,8 +506,8 @@ fn capture(canvas: &WindowCanvas, path: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
-fn draw(
-    canvas: &mut WindowCanvas,
+fn draw<T: RenderTarget>(
+    canvas: &mut Canvas<T>,
     ui: &Ui,
     service: &Service,
     texture: Option<&sdl2::render::Texture<'_>>,
@@ -532,7 +531,13 @@ fn draw(
                     )
                     .map_err(anyhow::Error::msg)?;
             } else {
-                render::text(canvas, "Loading media...", 96, 110, 2, Color::WHITE, 24)?;
+                render::centered_text(
+                    canvas,
+                    "Loading media...",
+                    Rect::new(12, 0, 456, 218),
+                    2,
+                    Color::WHITE,
+                )?;
             }
             if ui.controls_visible() {
                 let paused = ui.player.as_ref().is_some_and(|p| p.paused);
@@ -558,15 +563,13 @@ fn draw(
     Ok(())
 }
 
-fn home(canvas: &mut WindowCanvas, ui: &Ui, service: &Service) -> Result<()> {
-    render::text(
+fn home<T: RenderTarget>(canvas: &mut Canvas<T>, ui: &Ui, service: &Service) -> Result<()> {
+    render::centered_text(
         canvas,
         "Carousel-Rust",
-        12,
-        10,
+        Rect::new(12, 6, 344, 24),
         2,
         Color::RGB(94, 211, 190),
-        28,
     )?;
     let urls = service
         .urls
@@ -580,24 +583,20 @@ fn home(canvas: &mut WindowCanvas, ui: &Ui, service: &Service) -> Result<()> {
         },
         String::as_str,
     );
-    render::text(canvas, url, 12, 38, 1, Color::WHITE, 43)?;
-    render::text(
+    render::centered_text(canvas, url, Rect::new(12, 34, 344, 16), 1, Color::WHITE)?;
+    render::centered_text(
         canvas,
         &format!("Code: {}", service.token),
-        12,
-        57,
+        Rect::new(12, 53, 344, 24),
         2,
         Color::WHITE,
-        21,
     )?;
-    render::text(
+    render::centered_text(
         canvas,
         "Shared Python photo library",
-        12,
-        86,
+        Rect::new(12, 82, 344, 16),
         1,
         Color::RGB(160, 170, 180),
-        40,
     )?;
     qr(canvas, url)?;
     drop(urls);
@@ -639,19 +638,32 @@ fn home(canvas: &mut WindowCanvas, ui: &Ui, service: &Service) -> Result<()> {
     } else {
         "Arrows select | Enter play | S settings | F1 help"
     };
-    render::text(canvas, hint, 12, 255, 1, Color::RGB(180, 190, 200), 57)
+    render::centered_text(
+        canvas,
+        hint,
+        Rect::new(12, 250, 456, 16),
+        1,
+        Color::RGB(180, 190, 200),
+    )
 }
 
-fn qr(canvas: &mut WindowCanvas, url: &str) -> Result<()> {
+fn qr<T: RenderTarget>(canvas: &mut Canvas<T>, url: &str) -> Result<()> {
     if url.starts_with("http://")
         && !url.contains("127.0.0.1")
         && let Ok(code) = qrcode::QrCode::new(url.as_bytes())
     {
         let count = code.width();
-        let scale = (96 / (count + 8)).max(1);
+        let area = Rect::new(368, 4, 100, 100);
+        let scale = usize::try_from(area.width())? / (count + 8);
+        if scale == 0 {
+            return Ok(());
+        }
+        let side = u32::try_from((count + 8) * scale)?;
+        let left = area.x() + i32::try_from((area.width() - side) / 2)?;
+        let top = area.y() + i32::try_from((area.height() - side) / 2)?;
         canvas.set_draw_color(Color::WHITE);
         canvas
-            .fill_rect(Rect::new(372, 6, 102, 98))
+            .fill_rect(Rect::new(left, top, side, side))
             .map_err(anyhow::Error::msg)?;
         canvas.set_draw_color(Color::BLACK);
         for y in 0..count {
@@ -659,8 +671,8 @@ fn qr(canvas: &mut WindowCanvas, url: &str) -> Result<()> {
                 if code[(x, y)] == qrcode::Color::Dark {
                     canvas
                         .fill_rect(Rect::new(
-                            376 + i32::try_from((x + 4) * scale)?,
-                            10 + i32::try_from((y + 4) * scale)?,
+                            left + i32::try_from((x + 4) * scale)?,
+                            top + i32::try_from((y + 4) * scale)?,
                             u32::try_from(scale)?,
                             u32::try_from(scale)?,
                         ))
@@ -672,15 +684,13 @@ fn qr(canvas: &mut WindowCanvas, url: &str) -> Result<()> {
     Ok(())
 }
 
-fn settings(canvas: &mut WindowCanvas, ui: &Ui) -> Result<()> {
-    render::text(
+fn settings<T: RenderTarget>(canvas: &mut Canvas<T>, ui: &Ui) -> Result<()> {
+    render::centered_text(
         canvas,
         "Playback settings",
-        12,
-        10,
+        Rect::new(12, 4, 456, 28),
         2,
         Color::RGB(94, 211, 190),
-        28,
     )?;
     let labels = [
         format!("Still seconds: {}", ui.edit.image_seconds),
@@ -714,15 +724,13 @@ fn settings(canvas: &mut WindowCanvas, ui: &Ui) -> Result<()> {
     render::button(canvas, "Back", Rect::new(244, 214, 224, 42), ui.focus == 5)
 }
 
-fn help(canvas: &mut WindowCanvas) -> Result<()> {
-    render::text(
+fn help<T: RenderTarget>(canvas: &mut Canvas<T>) -> Result<()> {
+    render::centered_text(
         canvas,
         "Keyboard controls",
-        12,
-        10,
+        Rect::new(12, 4, 456, 28),
         2,
         Color::RGB(94, 211, 190),
-        28,
     )?;
     for (i, line) in [
         "Home: arrows select/page; Enter plays",
@@ -751,3 +759,7 @@ fn help(canvas: &mut WindowCanvas) -> Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "../tests/ui.rs"]
+mod tests;
