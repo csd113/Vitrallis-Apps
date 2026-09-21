@@ -1,4 +1,4 @@
-"""One cancellable worker prepares a rolling window of complete GIFs in RAM."""
+"""One cancellable worker prepares a rolling window of complete animations in RAM."""
 import threading
 from PIL import Image
 
@@ -7,7 +7,12 @@ TOTAL_BYTES = 32 * 1024 * 1024
 NO_ROOM = object()
 
 
-class GifCache:
+def animated(item):
+    return (item.get("kind") in ("gif", "webp")
+            and item.get("animated", item.get("kind") == "gif"))
+
+
+class AnimationCache:
     def __init__(self, frames, per_gif_limit):
         self.frames = frames
         self.per_gif_limit = per_gif_limit
@@ -17,7 +22,7 @@ class GifCache:
         self.foreground = None
         self.active = None
         self.closed = False
-        self.thread = threading.Thread(target=self._work, name="carousel-gif-cache")
+        self.thread = threading.Thread(target=self._work, name="carousel-animation-cache")
         self.thread.start()
 
     @staticmethod
@@ -27,11 +32,11 @@ class GifCache:
     def update(self, items, size, gpu):
         plan = {}
         for item in items:
-            if item["kind"] == "gif":
+            if animated(item):
                 plan[self.key(item, size, gpu)] = dict(item)
                 if len(plan) == WINDOW:
                     break
-        foreground = self.key(items[0], size, gpu) if items and items[0]["kind"] == "gif" else None
+        foreground = self.key(items[0], size, gpu) if items and animated(items[0]) else None
         with self.condition:
             self.plan, self.foreground = plan, foreground
             self.entries = {key: entry for key, entry in self.entries.items()
@@ -42,7 +47,7 @@ class GifCache:
                                               self.active[2] < self.per_gif_limit()))):
                 self.active[1].set()
             if missing:
-                # Foreground preparation gets a full per-GIF allowance.
+                # Foreground preparation gets a full per-animation allowance.
                 for key in reversed(plan):
                     if self._used() <= TOTAL_BYTES - self.per_gif_limit():
                         break
@@ -119,4 +124,4 @@ class GifCache:
             self.condition.notify_all()
         self.thread.join(timeout=3)
         if self.thread.is_alive():
-            raise RuntimeError("GIF cache worker did not stop within 3 seconds")
+            raise RuntimeError("Animation cache worker did not stop within 3 seconds")

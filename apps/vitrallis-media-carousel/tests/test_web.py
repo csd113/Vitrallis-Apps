@@ -5,15 +5,46 @@ import os
 import socket
 import threading
 import time
+from collections import namedtuple
 from urllib.parse import quote
 from unittest.mock import patch
 
 from support import StorageCase, gif_bytes, png_bytes
 from media import MAX_UPLOAD
-from web_server import WebServer
+from convert import ConversionError
+from web_server import WebServer, MAX_DOWNLOAD
 
 
 from support import WebCase
+
+
+class ConversionsStub:
+    """Deterministic stand-in for the real GIF converter's HTTP-facing contract."""
+
+    def __init__(self, library):
+        self.library = library
+        self.started = []
+        self.closed = False
+        self.value = {"status": "idle", "message": "", "item": None, "replacement": None,
+                      "name": "", "collection": None, "converter": ""}
+
+    def snapshot(self):
+        return dict(self.value)
+
+    def start(self, cid, mid):
+        items = {item["id"]: item for item in self.library.playlist(cid)}
+        item = items[mid]  # KeyError -> 404, matching the real converter.
+        if item["kind"] != "gif":
+            raise ConversionError("Only GIF items can be converted", code=400)
+        if self.value["status"] == "running":
+            raise ConversionError("A GIF conversion is already running", code=409)
+        self.started.append((cid, mid))
+        self.value.update(status="running", message="Converting GIF to WebP…", item=mid,
+                          name=item["name"], collection=cid, converter="gif2webp")
+        return self.snapshot()
+
+    def close(self):
+        self.closed = True
 
 
 class WebTests(WebCase):
@@ -89,8 +120,9 @@ class WebTests(WebCase):
         self.assertEqual(self.library.playlist(self.cid)[0]["kind"], "gif")
         self.assertEqual(self.request("DELETE", f"/api/collections/{self.cid}/media/{a[1]['id']}")[0], 200)
         self.assertEqual(len(self.library.playlist(self.cid)), 1)
-        self.assertEqual(self.request("PUT", "/api/settings", {"image_seconds": 2, "repeats": 1, "order": "shuffle", "loop": False})[0], 200)
+        self.assertEqual(self.request("PUT", "/api/settings", {"image_seconds": 2, "repeats": 1, "order": "shuffle", "loop": False, "convert_gifs": True})[0], 200)
         self.assertEqual(self.settings.snapshot()["order"], "shuffle")
+        self.assertTrue(self.settings.snapshot()["convert_gifs"])
         self.assertEqual(self.request("DELETE", f"/api/collections/{self.cid}")[0], 200)
         self.assertEqual(list(self.paths.media.iterdir()), [])
 
@@ -215,3 +247,58 @@ class WebTests(WebCase):
     def test_non_ascii_authorization_is_rejected_without_crashing_worker(self):
         self.assertEqual(self.request("GET", "/api/state", headers={"Authorization": "Bearer café"})[0], 401)
         self.assertEqual(self.request("GET", "/api/state")[0], 200)
+
+    def test_state_reports_conversion_snapshot_and_download_limit(self):
+        status, data, _ = self.request("GET", "/api/state")
+        self.assertEqual(status, 200)
+        self.assertEqual(data["max_download"], MAX_DOWNLOAD)
+        self.assertEqual(set(data["conversion"]), {"status", "message", "item", "replacement",
+                                                   "name", "collection", "converter"})
+        self.assertEqual(data["conversion"]["status"], "idle")
+
+    def test_close_closes_conversions_before_processes(self):
+        closed = []
+        stub = ConversionsStub(self.library)
+        stub.close = lambda: closed.append("conversions")
+        self.server.conversions = stub
+        with patch.object(self.server.processes, "close",
+                          side_effect=lambda: closed.append("processes")):
+            self.server.close()
+        self.assertEqual(closed, ["conversions", "processes"])
+
+    def test_convert_route_statuses_and_unknown_items(self):
+        stub = ConversionsStub(self.library)
+        self.server.conversions = stub
+        gif = self.upload("animation.gif", gif_bytes())[1]
+        png = self.upload("image.png", png_bytes())[1]
+        route = f"/api/collections/{self.cid}/media/{{}}/convert"
+        status, snapshot, _ = self.request("POST", route.format(gif["id"]))
+        self.assertEqual(status, 202)
+        self.assertEqual(snapshot["status"], "running")
+        self.assertEqual(snapshot["item"], gif["id"])
+        self.assertEqual(stub.started, [(self.cid, gif["id"])])
+        self.assertEqual(self.request("POST", route.format(png["id"]))[0], 400)
+        self.assertEqual(self.request("POST", route.format(gif["id"]))[0], 409)
+        self.assertEqual(self.request("POST", route.format("0" * 32))[0], 404)
+        self.assertEqual(self.request("POST", "/api/collections/not-an-id/media/" + gif["id"] + "/convert")[0], 400)
+
+    def test_upload_auto_converts_gifs_when_setting_is_on(self):
+        stub = ConversionsStub(self.library)
+        self.server.conversions = stub
+        config = self.settings.snapshot()
+        config["convert_gifs"] = True
+        self.assertEqual(self.request("PUT", "/api/settings", config)[0], 200)
+        status, item, _ = self.upload("animation.gif", gif_bytes())
+        self.assertEqual(status, 201)
+        self.assertEqual(stub.started, [(self.cid, item["id"])])
+        self.assertEqual(item["conversion"]["status"], "running")
+        self.assertEqual(self.upload()[0], 201)  # A still image never starts a conversion.
+        self.assertEqual(len(stub.started), 1)
+
+    def test_upload_rejects_when_staging_space_is_low(self):
+        usage = namedtuple("usage", "total used free")
+        with patch("web_server.shutil.disk_usage", return_value=usage(0, 0, 16 * 1024 * 1024 - 1)):
+            status, data, _ = self.upload()
+        self.assertEqual(status, 507)
+        self.assertIn("free space", data["error"])
+        self.assertEqual(list(self.paths.uploads.iterdir()), [])

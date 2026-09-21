@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 
-from support import StorageCase
+from support import StorageCase, gif_bytes, webp_bytes
 from library import Library, display_name, identifier
 from settings import DEFAULTS, Settings, validate
 from storage import InstanceLock, Paths, atomic_json, read_json, regular_open
@@ -13,6 +13,17 @@ class SettingsTests(StorageCase):
     def test_defaults_do_not_write_settings_on_read(self):
         self.assertEqual(self.settings.snapshot(), DEFAULTS)
         self.assertFalse(self.settings.path.exists())
+
+    def test_convert_gifs_legacy_payload_and_type_validation(self):
+        self.assertFalse(DEFAULTS["convert_gifs"])
+        legacy = {"image_seconds": 3, "repeats": 2, "order": "shuffle", "loop": False}
+        self.assertEqual(validate(legacy), dict(legacy, convert_gifs=False))
+        for value in (1, 0, "yes", None):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                validate(dict(DEFAULTS, convert_gifs=value))
+        saved = dict(DEFAULTS, convert_gifs=True)
+        self.settings.save(saved)
+        self.assertEqual(Settings(self.paths.config).snapshot(), saved)
 
     def test_persistence_and_no_redundant_write(self):
         value = dict(DEFAULTS, image_seconds=8, order="shuffle", loop=False)
@@ -33,7 +44,8 @@ class SettingsTests(StorageCase):
 
     def test_invalid_numeric_and_enum_settings(self):
         for key, values in {"image_seconds": [True, 0, 3601, 1.5, "3"], "repeats": [False, 0, 101],
-                            "order": ["random", None], "loop": [1, "yes"]}.items():
+                            "order": ["random", None], "loop": [1, "yes"],
+                            "convert_gifs": [1, 0, "yes", None]}.items():
             for value in values:
                 with self.subTest(key=key, value=value), self.assertRaises(ValueError):
                     validate(dict(DEFAULTS, **{key: value}))
@@ -100,6 +112,100 @@ class LibraryTests(StorageCase):
             self.library.add_upload(self.cid, "x.png", path, {"kind": "png"})
         self.assertEqual(list(self.paths.media.iterdir()), [])
         self.assertEqual(self.library.playlist(self.cid), [])
+
+    def test_upload_stores_animation_flag_from_probe(self):
+        gif = self.add("clip.gif", gif_bytes(), "gif")
+        webp = self.add("photo.webp", webp_bytes(), "webp")
+        self.assertTrue(gif["animated"])
+        self.assertFalse(webp["animated"])
+        self.assertEqual(set(gif), {"id", "name", "kind", "size", "animated"})
+        animated = self.add_animated("anim.webp", webp_bytes())
+        self.assertTrue(animated["animated"])
+
+    def add_animated(self, name, raw):
+        stream, path = self.library.temporary_upload()
+        with stream:
+            stream.write(raw)
+        return self.library.add_upload(self.cid, name, path, {"kind": "webp", "animated": True})
+
+    def test_legacy_items_default_animation_and_reject_non_bool(self):
+        rows = [{"id": "1" * 32, "name": "old.gif", "kind": "gif", "size": 10},
+                {"id": "2" * 32, "name": "old.webp", "kind": "webp", "size": 10},
+                {"id": "3" * 32, "name": "old.webm", "kind": "webm", "size": 10},
+                {"id": "4" * 32, "name": "old.png", "kind": "png", "size": 10}]
+        cid = "a" * 32
+        def write():
+            self.library.path.write_text(json.dumps(
+                {"version": 1, "collections": [{"id": cid, "name": "Unsorted", "items": rows}]}))
+        write()
+        restored = Library(self.paths)
+        self.assertEqual({item["name"]: item["animated"] for item in restored.playlist(cid)},
+                         {"old.gif": True, "old.webp": False, "old.webm": True, "old.png": False})
+        self.assertTrue(all(set(item) == {"id", "name", "kind", "size", "animated"}
+                            for item in restored.playlist(cid)))
+        rows[1]["animated"] = 1
+        write()
+        with self.assertRaises(ValueError):
+            Library(self.paths)
+        rows[1]["animated"] = "yes"
+        write()
+        with self.assertRaises(ValueError):
+            Library(self.paths)
+
+    def test_replace_upload_keeps_position_and_reclaims_old_blob(self):
+        a, b, c = self.add("a.png"), self.add("b.png"), self.add("c.png")
+        raw = webp_bytes()
+        staged = self.paths.uploads / "convert-staged"
+        staged.write_bytes(raw)
+        replacement = self.library.replace_upload(self.cid, b["id"], "b.webp", staged,
+                                                  {"kind": "webp", "animated": False})
+        self.assertEqual([item["id"] for item in self.library.playlist(self.cid)],
+                         [a["id"], replacement["id"], c["id"]])
+        self.assertEqual(set(replacement), {"id", "name", "kind", "size", "animated"})
+        self.assertEqual((replacement["name"], replacement["kind"]), ("b.webp", "webp"))
+        self.assertEqual((replacement["size"], replacement["animated"]), (len(raw), False))
+        self.assertFalse((self.paths.media / b["id"]).exists())
+        self.assertTrue((self.paths.media / replacement["id"]).exists())
+        self.assertFalse(staged.exists())
+        restored = Library(self.paths)
+        self.assertEqual([item["id"] for item in restored.playlist(self.cid)],
+                         [a["id"], replacement["id"], c["id"]])
+
+    def test_replace_upload_commit_failure_keeps_old_item_and_media(self):
+        item = self.add()
+        before = self.library.path.read_bytes()
+        staged = self.paths.uploads / "convert-staged"
+        staged.write_bytes(webp_bytes())
+        with patch("library.atomic_json", side_effect=OSError("disk full")), self.assertRaises(OSError):
+            self.library.replace_upload(self.cid, item["id"], "new.webp", staged, {"kind": "webp"})
+        self.assertEqual(self.library.path.read_bytes(), before)
+        self.assertEqual(self.library.playlist(self.cid), [item])
+        self.assertEqual([path.name for path in self.paths.media.iterdir()], [item["id"]])
+        self.assertFalse(staged.exists())
+
+    def test_replace_upload_rejects_unknown_item_and_foreign_staging(self):
+        item = self.add()
+        raw = webp_bytes()
+        staged = self.paths.uploads / "upload-staged"
+        staged.write_bytes(raw)
+        with self.assertRaises(KeyError):
+            self.library.replace_upload(self.cid, "f" * 32, "x.webp", staged, {"kind": "webp"})
+        self.assertTrue(staged.exists())
+        staged.unlink()
+        foreign = self.base / "upload-foreign"
+        foreign.write_bytes(raw)
+        with self.assertRaises(ValueError):
+            self.library.replace_upload(self.cid, item["id"], "x.webp", foreign, {"kind": "webp"})
+        self.assertTrue(foreign.exists())
+
+    def test_startup_reclaims_convert_staging(self):
+        convert = self.paths.uploads / "convert-leftover"
+        other = self.paths.uploads / "notes"
+        convert.write_bytes(b"partial")
+        other.write_bytes(b"keep")
+        Library(self.paths)
+        self.assertFalse(convert.exists())
+        self.assertTrue(other.exists())
 
     def test_corrupt_library_fails_closed(self):
         self.library.path.write_text('{"version":1,"collections":[]}')

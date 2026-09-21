@@ -10,7 +10,9 @@ import time
 import unittest
 from unittest.mock import patch
 
-from support import StorageCase, gif_bytes, png_bytes
+from PIL import Image
+
+from support import StorageCase, animated_webp_bytes, gif_bytes, png_bytes, webp_bytes
 from media import MediaError, Processes, inspect_stream, probe, video_command
 from player import Decoder, PlaybackClock, Playlist, gif_seconds
 from settings import DEFAULTS
@@ -124,6 +126,12 @@ class DecodeTests(StorageCase):
         self.addCleanup(decoder.close)
         return decoder
 
+    def animated(self, name, raw, kind):
+        stream, path = self.library.temporary_upload()
+        with stream:
+            stream.write(raw)
+        return self.library.add_upload(self.cid, name, path, {"kind": kind, "animated": True})
+
     def events(self, decoder, timeout=10):
         result, deadline = [], time.monotonic() + timeout
         while time.monotonic() < deadline:
@@ -165,12 +173,129 @@ class DecodeTests(StorageCase):
     def test_gif_over_cache_budget_streams_repeats_without_retaining_frames(self):
         item = self.add("animation.gif", gif_bytes(), "gif")
         decoder = self.decoder()
-        with patch("player.MAX_GIF_CACHE_BYTES", 0):
+        with patch("player.MAX_ANIMATION_BYTES", 0):
             decoder.request(item, (24, 12), dict(DEFAULTS, repeats=2), gpu=True)
             frames = [event for event in self.events(decoder) if event[1] == "frame"]
         self.assertEqual(len(frames), 6)
         self.assertIsNot(frames[0][2], frames[3][2])
         self.assertEqual(frames[0][2].tobytes(), frames[3][2].tobytes())
+
+    def test_static_webp_uses_the_still_path(self):
+        item = self.add("photo.webp", webp_bytes(), "webp")
+        decoder = self.decoder()
+        decoder.request(item, (480, 272), DEFAULTS)
+        events = self.events(decoder)
+        self.assertEqual([event[1] for event in events], ["frame", "done"])
+        self.assertEqual(events[0][2].size, (64, 32))
+        self.assertEqual(events[0][3], DEFAULTS["image_seconds"])
+
+    def test_animated_webp_replays_every_frame_with_gif_timing(self):
+        item = self.animated("animation.webp", animated_webp_bytes(), "webp")
+        decoder = self.decoder()
+        decoder.request(item, (480, 272), dict(DEFAULTS, repeats=3))
+        frames = [event for event in self.events(decoder) if event[1] == "frame"]
+        self.assertEqual(len(frames), 9)
+        self.assertEqual([event[3] for event in frames], [.04, .08, .12] * 3)
+        self.assertNotEqual(frames[0][2].getpixel((0, 0)), frames[1][2].getpixel((0, 0)))
+
+    def test_webp_and_gif_frames_share_the_same_durations(self):
+        gif = self.add("animation.gif", gif_bytes(), "gif")
+        webp = self.animated("animation.webp", animated_webp_bytes(), "webp")
+        decoder = self.decoder()
+        sequences = []
+        for item in (gif, webp):
+            decoder.request(item, (480, 272), dict(DEFAULTS, repeats=1))
+            frames = [event for event in self.events(decoder) if event[1] == "frame"]
+            sequences.append([event[3] for event in frames])
+        self.assertEqual(sequences, [[.04, .08, .12], [.04, .08, .12]])
+
+    def test_gpu_animated_webp_reuses_prepared_frames_across_repeats(self):
+        item = self.animated("animation.webp", animated_webp_bytes(), "webp")
+        decoder = self.decoder()
+        decoder.request(item, (24, 12), dict(DEFAULTS, repeats=2), gpu=True)
+        frames = [event for event in self.events(decoder) if event[1] == "frame"]
+        self.assertEqual(len(frames), 6)
+        self.assertTrue(all(event[2].size == (48, 24) for event in frames))
+        self.assertIs(frames[0][2], frames[3][2])
+        self.assertEqual([event[3] for event in frames], [.04, .08, .12] * 2)
+
+    def test_webp_over_cache_budget_streams_repeats_without_retaining_frames(self):
+        item = self.animated("animation.webp", animated_webp_bytes(), "webp")
+        decoder = self.decoder()
+        with patch("player.MAX_ANIMATION_BYTES", 0):
+            decoder.request(item, (24, 12), dict(DEFAULTS, repeats=2), gpu=True)
+            frames = [event for event in self.events(decoder) if event[1] == "frame"]
+        self.assertEqual(len(frames), 6)
+        self.assertIsNot(frames[0][2], frames[3][2])
+        self.assertEqual(frames[0][2].tobytes(), frames[3][2].tobytes())
+
+    def test_truncated_animated_webp_reports_an_error_without_hanging(self):
+        raw = animated_webp_bytes()
+        item = self.animated("broken.webp", raw[:len(raw) // 2], "webp")
+        decoder = self.decoder()
+        decoder.request(item, (480, 272), dict(DEFAULTS, repeats=2))
+        event = self.events(decoder)[-1]
+        self.assertEqual(event[1], "error")
+        decoder.request(self.add(), (480, 272), DEFAULTS)
+        self.assertEqual(self.events(decoder)[-1][1], "done")
+
+    def test_repeated_still_requests_reuse_decoded_image_and_stay_bounded(self):
+        first = self.add("one.png", png_bytes(size=(64, 32)))
+        second = self.add("two.png", png_bytes(size=(80, 40)))
+        decoder = self.decoder()
+        decodes, opens = [], []
+        original_image, original_open = Image.open, self.library.open_item
+        def decoding(*args, **kwargs):
+            decodes.append(args)
+            return original_image(*args, **kwargs)
+        def opening(item):
+            opens.append(item["id"])
+            return original_open(item)
+        with patch("player.Image.open", side_effect=decoding), \
+                patch.object(self.library, "open_item", side_effect=opening):
+            for _ in range(2):
+                decoder.request(first, (64, 32), DEFAULTS)
+                self.assertEqual(self.events(decoder)[-1][1], "done")
+            self.assertEqual(opens, [first["id"]])
+            self.assertEqual(len(decodes), 1)
+            with patch("player.MAX_STILL_BYTES", 64 * 32 * 4 + 80 * 40 * 4 - 1):
+                decoder.request(second, (80, 40), DEFAULTS)
+                self.assertEqual(self.events(decoder)[-1][1], "done")
+                self.assertEqual(len(decodes), 2)
+                self.assertEqual(len(decoder.still_cache), 1)
+                self.assertEqual(next(iter(decoder.still_cache))[0], second["id"])
+                self.assertEqual(decoder.still_bytes, 80 * 40 * 4)
+                self.assertLessEqual(decoder.still_bytes, 64 * 32 * 4 + 80 * 40 * 4 - 1)
+        decoder.stop()
+        self.assertEqual(decoder.still_cache, {})
+        self.assertEqual(decoder.still_bytes, 0)
+
+    def test_resized_still_is_not_served_from_cache(self):
+        item = self.add("photo.png", png_bytes())
+        decoder = self.decoder()
+        decoder.request(item, (64, 32), DEFAULTS)
+        self.assertEqual(self.events(decoder)[-1][1], "done")
+        self.assertTrue(decoder.still_cache)
+        with (self.paths.media / item["id"]).open("ab") as stream:
+            stream.write(b"changed")
+        decoder.request(item, (64, 32), DEFAULTS)
+        event = self.events(decoder)[-1]
+        self.assertEqual(event[1], "error")
+        self.assertIn("size", event[2])
+
+    def test_stop_clears_animation_and_still_caches(self):
+        clip = self.add("animation.gif", gif_bytes(), "gif")
+        photo = self.add("photo.png", png_bytes())
+        decoder = self.decoder()
+        decoder.request(photo, (64, 32), DEFAULTS)
+        self.assertEqual(self.events(decoder)[-1][1], "done")
+        decoder.request(clip, (48, 24), dict(DEFAULTS, repeats=1), upcoming=[clip])
+        self.assertEqual(self.events(decoder)[-1][1], "done")
+        self.assertTrue(decoder.still_cache)
+        self.assertTrue(decoder.animation_cache.entries)
+        decoder.stop()
+        self.assertEqual(decoder.still_cache, {})
+        self.assertEqual(decoder.animation_cache.entries, {})
 
     def test_missing_and_corrupt_files_emit_error_then_recover(self):
         item = self.add(content=b"corrupt")
@@ -246,12 +371,33 @@ class InspectionTests(unittest.TestCase):
         self.assertEqual(inspect_stream(io.BytesIO(png_bytes()))["kind"], "png")
         self.assertEqual(inspect_stream(io.BytesIO(gif_bytes()))["frames"], 3)
 
+    def test_animation_flags_for_gif_and_webp(self):
+        gif = inspect_stream(io.BytesIO(gif_bytes()))
+        self.assertEqual((gif["kind"], gif["frames"], gif["animated"]), ("gif", 3, True))
+        webp = inspect_stream(io.BytesIO(animated_webp_bytes()))
+        self.assertEqual((webp["kind"], webp["frames"], webp["animated"]), ("webp", 3, True))
+        static = inspect_stream(io.BytesIO(webp_bytes()))
+        self.assertEqual((static["kind"], static["frames"], static["animated"]), ("webp", 1, False))
+        still = inspect_stream(io.BytesIO(gif_bytes(frames=1)))
+        self.assertEqual((still["kind"], still["frames"], still["animated"]), ("gif", 1, False))
+
+    def test_animated_png_has_no_playback_path_and_is_rejected(self):
+        stream = io.BytesIO()
+        frames = [Image.new("RGBA", (16, 16), color) for color in ("red", "blue")]
+        frames[0].save(stream, format="PNG", save_all=True, append_images=frames[1:],
+                       duration=[40, 80])
+        self.assertTrue(Image.open(io.BytesIO(stream.getvalue())).is_animated)
+        with self.assertRaises(MediaError):
+            inspect_stream(io.BytesIO(stream.getvalue()))
+
     def test_unsupported_corrupt_and_oversized_dimensions(self):
         for raw in (b"<script>alert(1)</script>", png_bytes()[:30], b"\x1aE\xdf\xa3\x81\x00"):
             with self.assertRaises((OSError, ValueError, EOFError)):
                 inspect_stream(io.BytesIO(raw))
         with self.assertRaises(MediaError):
             inspect_stream(io.BytesIO(png_bytes(size=(3000, 3000))))
+        with self.assertRaises(MediaError):
+            inspect_stream(io.BytesIO(gif_bytes(size=(1200, 1000))))
 
 
 class ProcessTests(unittest.TestCase):

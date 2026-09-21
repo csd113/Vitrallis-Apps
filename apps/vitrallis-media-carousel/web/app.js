@@ -1,11 +1,12 @@
 "use strict";
 const $ = id => document.getElementById(id);
 let previewURLs = [], previewQueue = [], previewActive = 0;
-let token = "", state = null, selected = null, uploading = false, busy = false;
+let token = "", state = null, selected = null, uploading = false, busy = false, conversionTimer = null;
 try { token = sessionStorage.getItem("carousel-code") || ""; } catch (_) { /* Private mode may deny storage. */ }
 function notice(message, error = false) { $("notice").textContent = message; $("notice").classList.toggle("error", error); }
 function lock() {
   token = ""; state = null; selected = null;
+  clearTimeout(conversionTimer); conversionTimer = null;
   previewObserver.disconnect(); previewQueue = [];
   previewURLs.forEach(url => URL.revokeObjectURL(url)); previewURLs = [];
   $("media").replaceChildren();
@@ -52,6 +53,31 @@ function renderCollections() {
 }
 function folder() { return state.collections.find(row => row.id === selected); }
 function openFolder(id) { selected = id; renderFolder(); show("folder"); }
+function conversionState() { return (state && state.conversion) || {}; }
+function conversionRunning() { return conversionState().status === "running"; }
+function renderConversion() {
+  const conversion = conversionState(), line = $("conversion-status");
+  if (conversion.status !== "running") { line.hidden = true; line.textContent = ""; return; }
+  line.hidden = false;
+  line.textContent = `${conversion.message || "Converting GIF to WebP…"}${conversion.name ? ` · ${conversion.name}` : ""}`;
+}
+function scheduleConversionPoll() {
+  if (conversionTimer) return;
+  conversionTimer = setTimeout(async () => {
+    conversionTimer = null;
+    try {
+      await refresh();
+      if (conversionRunning()) { scheduleConversionPoll(); return; }
+      const conversion = conversionState();
+      if (conversion.status === "ready") notice(`${conversion.name || "GIF"} converted to WebP.`);
+      else if (conversion.status === "failed") notice(`${conversion.name ? `${conversion.name}: ` : ""}${conversion.message || "Conversion failed."}`, true);
+    } catch (error) { notice(error.message || "Device unavailable. Check the connection.", true); }
+  }, 1500);
+}
+async function convertItem(item) {
+  state.conversion = await api(`/api/collections/${selected}/media/${item.id}/convert`, "POST");
+  notice(conversionState().message || "Converting GIF to WebP…"); renderFolder(); renderConversion(); scheduleConversionPoll();
+}
 function renderFolder() {
   const row = folder();
   if (!row) { selected = null; show("collections"); return; }
@@ -71,9 +97,16 @@ function renderFolder() {
       if (!confirm(`Delete “${item.name}” from this device?`)) return;
       await api(`/api/collections/${selected}/media/${item.id}`, "DELETE"); await refresh(); notice("File deleted.");
     }, "danger"); remove.disabled = uploading;
+    const buttons = [up, down];
+    if (item.kind === "gif") {
+      const convert = button("To WebP", `Convert ${item.name} to WebP`, () => convertItem(item));
+      convert.disabled = uploading || conversionRunning();
+      buttons.push(convert);
+    }
+    buttons.push(remove);
     const preview = document.createElement("img"); preview.className = "thumbnail";
     preview.alt = `${item.kind.toUpperCase()} preview`; preview.width = 128; preview.height = 80;
-    controls.append(up, down, remove); li.append(preview, details, controls); $("media").append(li);
+    controls.append(...buttons); li.append(preview, details, controls); $("media").append(li);
     preview.dataset.path = `/api/collections/${row.id}/media/${item.id}/thumbnail`;
     previewObserver.observe(preview);
   });
@@ -91,6 +124,31 @@ async function binary(path, timeout = 15000) {
     if (!response.ok) { const data = await response.json(); throw new Error(data.error || "Download failed"); }
     return await response.blob();
   } finally { clearTimeout(timer); }
+}
+function archiveError(blob) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = () => { try { resolve(JSON.parse(reader.result).error || "Download failed"); } catch (_) { resolve("Download failed"); } };
+    reader.onerror = () => resolve("Download failed");
+    reader.readAsText(blob);
+  });
+}
+function folderArchive(path) {
+  // XHR keeps progress events and, with no timeout, supports multi-gigabyte archives.
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", path); xhr.responseType = "blob"; xhr.timeout = 0;
+    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.onprogress = event => notice(`Downloading… ${(event.loaded / 1048576).toFixed(1)} MiB`);
+    xhr.onload = async () => {
+      if (xhr.status === 401) lock();
+      if (xhr.status !== 200) { reject(new Error(await archiveError(xhr.response))); return; }
+      resolve(xhr.response);
+    };
+    xhr.onerror = () => reject(new Error("Connection lost during download"));
+    xhr.ontimeout = () => reject(new Error("Download timed out"));
+    xhr.send();
+  });
 }
 function loadPreviews() {
   while (previewActive < 2 && previewQueue.length) {
@@ -118,11 +176,13 @@ async function refresh() {
   $("install-media").hidden = state.capabilities.ready;
   $("install-media").disabled = state.installation.status === "running" || !state.installation.available;
   $("install-status").textContent = state.installation.message || (!state.capabilities.ready && !state.installation.available ? "Administrator setup is required to enable installation." : "");
-  renderCollections(); if (selected) renderFolder(); if (state.warning) notice(state.warning, true);
+  renderCollections(); if (selected) renderFolder(); renderConversion();
+  if (conversionRunning()) scheduleConversionPoll();
+  if (state.warning) notice(state.warning, true);
 }
 function renderSettings() {
   const config = state.settings; $("image-seconds").value = config.image_seconds; $("repeats").value = config.repeats;
-  $("order").value = config.order; $("loop").value = String(config.loop); show("settings");
+  $("order").value = config.order; $("loop").value = String(config.loop); $("convert-gifs").value = String(config.convert_gifs); show("settings");
 }
 function sendFile(file, cid, progress) {
   return new Promise((resolve, reject) => {
@@ -175,7 +235,7 @@ $("rename").onclick = () => { $("rename-name").value = folder().name; $("rename-
 $("cancel-rename").onclick = () => { $("rename-form").hidden = true; $("rename").focus(); };
 $("rename-form").onsubmit = guarded(async () => { await api(`/api/collections/${selected}`, "PUT", {name: $("rename-name").value}); $("rename-form").hidden = true; await refresh(); notice("Collection renamed."); });
 $("delete-folder").onclick = guarded(async () => { if (!confirm(`Delete “${folder().name}” and ALL of its media from this device?`)) return; await api(`/api/collections/${selected}`, "DELETE"); selected = null; await refresh(); show("collections"); notice("Collection deleted."); });
-$("settings-form").onsubmit = guarded(async () => { await api("/api/settings", "PUT", {image_seconds: Number($("image-seconds").value), repeats: Number($("repeats").value), order: $("order").value, loop: $("loop").value === "true"}); await refresh(); notice("Settings saved. Start a collection to use them."); });
+$("settings-form").onsubmit = guarded(async () => { await api("/api/settings", "PUT", {image_seconds: Number($("image-seconds").value), repeats: Number($("repeats").value), order: $("order").value, loop: $("loop").value === "true", convert_gifs: $("convert-gifs").value === "true"}); await refresh(); notice("Settings saved. Start a collection to use them."); });
 $("files").onchange = event => upload(event.target.files);
 for (const name of ["dragenter", "dragover"]) $("drop-zone").addEventListener(name, event => { event.preventDefault(); $("drop-zone").classList.add("dragover"); });
 $("drop-zone").addEventListener("dragleave", () => $("drop-zone").classList.remove("dragover"));
@@ -187,7 +247,7 @@ $("download-folder").onclick = guarded(async () => {
   const name = folder().name, cid = selected;
   $("download-folder").disabled = true; notice("Preparing folder download…");
   try {
-    const blob = await binary(`/api/collections/${cid}/download`, 160000);
+    const blob = await folderArchive(`/api/collections/${cid}/download`);
     const url = URL.createObjectURL(blob), link = document.createElement("a");
     link.href = url; link.download = `${name}.zip`; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 60000);

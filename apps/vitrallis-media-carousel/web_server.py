@@ -12,10 +12,10 @@ from socketserver import ThreadingMixIn
 import subprocess
 import threading
 import time
-import tempfile
 import zipfile
 from urllib.parse import parse_qs, urlsplit
 
+from convert import ConversionError, Conversions
 from library import display_name, identifier
 from media import MAX_UPLOAD, Processes, capabilities, probe
 from storage import unique_keys
@@ -26,6 +26,48 @@ WEB = Path(__file__).resolve().parent / "web"
 ASSETS = {"/": ("index.html", "text/html; charset=utf-8"),
           "/style.css": ("style.css", "text/css; charset=utf-8"),
           "/app.js": ("app.js", "text/javascript; charset=utf-8")}
+
+MAX_DOWNLOAD = 4 * 1024 * 1024 * 1024
+REQUEST_DEADLINE = 160
+
+
+def archive_member_names(items):
+    """Exact member names, including the ID directory for duplicate display names."""
+    names, members = set(), []
+    for item in items:
+        name = display_name(item["name"], 160)
+        member = name if name.casefold() not in names else item["id"] + "/" + name
+        names.add(name.casefold())
+        members.append(member)
+    return members
+
+
+def archive_size(items):
+    """Conservative upper bound for the streamed ZIP, including all ZIP overhead."""
+    return 24 + sum(item["size"] + 2 * len(member.encode("utf-8")) + 100
+                    for item, member in zip(items, archive_member_names(items)))
+
+
+class ClientWriter:
+    """Non-seekable ZIP sink; zipfile writes data descriptors instead of seeking back."""
+
+    def __init__(self, stream):
+        self.stream = stream
+        self.offset = 0
+        self.abandoned = False
+
+    def write(self, data):
+        if self.abandoned:  # A late finalizer must never add bytes to a failed transfer.
+            raise OSError("Archive transfer aborted")
+        self.stream.write(data)
+        self.offset += len(data)
+        return len(data)
+
+    def tell(self):
+        return self.offset
+
+    def flush(self):
+        self.stream.flush()
 
 
 def lan_addresses():
@@ -84,7 +126,7 @@ class BoundedServer(ThreadingMixIn, HTTPServer):
             self.shutdown_request(request)
             return
         with self.worker_lock:
-            self.sockets[request] = time.monotonic() + 160
+            self.sockets[request] = time.monotonic() + REQUEST_DEADLINE
         try:
             super().process_request(request, client_address)
         except BaseException:
@@ -119,7 +161,7 @@ class BoundedServer(ThreadingMixIn, HTTPServer):
 
 
 class WebServer:
-    def __init__(self, library, settings, host="0.0.0.0", port=8765):
+    def __init__(self, library, settings, host="0.0.0.0", port=8765, conversions=None):
         self.library, self.settings = library, settings
         self.token = secrets.token_hex(3)
         self.host, self.port = host, port
@@ -128,6 +170,7 @@ class WebServer:
         self.thread = None
         self.address_thread = None
         self.processes = Processes()
+        self.conversions = conversions or Conversions(library, self.processes)
         self.upload_slot = threading.BoundedSemaphore(2)
         self.media_slot = threading.Lock()  # One expensive decoder across both uploads.
 
@@ -161,7 +204,7 @@ class WebServer:
         self.address_thread.start()
 
     def watch_addresses(self):
-        while not self.stopping.wait(10):
+        while not self.stopping.wait(60):
             self.refresh_addresses()
 
     def refresh_addresses(self):
@@ -191,6 +234,7 @@ class WebServer:
         self.stopping.set()
         if self.address_thread is not None:
             self.address_thread.join(timeout=3)
+        self.conversions.close()
         if self.http is None:
             self.processes.close()
             return
@@ -220,6 +264,7 @@ class Handler(BaseHTTPRequestHandler):
     server_version = "VitrallisCarousel"
     sys_version = ""
     protocol_version = "HTTP/1.0"  # Exactly one request per connection; no pipelining ambiguity.
+    response_started = False
 
     def setup(self):
         super().setup()
@@ -261,6 +306,7 @@ class Handler(BaseHTTPRequestHandler):
         self.dispatch()
 
     def dispatch(self):
+        self.response_started = False
         try:
             if self.owner.stopping.is_set():
                 raise HTTPError(503, "Server stopping")
@@ -303,6 +349,11 @@ class Handler(BaseHTTPRequestHandler):
             self.safe_error(507, "Storage or connection failure; check free space and permissions")
 
     def safe_error(self, code, message):
+        if self.response_started:
+            # Headers and body bytes are already on the wire; a JSON error would
+            # corrupt the stream. Closing the connection is the only clean abort.
+            self.close_connection = True
+            return
         try:
             self.reply(code, {"error": message})
         except (OSError, ValueError):
@@ -335,8 +386,9 @@ class Handler(BaseHTTPRequestHandler):
         if self.command == "GET" and parsed.path == "/api/state":
             self.reply(200, {"collections": library.snapshot(), "settings": settings.snapshot(),
                             "device": self.owner.name, "urls": self.owner.urls, "status": self.owner.state,
-                            "capabilities": capabilities(blocking=False), "installation": self.owner.installation.snapshot(), "max_upload": MAX_UPLOAD,
-                            "warning": library.warning or settings.warning})
+                            "capabilities": capabilities(blocking=False), "installation": self.owner.installation.snapshot(),
+                            "conversion": self.owner.conversions.snapshot(), "max_upload": MAX_UPLOAD,
+                            "max_download": MAX_DOWNLOAD, "warning": library.warning or settings.warning})
         elif self.command == "POST" and parsed.path == "/api/dependencies/install":
             if self.json_body() != {"install": "ffmpeg"}:
                 raise ValueError("Expected explicit FFmpeg installation request")
@@ -373,6 +425,13 @@ class Handler(BaseHTTPRequestHandler):
                 if item is None:
                     raise KeyError(mid)
                 self.reply(200, self.owner.thumbnails.get(item), 'image/png')
+            elif len(parts) == 6 and parts[3] == "media" and parts[5] == "convert" and self.command == "POST":
+                mid = identifier(parts[4])
+                try:
+                    snapshot = self.owner.conversions.start(cid, mid)
+                except ConversionError as error:
+                    raise HTTPError(error.code, str(error))
+                self.reply(202, snapshot)
             elif len(parts) == 4 and parts[3] == "media" and self.command == "POST":
                 self.upload(cid, parsed.query)
             elif len(parts) == 5 and parts[3] == "media" and self.command == "DELETE":
@@ -385,53 +444,78 @@ class Handler(BaseHTTPRequestHandler):
 
     def download(self, cid):
         items = self.owner.library.playlist(cid)
-        # Keep one bounded, unlinked staging archive on data storage, not a
-        # potentially RAM-backed /tmp. Disconnect and every error close it.
-        maximum = 256 * 1024 * 1024
-        if sum(item['size'] for item in items) > maximum:
-            raise HTTPError(413, "Collection exceeds the 256 MiB download limit")
+        bound = archive_size(items)
+        if bound > MAX_DOWNLOAD:
+            raise HTTPError(413, "Collection exceeds the 4 GiB download limit")
         if not self.owner.download_slot.acquire(blocking=False):
             raise HTTPError(409, "Another folder download is active")
         try:
-            with tempfile.TemporaryFile(dir=self.owner.library.paths.data) as temporary:
-                names = set()
-                with zipfile.ZipFile(temporary, 'w', compression=zipfile.ZIP_STORED) as archive:
-                    for item in items:
-                        if self.owner.stopping.is_set():
-                            raise HTTPError(503, "Server stopping")
-                        name = display_name(item['name'], 160)
-                        # Duplicate display names are valid in the existing library;
-                        # preserve each original basename in a distinct ID directory.
-                        member = name if name.casefold() not in names else item['id'] + '/' + name
-                        names.add(name.casefold())
-                        with self.owner.library.open_item(item) as source:
-                            if os.fstat(source.fileno()).st_size != item['size']:
-                                raise ValueError("Media size changed; refresh the collection")
-                            with archive.open(member, 'w') as target:
-                                remaining = item['size']
-                                while remaining:
-                                    chunk = source.read(min(65536, remaining))
-                                    if not chunk:
-                                        raise ValueError("Media changed during download")
-                                    target.write(chunk)
-                                    remaining -= len(chunk)
-                length = temporary.tell()
-                temporary.seek(0)
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/zip')
-                self.send_header('Content-Disposition', 'attachment; filename="collection.zip"')
-                self.send_header('Content-Length', str(length))
-                self.send_header('Cache-Control', 'no-store')
-                self.send_header('X-Content-Type-Options', 'nosniff')
-                self.end_headers()
-                shutil.copyfileobj(temporary, self.wfile, 65536)
+            # Verify every source before headers commit the response to ZIP bytes.
+            for item in items:
+                if self.owner.stopping.is_set():
+                    raise HTTPError(503, "Server stopping")
+                with self.owner.library.open_item(item) as source:
+                    if os.fstat(source.fileno()).st_size != item["size"]:
+                        raise ValueError("Media size changed; refresh the collection")
+            self.stream_archive(list(zip(items, archive_member_names(items))), bound)
         finally:
             self.owner.download_slot.release()
+
+    def stream_archive(self, pairs, bound):
+        # No temp file and no buffering: zipfile streams data descriptors straight
+        # to the socket. HTTP/1.0 close-delimited, so no Content-Length is sent.
+        self.send_response(200)
+        self.send_header("Content-Type", "application/zip")
+        self.send_header("Content-Disposition", 'attachment; filename="collection.zip"')
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Archive-Bytes", str(bound))
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.response_started = True
+        self.connection.settimeout(20)
+        self.refresh_deadline()
+        writer = ClientWriter(self.wfile)
+        archive = zipfile.ZipFile(writer, "w", compression=zipfile.ZIP_STORED, allowZip64=False)
+        try:
+            for item, member in pairs:
+                if self.owner.stopping.is_set():
+                    raise HTTPError(503, "Server stopping")
+                with self.owner.library.open_item(item) as source:
+                    if os.fstat(source.fileno()).st_size != item["size"]:
+                        raise ValueError("Media size changed; refresh the collection")
+                    with archive.open(member, "w") as target:
+                        remaining, staged = item["size"], 0
+                        while remaining:
+                            chunk = source.read(min(65536, remaining))
+                            if not chunk:
+                                raise ValueError("Media changed during download")
+                            target.write(chunk)
+                            remaining -= len(chunk)
+                            staged += len(chunk)
+                            if staged >= 4 * 1024 * 1024:
+                                staged = 0
+                                self.refresh_deadline()
+                self.refresh_deadline()
+        except BaseException:
+            # Abandon the archive: a partial central directory must never make the
+            # truncated stream look like a finished download.
+            writer.abandoned = True
+            archive.fp = None
+            raise
+        archive.close()
+
+    def refresh_deadline(self):
+        with self.server.worker_lock:
+            if self.connection in self.server.sockets:
+                self.server.sockets[self.connection] = time.monotonic() + REQUEST_DEADLINE
 
     def upload(self, cid, query):
         length = self.content_length(MAX_UPLOAD)
         if self.headers.get("Content-Type") != "application/octet-stream":
             raise HTTPError(415, "Upload a raw file using application/octet-stream")
+        if shutil.disk_usage(self.owner.library.paths.uploads).free < length + 16 * 1024 * 1024:
+            raise HTTPError(507, "Not enough free space to stage this upload")
         names = parse_qs(query, strict_parsing=True, max_num_fields=1)
         if set(names) != {"name"} or len(names["name"]) != 1:
             raise ValueError("One filename is required")
@@ -459,6 +543,12 @@ class Handler(BaseHTTPRequestHandler):
             if self.owner.stopping.is_set():
                 raise HTTPError(503, "Server stopping")
             item = self.owner.library.add_upload(cid, name, temporary, info)
+            if item["kind"] == "gif" and self.owner.settings.snapshot().get("convert_gifs"):
+                try:
+                    self.owner.conversions.start(cid, item["id"])
+                except ConversionError:
+                    pass  # A converter busy with another GIF must not fail the upload.
+            item["conversion"] = self.owner.conversions.snapshot()
             self.reply(201, item)
         finally:
             if temporary is not None and os.path.lexists(temporary):

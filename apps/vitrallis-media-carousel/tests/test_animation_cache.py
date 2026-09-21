@@ -3,18 +3,24 @@ import unittest
 from unittest.mock import patch
 
 from support import StorageCase, gif_bytes
-from gif_cache import GifCache, NO_ROOM
+from animation_cache import AnimationCache, NO_ROOM
 from player import Decoder, GpuFrame, Playlist
 from settings import DEFAULTS
 
 
-def items(count):
-    return [{"id": str(i), "size": 1, "kind": "gif"} for i in range(count)]
+def items(count, kind="gif", animated=None):
+    result = []
+    for index in range(count):
+        item = {"id": str(index), "size": 1, "kind": kind}
+        if animated is not None:
+            item["animated"] = animated
+        result.append(item)
+    return result
 
 
 class CacheTests(unittest.TestCase):
     def cache(self, loader, limit=16):
-        cache = GifCache(loader, lambda: limit)
+        cache = AnimationCache(loader, lambda: limit)
         self.addCleanup(cache.close)
         return cache
 
@@ -46,8 +52,21 @@ class CacheTests(unittest.TestCase):
         self.assertEqual(len(cache.entries), 10)
         self.assertNotIn(cache.key(playlist[0], (2, 1), True), cache.entries)
 
+    def test_plan_keeps_animated_gif_and_webp_and_skips_stills(self):
+        cache = self.cache(self.frames)
+        legacy_gif = {"id": "g", "size": 1, "kind": "gif"}
+        animated_webp = {"id": "w", "size": 1, "kind": "webp", "animated": True}
+        static_webp = {"id": "s", "size": 1, "kind": "webp", "animated": False}
+        static_gif = {"id": "f", "size": 1, "kind": "gif", "animated": False}
+        still = {"id": "p", "size": 1, "kind": "png", "animated": False}
+        cache.update([legacy_gif, animated_webp, static_webp, static_gif, still], (2, 1), True)
+        self.ready(cache)
+        self.assertEqual(set(cache.plan), {cache.key(legacy_gif, (2, 1), True),
+                                           cache.key(animated_webp, (2, 1), True)})
+        self.assertEqual(len(cache.entries), 2)
+
     def test_total_budget_evicts_and_retries_without_publishing_partial_gifs(self):
-        with patch("gif_cache.TOTAL_BYTES", 32):
+        with patch("animation_cache.TOTAL_BYTES", 32):
             cache = self.cache(self.frames)
             playlist = items(5)
             cache.update(playlist, (2, 1), True)
@@ -79,7 +98,7 @@ class CacheTests(unittest.TestCase):
                 started.set()
                 release.wait(3)
             yield from self.frames(item, *args)
-        with patch("gif_cache.TOTAL_BYTES", 24):
+        with patch("animation_cache.TOTAL_BYTES", 24):
             cache = self.cache(loader)
             self.addCleanup(release.set)
             playlist = items(2)
@@ -122,6 +141,17 @@ class CacheTests(unittest.TestCase):
         self.assertEqual([item["id"] for item in playlist.upcoming()], ["9", "10", "11"])
         self.assertEqual(playlist.rng.getstate(), state)
 
+    def test_lookahead_window_counts_animated_webp_and_gif(self):
+        sequence = [{"id": "p", "kind": "png", "animated": False}]
+        sequence += [{"id": "g%d" % index, "kind": "gif"} for index in range(6)]
+        sequence += [{"id": "s", "kind": "webp", "animated": False}]
+        sequence += [{"id": "w%d" % index, "kind": "webp", "animated": True} for index in range(6)]
+        playlist = Playlist(sequence, dict(DEFAULTS))
+        upcoming = playlist.upcoming()
+        self.assertEqual([item["id"] for item in upcoming],
+                         ["p", "g0", "g1", "g2", "g3", "g4", "g5", "s", "w0", "w1", "w2", "w3"])
+        self.assertEqual(upcoming[-1]["id"], "w3")
+
 
 class PlaybackPreparationTests(StorageCase):
     def test_first_frame_waits_for_complete_preparation_and_next_item_is_reused(self):
@@ -129,7 +159,7 @@ class PlaybackPreparationTests(StorageCase):
         second = self.add("second.gif", gif_bytes(), "gif")
         started, release = threading.Event(), threading.Event()
         calls = []
-        original = Decoder._prepare_gif
+        original = Decoder._prepare_animation
         def prepare(decoder, item, *args):
             calls.append(item["id"])
             for index, value in enumerate(original(decoder, item, *args)):
@@ -137,7 +167,7 @@ class PlaybackPreparationTests(StorageCase):
                 if item == first and index == 0:
                     started.set()
                     release.wait(3)
-        with patch.object(Decoder, "_prepare_gif", prepare):
+        with patch.object(Decoder, "_prepare_animation", prepare):
             decoder = Decoder(self.library)
             self.addCleanup(decoder.close)
             self.addCleanup(release.set)
@@ -148,10 +178,10 @@ class PlaybackPreparationTests(StorageCase):
             release.set()
             self.assertEqual([decoder.events.get(timeout=3)[1] for _ in range(4)],
                              ["frame", "frame", "frame", "done"])
-            with decoder.gif_cache.condition:
-                self.assertTrue(decoder.gif_cache.condition.wait_for(
-                    lambda: len(decoder.gif_cache.entries) == 2, timeout=3))
-            cached = decoder.gif_cache.wait(second, (48, 24), True, threading.Event())
+            with decoder.animation_cache.condition:
+                self.assertTrue(decoder.animation_cache.condition.wait_for(
+                    lambda: len(decoder.animation_cache.entries) == 2, timeout=3))
+            cached = decoder.animation_cache.wait(second, (48, 24), True, threading.Event())
             decoder.request(second, (48, 24), dict(DEFAULTS, repeats=1), gpu=True)
             event = decoder.events.get(timeout=3)
             self.assertIs(event[2], cached[0][0])
@@ -165,9 +195,9 @@ class PlaybackPreparationTests(StorageCase):
         decoder.request(first, (48, 24), dict(DEFAULTS, repeats=1), upcoming=[first, second])
         for _ in range(4):
             decoder.events.get(timeout=3)
-        with decoder.gif_cache.condition:
-            self.assertTrue(decoder.gif_cache.condition.wait_for(
-                lambda: len(decoder.gif_cache.entries) == 2, timeout=3))
+        with decoder.animation_cache.condition:
+            self.assertTrue(decoder.animation_cache.condition.wait_for(
+                lambda: len(decoder.animation_cache.entries) == 2, timeout=3))
         (self.paths.media / second["id"]).unlink()
         decoder.request(second, (48, 24), DEFAULTS)
         self.assertEqual(decoder.events.get(timeout=3)[1], "error")

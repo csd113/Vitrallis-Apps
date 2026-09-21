@@ -2,6 +2,33 @@
 
 Changes are listed newest first. Dates use America/Vancouver time.
 
+## 0.3.0 — 2026-09-20
+
+- Play animated WebP frame by frame with per-frame durations, transparency and loop
+  metadata through the existing animation pipeline; static WebP and GIF keep their
+  current behavior.
+- Cache prepared GIF and animated-WebP frames in the bounded rolling window, reuse
+  decoded still images across slideshow cycles, and release both caches on
+  navigation, hidden playback and exit.
+- Convert an existing GIF to animated WebP on the device from the playback overlay
+  (To WebP or the `C` key) or the web page's per-item button, preferring system
+  `gif2webp` with a bounded Pillow fallback.
+- Convert through a staged temporary file, verify the result's frame count,
+  durations, looping and openability, then atomically replace the GIF at the same
+  playlist position; delete the original only after validation and keep it
+  byte-for-byte on every failure.
+- Show conversion progress and results in the playback overlay and web page, and add
+  a shared "GIF uploads" setting that converts newly uploaded GIFs automatically.
+- Stream folder downloads in 64 KiB chunks with no temporary archive and no in-RAM
+  buffer and raise the explicit limit from 256 MiB to 4 GiB, refreshing the transfer
+  deadline during long transfers and checking free space before staging uploads.
+- Stop decoding and presenting when the native window is hidden, floor idle playback
+  polling, keep overlay focus and redraw work off the hot path, and refresh
+  discovered LAN addresses every sixty seconds instead of ten.
+- Downscale display copies with bilinear filtering, keep rejecting animated PNG
+  uploads explicitly, normalize legacy library and settings files, and reclaim
+  abandoned conversion staging at startup.
+
 ## 0.2.1 — 2026-09-19
 
 - Prepare a rolling window of up to 10 GIFs before playback, sharing complete frames across first plays and repeats within a 32 MiB total and 8 MiB per-GIF cache.

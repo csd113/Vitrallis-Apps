@@ -1,5 +1,6 @@
 import io
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 import unittest
@@ -19,12 +20,41 @@ def png_bytes(color="red", size=(64, 32)):
     return stream.getvalue()
 
 
-def gif_bytes():
+def webp_bytes(color="red", size=(64, 32)):
     stream = io.BytesIO()
-    frames = [Image.new("RGBA", (48, 24), color) for color in ("red", "blue", "green")]
-    frames[0].save(stream, format="GIF", save_all=True, append_images=frames[1:],
-                   duration=[40, 80, 120], loop=0, disposal=2)
+    Image.new("RGB", size, color).save(stream, format="WEBP", quality=90, method=4)
     return stream.getvalue()
+
+
+def gif_bytes(frames=3, duration=(40, 80, 120), loop=0, disposal=2, size=(48, 24)):
+    stream = io.BytesIO()
+    images = _animation_frames(frames, size)
+    delays = _delays(duration, frames)
+    images[0].save(stream, format="GIF", save_all=True, append_images=images[1:],
+                   duration=delays, loop=loop, disposal=disposal)
+    return stream.getvalue()
+
+
+def animated_webp_bytes(frames=3, duration=(40, 80, 120), loop=0, size=(48, 24)):
+    stream = io.BytesIO()
+    images = _animation_frames(frames, size)
+    images[0].save(stream, format="WEBP", save_all=True, append_images=images[1:],
+                   duration=_delays(duration, frames), loop=loop, quality=90, method=4)
+    return stream.getvalue()
+
+
+def _animation_frames(count, size):
+    colors = ("red", "blue", "green", "yellow", "purple", "orange")
+    return [Image.new("RGBA", size, colors[index % len(colors)]) for index in range(count)]
+
+
+def _delays(duration, count):
+    delays = list(duration)
+    return [delays[index % len(delays)] for index in range(count)]
+
+
+def gif2webp_path():
+    return shutil.which("gif2webp")
 
 
 class StorageCase(unittest.TestCase):
