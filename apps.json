@@ -5,7 +5,7 @@
       "id": "io.vitrallis.bitcoindashboard",
       "installable": true,
       "name": "Bitcoin Dashboard",
-      "version": "1.2.4",
+      "version": "1.2.5",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -17,24 +17,29 @@
       "compatibility_notes": "Requires Python 3.8+ and system Tkinter with Tk 8.6. Native installation and process-based window focus verified on the Debian 13 PocketCHIP with Vitrallis Shell.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "308a1ab569a86f2104d9f0675a42e963e7d7147e",
+        "commit": "85d4e0eb41df0a387d5568dda3121fc694f72268",
         "path": "apps/bitcoin-dashboard"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 5176,
-          "sha256": "c19fdb9a72eb0c68b4089ca864f78fba505144daa747d48ead8198e626fdf811"
+          "size": 5326,
+          "sha256": "87de1282943ec2d0c17603fa87625c151d66cd64061fe23a0300af431d35f623"
+        },
+        {
+          "path": "LICENSE",
+          "size": 1105,
+          "sha256": "2dd5ab27f2b99034fd0f8e464f095f431f5c90ade71df3c660fb575c2ae154cd"
         },
         {
           "path": "README.md",
-          "size": 4925,
-          "sha256": "4493496ee5fae1a6b92dc433c5b0ec11f1305f30dff2c21fdb3aed1499a6ba9f"
+          "size": 4985,
+          "sha256": "9362776e0aa030272c539ab4f2185b70f9a9bd17e400b5e45811c583d4d77a51"
         },
         {
           "path": "app.toml",
           "size": 199,
-          "sha256": "bcad6670c49f64fd28136172e4b7ce68436e6c14f143c491df0fc295f78926d0"
+          "sha256": "cd716618701a065eb40b33a5c8560b747bb7bebc58a2bb779b4b83dac1fc9938"
         },
         {
           "path": "assets/README.md",
@@ -59,7 +64,7 @@
         {
           "path": "main.py",
           "size": 42716,
-          "sha256": "831cc3871ce128196bee273f7574c7c5712f29a827b32127008867c8da5ca0c2"
+          "sha256": "913b067e81e82ff4c6ef1d115390a74a097150df4e435bdb7f16952276531825"
         },
         {
           "path": "requirements.txt",
@@ -72,7 +77,7 @@
       "id": "io.vitrallis.carouselrust",
       "installable": true,
       "name": "Carousel-Rust",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "runtime": "rust",
       "binaries": {
         "armv7-unknown-linux-gnueabihf": "bin/armv7-unknown-linux-gnueabihf/app"
@@ -86,39 +91,49 @@
       "compatibility_notes": "Requires ARMv7 hard-float Linux, glibc 2.36+, SDL2, Mali/Lima graphics, a VSync X11 compositor and Vitrallis Shell 0.1.0-beta3.1 or newer with native Rust runtime support. WebM uses system ffmpeg/ffprobe. PocketCHIP GPU playback, physical moving-bar presentation, keyboard controls, codec parity and shared Python/Rust storage were verified. Close the Python carousel before launch.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "acb24622c61f9a583739ea9151e3b1d4600b2387",
+        "commit": "85d4e0eb41df0a387d5568dda3121fc694f72268",
         "path": "apps/carousel-rust"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 1402,
-          "sha256": "6922719aa71bf5e428c28ec861d5b502e9e6ec40e1ae6bb608127d34d7556a98"
+          "size": 1576,
+          "sha256": "c429d6780b5a02b1fd64c2d59af461a0795d63029fd6e898315ac3e00f969da2"
         },
         {
           "path": "Cargo.lock",
           "size": 16331,
-          "sha256": "9bc8b3d2a280998d6568dc3f68955f80586e5021b44f1197b08a3fdccb5d7178"
+          "sha256": "2e0bb48bf4daed2d17f520f909def6c2daa99fd4af00cabb8d2a342851825596"
         },
         {
           "path": "Cargo.toml",
-          "size": 1031,
-          "sha256": "4f3e4cafdebc76a6f54ea9fd219ee0c6cdf8d9032a0bbae008a8d30ec10ed45c"
+          "size": 1015,
+          "sha256": "fa9b59746eead3848131aa710be2824600ae73bc1efa805f1b31e14336872149"
+        },
+        {
+          "path": "LICENSE",
+          "size": 1105,
+          "sha256": "2dd5ab27f2b99034fd0f8e464f095f431f5c90ade71df3c660fb575c2ae154cd"
         },
         {
           "path": "LICENSE-NOTICE",
-          "size": 269,
-          "sha256": "57eb0d413ae7c2a6f2710d3d094fd63f34715242e962cc896ce72bb127cb960c"
+          "size": 1398,
+          "sha256": "359bbbfcbb16907f384fc22cd372afaa35d125fb182552e5b63672def76763f8"
         },
         {
           "path": "README.md",
           "size": 12059,
-          "sha256": "06c8765475f06e64535cc8b6db64e72a026553b70342c331b1ac7ab954dd1139"
+          "sha256": "eb41e96c05dd43b4471239216c84ea10311a0b30aac312cbbdf27033e35ae59d"
+        },
+        {
+          "path": "THIRD_PARTY_LICENSES.txt",
+          "size": 324588,
+          "sha256": "4224fa37e02cbc3aac4653cf519af0f135a50850e66f793ae1dc9034d8c71641"
         },
         {
           "path": "app.toml",
           "size": 255,
-          "sha256": "5fd2802e9f98aa79116fc3e4cc30c3774b86a41f301d96fdb8908b744e821560"
+          "sha256": "bef6babdcbba442f5c12d30d11f8630d53992de1e010c218d8173283ede19757"
         },
         {
           "path": "assets/README.md",
@@ -241,7 +256,7 @@
       "id": "io.vitrallis.debug",
       "installable": true,
       "name": "Vitrallis Debug",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -253,24 +268,29 @@
       "compatibility_notes": "Requires Linux, Python 3.8+ and system Tkinter. Pulse additionally requires X11/XWayland, EGL/GLES2 and a compatible hardware driver. Real Lima utilization, GPU frequency, keyboard controls and overlay performance were tested on PocketCHIP. GPU access and tear-free presentation require the Shell PocketCHIP platform setup with its private trace reader and VSync compositor. Managed App Center update to this version was not physically exercised.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "3e66e70d3eabd059930542abbc7e332648e165c2",
+        "commit": "85d4e0eb41df0a387d5568dda3121fc694f72268",
         "path": "apps/vitrallis-debug"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 2259,
-          "sha256": "f1d8498bd652675c2c23cdea90473836f907e20166ad48228153e55481a88e91"
+          "size": 2390,
+          "sha256": "e7592f997aecb66469e2faa802c6b03e62037c803e16ee4e3feb7319281a5894"
+        },
+        {
+          "path": "LICENSE",
+          "size": 1105,
+          "sha256": "2dd5ab27f2b99034fd0f8e464f095f431f5c90ade71df3c660fb575c2ae154cd"
         },
         {
           "path": "README.md",
-          "size": 15186,
-          "sha256": "508096600fb77fc9cc7678a85cf3ffde520122fd3c32ea3db51f6e9a65404e87"
+          "size": 15243,
+          "sha256": "fcd6f198eedab2f7c4a4d7d5b13472fadd5b0560b7f71cde5fc9316e71ebcf51"
         },
         {
           "path": "app.toml",
           "size": 188,
-          "sha256": "f82686f899e4f3b28ca31da6a240c171ef9722fde208a7faa735a0355584bf7f"
+          "sha256": "5affda430e0c536957803480dedded3dc9a2cc2275857aa93f06f256fce6d21b"
         },
         {
           "path": "assets/README.md",
@@ -437,10 +457,724 @@
       ]
     },
     {
+      "id": "io.vitrallis.liminalrust",
+      "installable": true,
+      "name": "Liminal",
+      "version": "0.1.0",
+      "runtime": "rust",
+      "binaries": {
+        "armv7-unknown-linux-gnueabihf": "bin/armv7-unknown-linux-gnueabihf/app"
+      },
+      "permissions": {
+        "network": false,
+        "audio": false,
+        "storage": true
+      },
+      "description": "A native first-person walking game through three quiet, decaying residential interiors.",
+      "compatibility_notes": "Requires ARMv7 hard-float Linux, glibc 2.36+, SDL2 2.26.5+, Mali/Lima OpenGL ES 2.0 and an X11 session.",
+      "source": {
+        "repository": "csd113/Vitrallis-Apps",
+        "commit": "9db9a7a8044c11e21cb435ee38cff79f81accd96",
+        "path": "apps/liminal-rust"
+      },
+      "files": [
+        {
+          "path": ".gitignore",
+          "size": 92,
+          "sha256": "0abde06380ebb0e841bd695d24ab3ae1e43da409baa0ec4cea784bdb7861779c"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "size": 32636,
+          "sha256": "ee5e2dab73456e76e8253c5b4ae1d23874a34b82268241502518750491a2b01a"
+        },
+        {
+          "path": "Cargo.lock",
+          "size": 12337,
+          "sha256": "48e8e7c2863c5441fae56800d7646432a5d96a3ccb98b67b2d32c2e102ed4d25"
+        },
+        {
+          "path": "Cargo.toml",
+          "size": 590,
+          "sha256": "86b0e3069087474cb3e960090373ee1090f291a6627265f36e5b3f2ee2e3302b"
+        },
+        {
+          "path": "LICENSE",
+          "size": 1105,
+          "sha256": "2dd5ab27f2b99034fd0f8e464f095f431f5c90ade71df3c660fb575c2ae154cd"
+        },
+        {
+          "path": "Places-resolved-design-decisions.md",
+          "size": 13530,
+          "sha256": "c4420dd0d87667184aeee0e1b256b5a667b2dd0519999b85c19ad50347ab178a"
+        },
+        {
+          "path": "README.md",
+          "size": 3936,
+          "sha256": "57a7a2c33977fe10cc7022554a32625a4849e87372d1e4f4360bcf093f161ed3"
+        },
+        {
+          "path": "THIRD_PARTY_LICENSES.txt",
+          "size": 324588,
+          "sha256": "4224fa37e02cbc3aac4653cf519af0f135a50850e66f793ae1dc9034d8c71641"
+        },
+        {
+          "path": "app.toml",
+          "size": 249,
+          "sha256": "c8c34196a145c2b94dfed6565b6e34bb02b406f6f7f5874f8188c87a497481ec"
+        },
+        {
+          "path": "assets/levels/after_the_leak.json",
+          "size": 48012,
+          "sha256": "7a0be94ffa5b2be176c2da3e559030396bf1027bf09848e49609a0a9ed5b99b3"
+        },
+        {
+          "path": "assets/levels/level1.json",
+          "size": 53756,
+          "sha256": "ea782b73a694f137cc4f15f2467efc94e19101c9c94c161d37a24476666f4605"
+        },
+        {
+          "path": "assets/levels/prop_showcase.json",
+          "size": 4310,
+          "sha256": "aa6c795304d6474a9bc1e4e51dbcac2afb17a645c9eb9544077999a43a080864"
+        },
+        {
+          "path": "assets/levels/prop_stress.json",
+          "size": 22392,
+          "sha256": "06f2d1bd03af3c143029a86a89569f1c13e9d111e751fea783c265077a6abe13"
+        },
+        {
+          "path": "assets/levels/quiet_apartments.json",
+          "size": 45134,
+          "sha256": "649cc7808f1d7618f1deca7be2f7127c84151da70d1a23ca2d20f03565238e33"
+        },
+        {
+          "path": "assets/levels/test_room.json",
+          "size": 1595,
+          "sha256": "7a42bb820bd87f668d6cf51404a0bf753f435401b5a521d5762537545a54c892"
+        },
+        {
+          "path": "assets/levels/the_residence.json",
+          "size": 45668,
+          "sha256": "c93990bd5607ad83bd3ebfa1ae3ca0738d20e7340fe3f8e73470cd29fd83638f"
+        },
+        {
+          "path": "assets/props/README.md",
+          "size": 6367,
+          "sha256": "289603266530190585fa54ec7ca99cf7a9b5a6dff3e5164f903c834696f1a2cb"
+        },
+        {
+          "path": "assets/props/models/armchair.glb",
+          "size": 34304,
+          "sha256": "bebdf59f64d037b371e8ed8485572544c6a404d013bf520e2239e6733e992aa1"
+        },
+        {
+          "path": "assets/props/models/bed.glb",
+          "size": 35092,
+          "sha256": "eee9dfdcbbd1772225b56baf6240d37bff1557e59bdf58e4eb30334baa5b2a56"
+        },
+        {
+          "path": "assets/props/models/bookshelf.glb",
+          "size": 35336,
+          "sha256": "82323981d983cf7e270e19e3477c345e8748c6260a595fe9219284123b0fee75"
+        },
+        {
+          "path": "assets/props/models/cabinet.glb",
+          "size": 17604,
+          "sha256": "612856de47809eed49458f1aff298496235841f4cefd7013d86733e24684b38f"
+        },
+        {
+          "path": "assets/props/models/cardboard_box.glb",
+          "size": 6616,
+          "sha256": "5a6b6033c88c7b060155d67c168db5f9d6f6b4d9f283552e19386bf97bd17fd9"
+        },
+        {
+          "path": "assets/props/models/chair.glb",
+          "size": 18712,
+          "sha256": "c6d57a0d2c1a0ce3a49775620815706d254fddd532c8ab2ad1cc69064388857d"
+        },
+        {
+          "path": "assets/props/models/couch.glb",
+          "size": 39196,
+          "sha256": "b82a0d3da6da55daacbb602ada73e22728923c444a96ca75a556ea8cd8ea2c9e"
+        },
+        {
+          "path": "assets/props/models/crate.glb",
+          "size": 9580,
+          "sha256": "f663f9ac0164632903121472ba58187ce986a115e598527f87f7b89e054235e8"
+        },
+        {
+          "path": "assets/props/models/desk.glb",
+          "size": 18360,
+          "sha256": "85ee01671531f912e644cbabecd6adeda7dbd0a069bc62220129653e41f77f24"
+        },
+        {
+          "path": "assets/props/models/fridge.glb",
+          "size": 12112,
+          "sha256": "6d60e5c3ead450d89f096d02d212853669ef9f58f036a6e4d5520924bb633d62"
+        },
+        {
+          "path": "assets/props/models/lamp.glb",
+          "size": 17328,
+          "sha256": "a1e4c76c610184fb3687a32db58524fe7ccfac9a591ae9d30cd87e396d342213"
+        },
+        {
+          "path": "assets/props/models/plant.glb",
+          "size": 33180,
+          "sha256": "e70904d4149d9e2bbfe7824a06beef6884be253185e381bd040c5a6081dfd894"
+        },
+        {
+          "path": "assets/props/models/rug.glb",
+          "size": 6844,
+          "sha256": "e00605c932f3aa56bd8f278dc1cd7e2de65144d7b78d03b85bd65c60fabd1432"
+        },
+        {
+          "path": "assets/props/models/sink.glb",
+          "size": 14244,
+          "sha256": "8bd822ff03322fc95ed4d9d92a160424eacb423b7bc3bf3ab36535c6e0b5ea62"
+        },
+        {
+          "path": "assets/props/models/spooner-man.glb",
+          "size": 80448,
+          "sha256": "ecad54c9c2126cd914ffa9982ad823cf9b0b271088b7feeb948dafc65fbe34af"
+        },
+        {
+          "path": "assets/props/models/stove.glb",
+          "size": 13412,
+          "sha256": "476def79c7dc4956948e15ce138e082725396d52d1e619177f0bd28e0cc6ddb3"
+        },
+        {
+          "path": "assets/props/models/table.glb",
+          "size": 15188,
+          "sha256": "d5fad84c72a60e822f079ef96742c94ef81f6c8565ad1e6a287586bae3b7a8b4"
+        },
+        {
+          "path": "assets/props/models/tv.glb",
+          "size": 9048,
+          "sha256": "00735b87532c29b5076923d0ad89dab644ab34d16b8ef349577bf2d726b4e0e2"
+        },
+        {
+          "path": "assets/props/models/vending_machine.glb",
+          "size": 25336,
+          "sha256": "39c89c8316f213fa91fe5ef3990e7299a38f1e3a2e2c2bb094d13d4b77c7f5e8"
+        },
+        {
+          "path": "assets/props/models/washing_machine.glb",
+          "size": 22500,
+          "sha256": "fc1a2cbc3d807b8cec47ad497c4fee2ddcd30724d04efc6d214f1a2b9b604c5a"
+        },
+        {
+          "path": "assets/props/models/water_cooler.glb",
+          "size": 16440,
+          "sha256": "9b90ca86f5cf8a9fba689e3cf79138b74a2a3f1707a71aca7179cdd994e5af09"
+        },
+        {
+          "path": "assets/props/prop_proxies.json",
+          "size": 70269,
+          "sha256": "5a154481f18ffc006fd843e87ef86980221693535b11bad08402f257450c1ec4"
+        },
+        {
+          "path": "assets/props/props.json",
+          "size": 5180,
+          "sha256": "f2c2340e14fa27ef5bd4a3e60a0523de0d0d1688cefe6d2b6d6c5842e28de058"
+        },
+        {
+          "path": "bin/armv7-unknown-linux-gnueabihf/app",
+          "size": 1271400,
+          "sha256": "66d3b35fecb0fbafabe229335f39470343793fdcd949abc2af9757e1a8c35d74"
+        },
+        {
+          "path": "icon.png",
+          "size": 2086,
+          "sha256": "51794e50cf915792bb5763547c5a0309c5a4854e3ebdfba471f50347feb5919f"
+        },
+        {
+          "path": "level-editor/README.md",
+          "size": 12252,
+          "sha256": "2b537af2bea9bfe7168909f39b7fade7098cd97da9fec847a5e8951c1b61003c"
+        },
+        {
+          "path": "level-editor/assets/thumbs/armchair.png",
+          "size": 2411,
+          "sha256": "977d116199839e520068fba1285ad44d6c02f08aaffbdc25831568cdbb89c0fb"
+        },
+        {
+          "path": "level-editor/assets/thumbs/bed.png",
+          "size": 1852,
+          "sha256": "8d59d270f3c1eb4f465e92fbb00ec36c617c99712f50d286d7252f9cf8d85e07"
+        },
+        {
+          "path": "level-editor/assets/thumbs/bookshelf.png",
+          "size": 2081,
+          "sha256": "407980b12399837a5135a9088de5070808e6882032545d6c5846805704382513"
+        },
+        {
+          "path": "level-editor/assets/thumbs/cabinet.png",
+          "size": 2266,
+          "sha256": "8d3d4d0325f06452889e28ae6079e77366cddd69c80320b938f5f2cccf858416"
+        },
+        {
+          "path": "level-editor/assets/thumbs/cardboard_box.png",
+          "size": 2329,
+          "sha256": "5754848ef560919afdb3636fbe854b04e47e6d8e667721606fedfa983a03e415"
+        },
+        {
+          "path": "level-editor/assets/thumbs/chair.png",
+          "size": 1592,
+          "sha256": "085dbbab878cc0188c12c4822bb95be140745d391295a936051c57a02af80eb7"
+        },
+        {
+          "path": "level-editor/assets/thumbs/couch.png",
+          "size": 2195,
+          "sha256": "562ebf13bd92a2d0c1b3024a11f29ae7f0aa8d48933f7605950b5d90e3ab6cce"
+        },
+        {
+          "path": "level-editor/assets/thumbs/crate.png",
+          "size": 1933,
+          "sha256": "e32f5b32b00a0dca44203b3f280f58f50ec7b726bcd20d46b4c1ed725ae487e9"
+        },
+        {
+          "path": "level-editor/assets/thumbs/desk.png",
+          "size": 2032,
+          "sha256": "39d67e73d6a1b57c9bc7d9c8d664990cf7bfe8d8eeeba23827a9506ae2da6ee5"
+        },
+        {
+          "path": "level-editor/assets/thumbs/fridge.png",
+          "size": 2061,
+          "sha256": "9eecfcbc904a4865fc9d9160516b1ed21232dd10de7aaeab06e44e36bb00deb4"
+        },
+        {
+          "path": "level-editor/assets/thumbs/lamp.png",
+          "size": 692,
+          "sha256": "eaded13856e5fd5facd8de67adf69a51621b289249de8478ce6720ab1f7a52ff"
+        },
+        {
+          "path": "level-editor/assets/thumbs/plant.png",
+          "size": 1345,
+          "sha256": "eb2317cfada7e9fd89271ad99e663ab4230f6afd99fd39ffeb8fb4076a05b3d6"
+        },
+        {
+          "path": "level-editor/assets/thumbs/rug.png",
+          "size": 1002,
+          "sha256": "7800fb121b4349fe359e3b3577a35928fc909d8a1a2883049323d24557ac306f"
+        },
+        {
+          "path": "level-editor/assets/thumbs/sink.png",
+          "size": 2027,
+          "sha256": "1c9c55aa78e05add7e3969f41624cd5e19578f8fd25a15700af7585089e892f0"
+        },
+        {
+          "path": "level-editor/assets/thumbs/spooner-man.png",
+          "size": 883,
+          "sha256": "38a26780652d659985bc1481c02ef4813e11130a4388bc6d6cec6382c3a7b3d8"
+        },
+        {
+          "path": "level-editor/assets/thumbs/stove.png",
+          "size": 2252,
+          "sha256": "381d4bf483c5d6a9a69696c53021b89a7f275630c4bf30f82c764f2fbe56bbbf"
+        },
+        {
+          "path": "level-editor/assets/thumbs/table.png",
+          "size": 1521,
+          "sha256": "d916c73257b050707e4b7f0becfbac4680debcd2412c454b3ca73dbe595e7cc1"
+        },
+        {
+          "path": "level-editor/assets/thumbs/tv.png",
+          "size": 1479,
+          "sha256": "c078077b9ff260d43ee39f9c7bbf9cb9a96249229bef45ad55420301df3ce838"
+        },
+        {
+          "path": "level-editor/assets/thumbs/vending_machine.png",
+          "size": 1842,
+          "sha256": "31d8be903749f58e59e1f2f36ab373632de5e81103379fa98c84c35f5c1b7dfd"
+        },
+        {
+          "path": "level-editor/assets/thumbs/washing_machine.png",
+          "size": 2079,
+          "sha256": "ebcd8bfd9b94e96bc2b94da81437746c8089d50d1e6456474e6e2dbf1fe441ef"
+        },
+        {
+          "path": "level-editor/assets/thumbs/water_cooler.png",
+          "size": 1598,
+          "sha256": "49e20964b9b3244543486d1cddd0922c8a6f7001da08e1d96b340f7568c78fa3"
+        },
+        {
+          "path": "level-editor/css/editor.css",
+          "size": 16757,
+          "sha256": "5e59abad900ef4bbbd07cdbcd0f61ccc2641e9c8d87687f38454e87f9245fcad"
+        },
+        {
+          "path": "level-editor/index.html",
+          "size": 12777,
+          "sha256": "d7acbc5229f23afae683a29e7d2268a0a0844dddb9b28245e32c61bad4acecec"
+        },
+        {
+          "path": "level-editor/js/app.js",
+          "size": 45670,
+          "sha256": "10819a66dbfb05ab4e91c746b460278fb8663c57030fd2372e55d3cade5ec500"
+        },
+        {
+          "path": "level-editor/js/camera3d.js",
+          "size": 17285,
+          "sha256": "9b814c7685755cbb65d7d4b2d700669528657bbe3a4e412e78b2b76c64be5cc9"
+        },
+        {
+          "path": "level-editor/js/editor.js",
+          "size": 25234,
+          "sha256": "2b94456c567cef6afaab7b0be43b4e282447be4dd2ee06ffa6e1174f8fc6d47f"
+        },
+        {
+          "path": "level-editor/js/geometry.js",
+          "size": 42627,
+          "sha256": "fe8f700cb5a67f44e174587ea6c50557d5d6ee4adf33bcbb5fb1a8e53c30f944"
+        },
+        {
+          "path": "level-editor/js/history.js",
+          "size": 2473,
+          "sha256": "4e337ad8833d698a029fca0a7a1d7ec5cbb7ef7926c0cb799f076c13ed8a713b"
+        },
+        {
+          "path": "level-editor/js/io.js",
+          "size": 9272,
+          "sha256": "58bda9c8180864070885d1f53a8ca8e6e4d96eec7c4f7efc328f2ce7fec246b9"
+        },
+        {
+          "path": "level-editor/js/jszip.min.js",
+          "size": 97630,
+          "sha256": "acc7e41455a80765b5fd9c7ee1b8078a6d160bbbca455aeae854de65c947d59e"
+        },
+        {
+          "path": "level-editor/js/lighting.js",
+          "size": 13823,
+          "sha256": "800143ff198b543f9db820a44089cbd8e38f97e1a66eeeca8afd3b3e65eeb7c8"
+        },
+        {
+          "path": "level-editor/js/model.js",
+          "size": 27871,
+          "sha256": "915714499baf6f9a0ced60732bafea6ba316acf3be84dc0b51018034f03cc648"
+        },
+        {
+          "path": "level-editor/js/ops.js",
+          "size": 22711,
+          "sha256": "a332a713fb1664d071f59d11ccdc3c5ace3456d0b27e152e5bf854b5b32f5de4"
+        },
+        {
+          "path": "level-editor/js/properties.js",
+          "size": 37526,
+          "sha256": "91b43fd7df8e9803d1e50c62ea3704c881e6e3e493bbfe6a8d300e86a7fc100b"
+        },
+        {
+          "path": "level-editor/js/props.js",
+          "size": 16445,
+          "sha256": "275314e0d4957e43b22d1f27e31a0223a450c8f9af445320f52650e9114c07d1"
+        },
+        {
+          "path": "level-editor/js/renderer.js",
+          "size": 20582,
+          "sha256": "bc5c722592c42d2b89066b211fefebe3fe45b0b31e82a11c68b50a248e459a6e"
+        },
+        {
+          "path": "level-editor/js/viewport3d.js",
+          "size": 46960,
+          "sha256": "d9394c1de3f46befe0a7642cb53a0b443b03c10732745c229cf61ba37842100b"
+        },
+        {
+          "path": "level-editor/package.json",
+          "size": 274,
+          "sha256": "e136c3bcb508264f37d01c21b0873201fb58a1046927798e50a2330ffb8d1d05"
+        },
+        {
+          "path": "level-editor/tests/app-smoke.test.mjs",
+          "size": 23122,
+          "sha256": "b063d8669ce4d47c769307ef65eab20ec02828c5953553733a655bbf9b68da05"
+        },
+        {
+          "path": "level-editor/tests/camera3d.test.mjs",
+          "size": 10165,
+          "sha256": "422191c5b3915ad7f25e6b4e8065565e7152260ba4261e8e3f91f09dbbfd28d9"
+        },
+        {
+          "path": "level-editor/tests/geometry.test.mjs",
+          "size": 18488,
+          "sha256": "358bc4d9bf666a9ce5bb24d9581fb7b598de8c66c77266621e8baf76446df032"
+        },
+        {
+          "path": "level-editor/tests/lighting-parity.test.mjs",
+          "size": 3136,
+          "sha256": "697d28019b8e43cf2f6d2fb00aac4b7b8501bbdde71a9f9e6f762e58dd888856"
+        },
+        {
+          "path": "level-editor/tests/lighting.test.mjs",
+          "size": 11195,
+          "sha256": "3f2882657328dd000596b6af824efd95e1078e07efcadc8cf3e9191e2d9015e4"
+        },
+        {
+          "path": "level-editor/tests/model.test.mjs",
+          "size": 11267,
+          "sha256": "9aaedf86059dc31f0081ecf97f3c40f1bc1edafad38e59471a238b21d9ff09a9"
+        },
+        {
+          "path": "level-editor/tests/ops.test.mjs",
+          "size": 13819,
+          "sha256": "9a31456cd77343849893a2d2ed8f3b497c9fc33c03619b0e4e4db38acf565682"
+        },
+        {
+          "path": "level-editor/tests/prop-assets.test.mjs",
+          "size": 6866,
+          "sha256": "23bf3c97ef762f1ec47bf2c51d9d48081d8825844ad8113215a2f7ca43ea3d78"
+        },
+        {
+          "path": "level-editor/tests/props.test.mjs",
+          "size": 8426,
+          "sha256": "9b5710269784687a39a29e7ed2ed07c3803050ebc4a9785b08d7a07835dfe1ad"
+        },
+        {
+          "path": "level-editor/tests/support/dom.mjs",
+          "size": 13497,
+          "sha256": "a6c2506ca295a032d86a718853e37341ba4279d473a87c5227f507921ede9d1e"
+        },
+        {
+          "path": "level-editor/tests/support/lighting_vectors.json",
+          "size": 13302,
+          "sha256": "39c8766c688be5abdd68e7070fe4982e478740231988548a5ff384da2859f8d5"
+        },
+        {
+          "path": "level-editor/tests/viewport3d.test.mjs",
+          "size": 13564,
+          "sha256": "4b392defbe60718923647143e938cefde769fdfe49d5896883558324b0a9bbe5"
+        },
+        {
+          "path": "levels/asset_demo.json",
+          "size": 18479,
+          "sha256": "8186be8738ea2c947b18f5ca466fce71b3b72e5bf92462c0c21a9d1858526a74"
+        },
+        {
+          "path": "levels/asset_maintained.json",
+          "size": 18481,
+          "sha256": "6d5c3b36a3b695f9c2ea4e77f9549fcfff36c18a77c1eaedd12613f9ea3528aa"
+        },
+        {
+          "path": "liminal-design.txt",
+          "size": 34678,
+          "sha256": "5e5ea4ad16574c106cb6b63582e10c2cafbe2c492724704ea3dd482dd407fa7c"
+        },
+        {
+          "path": "src/bench.rs",
+          "size": 22008,
+          "sha256": "3278fa8893b5f37ba481b9d8c325667e0a8cadd6f89faaab835e6d47a5698202"
+        },
+        {
+          "path": "src/collision.rs",
+          "size": 13049,
+          "sha256": "bb6f4c34e640ab81e97a0232f358b3a06e499d7c8d37a7b52f83924086c06fc6"
+        },
+        {
+          "path": "src/font.rs",
+          "size": 10404,
+          "sha256": "e9fcf1479474eca66f8ec91781e5897a2872e010372e6748bf48bba2ca10d12c"
+        },
+        {
+          "path": "src/game.rs",
+          "size": 10883,
+          "sha256": "3cbae97f21620a13a648324f93b904d988d9fe1964a4f2ddc14e260333d57aee"
+        },
+        {
+          "path": "src/gltf.rs",
+          "size": 31688,
+          "sha256": "fb1aaedfeba9f9c162f67ddf3bfe5bf109919f2638a5a451f15f3264f75686d9"
+        },
+        {
+          "path": "src/input.rs",
+          "size": 11104,
+          "sha256": "0a102d66572241741124e4d790dfdca52d4cd4aa6e3332ee94eed5bd075931c4"
+        },
+        {
+          "path": "src/level.rs",
+          "size": 44332,
+          "sha256": "79cfd2629f041daa9a597fd85964de55f428a4129eb10b093e453e43012969fd"
+        },
+        {
+          "path": "src/lighting.rs",
+          "size": 56055,
+          "sha256": "1bc0c3b0682799e4acec08aacf7f80132fcd104a4a55a97ae2289f746b4ab929"
+        },
+        {
+          "path": "src/lighting_audit.rs",
+          "size": 54648,
+          "sha256": "47540ecb78bdcfb33e25ae10388a57c658a6fffdbe5753ca8b265b563c1a2c6c"
+        },
+        {
+          "path": "src/lighting_audit_cases.rs",
+          "size": 63477,
+          "sha256": "408a172b7a15d94a702814696248be4f2816d36b3d1b460519e244fe8786a873"
+        },
+        {
+          "path": "src/lighting_parity.rs",
+          "size": 11249,
+          "sha256": "20cde0af698e508a6e39f978cfccfd88eb0a9908f2daaadbe64ad97170e3c05d"
+        },
+        {
+          "path": "src/loader.rs",
+          "size": 99379,
+          "sha256": "423886d4ad18d3003f267959dbc2d5df8509b8ca5e306d593eb0a8c370829709"
+        },
+        {
+          "path": "src/main.rs",
+          "size": 33060,
+          "sha256": "dd0c9ded0c738261f4c7fffc9ab0065af71d3e774a797c6ad54abc8955b3e9a8"
+        },
+        {
+          "path": "src/perf.rs",
+          "size": 19916,
+          "sha256": "179a1fc99dca4909dbbc3e587dc6865064d7b09a9d7eae94896d03f094cbaa4d"
+        },
+        {
+          "path": "src/props.rs",
+          "size": 13281,
+          "sha256": "be2645adeebe020ac83e8153c578771cea70d60c6aaa624d0fcaa9c2512607a9"
+        },
+        {
+          "path": "src/render.rs",
+          "size": 247334,
+          "sha256": "bb4ad748fcc7929f6b144d6d31441a31cd04b7c992830a3c05f35976ca6f6441"
+        },
+        {
+          "path": "src/settings.rs",
+          "size": 9648,
+          "sha256": "67ec0377bc82c4b68602a8467d950b5b503f45f744130a36059602e066f270d8"
+        },
+        {
+          "path": "src/spatial.rs",
+          "size": 43422,
+          "sha256": "343b3ae2b29520a3bd60082c15f8f7468c0c5608cd2902476d936f9935c57c5d"
+        },
+        {
+          "path": "src/ui.rs",
+          "size": 20807,
+          "sha256": "1eed9445d2bea256a091cab9f8256a074363cf08691f1e8f566f8e0c3b839237"
+        },
+        {
+          "path": "tools/bench/README.md",
+          "size": 6807,
+          "sha256": "ee6d0596fea75dc025a8f646aef7ea8ed37e79d1db3dd635044e67242856f434"
+        },
+        {
+          "path": "tools/bench/analyze.py",
+          "size": 7648,
+          "sha256": "341ea11eb0802183a012c2f2473dea08d148370af70bea989875351781710fec"
+        },
+        {
+          "path": "tools/bench/gen_levels.py",
+          "size": 5026,
+          "sha256": "e8468ef66cf406addafa86a4abef8ca285d334bfdb261ffe003bcdc2bd85d4c1"
+        },
+        {
+          "path": "tools/bench/notes/level-build-cache.md",
+          "size": 5905,
+          "sha256": "b7564e7fa33dd205087e8c50eb1b080335ce5b13e75f9f62a53284c5f8925142"
+        },
+        {
+          "path": "tools/bench/notes/renderer-change-validation.md",
+          "size": 4534,
+          "sha256": "bfb1f8730e4257abc3917ebe7656428ba0e8245edd60b58caf1c7be003621fb8"
+        },
+        {
+          "path": "tools/bench/run_bench.py",
+          "size": 16551,
+          "sha256": "f463774af82a9a20a093127c3ed7f78b041c9886c30563ca090baec75fa52901"
+        },
+        {
+          "path": "tools/bench/runone.sh",
+          "size": 1044,
+          "sha256": "b56426ce2ac7fcbe3b1b929eb81fb07d0ff034fb91c038631c7dc1af21907414"
+        },
+        {
+          "path": "tools/bench/visual_check.py",
+          "size": 10704,
+          "sha256": "9824fc9bf5318b2794baa3275b198494f072846e5c536a78164131e13b5db121"
+        },
+        {
+          "path": "tools/generate_spooner_man.py",
+          "size": 1404,
+          "sha256": "2d9a8fb7a1147f04522b0c7b1b31ea5ee1bf3af9f3573cae0ece7e6ca0d1b27c"
+        },
+        {
+          "path": "tools/levels/build_demo_levels.py",
+          "size": 25539,
+          "sha256": "6925a4b85f4063f9ac4195b3924ffd4d5ebaa0235a5318d30e58b63e71293c9b"
+        },
+        {
+          "path": "tools/props/README.md",
+          "size": 4395,
+          "sha256": "25e24e4d0b4fcc4738b6d7fca669266ac2170e95588655c99008174b3cce7df9"
+        },
+        {
+          "path": "tools/props/build.py",
+          "size": 10279,
+          "sha256": "66fe946615c3a1a93545f42434fb064ecf87c839bfdf55d05e53825d8069c855"
+        },
+        {
+          "path": "tools/props/glb.py",
+          "size": 12137,
+          "sha256": "692c597a8ac194c0712ede02b041a2fca7bf9bb5401043fec7844617e3f8de5e"
+        },
+        {
+          "path": "tools/props/mesh.py",
+          "size": 38297,
+          "sha256": "7de27ccbe68bc02477124a1725355672532998b0d63929b92d7ec4da764301c6"
+        },
+        {
+          "path": "tools/props/palette.py",
+          "size": 3088,
+          "sha256": "91c85b99e44ba7dfac6c56d41aafb65a2a71b1182a118291e546dc2a2f2f26c8"
+        },
+        {
+          "path": "tools/props/parts/__init__.py",
+          "size": 1402,
+          "sha256": "8de030e1f3840cb12fb0c6aa59de1bdd71f8bac91be4324568ca26a4c1c3baa8"
+        },
+        {
+          "path": "tools/props/parts/appliances.py",
+          "size": 41947,
+          "sha256": "a90f23e825fb7fbbd60caaede4d8a7778c5309ffec4b80c1a8dada6d4e933019"
+        },
+        {
+          "path": "tools/props/parts/decor.py",
+          "size": 28080,
+          "sha256": "2f1f39882edcf1fb8df1768ec32b78894635183d0627f4132133c48468a31734"
+        },
+        {
+          "path": "tools/props/parts/furniture.py",
+          "size": 31508,
+          "sha256": "947c11b3bf9a16c76340271f155c5f52916aff467a9b9d699d77bd065d4f5a64"
+        },
+        {
+          "path": "tools/props/parts/spooner_man.py",
+          "size": 17555,
+          "sha256": "0c6b11a052dda2d47281672a067fcf2f571f6433fc61cddb66906cc49cc09463"
+        },
+        {
+          "path": "tools/props/parts/utility.py",
+          "size": 8097,
+          "sha256": "cdf4e5c8bbeb7523f656483989bb580c0d45f439f3a61067ca031841799b0e8d"
+        },
+        {
+          "path": "tools/props/preview.py",
+          "size": 14731,
+          "sha256": "651706f43d8fa50a1528d7159c0ac2ced5094054d823d28890d120d722be217f"
+        },
+        {
+          "path": "tools/props/tex.py",
+          "size": 22361,
+          "sha256": "b499e72cc50394492bab45309bb4f39259bd159835bcee2bde39a71011cea2b5"
+        }
+      ]
+    },
+    {
       "id": "io.vitrallis.mediacarousel",
       "installable": true,
       "name": "Vitrallis Media Carousel",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -452,29 +1186,39 @@
       "compatibility_notes": "Requires Python 3.9+, Tk 8.6, Pillow >=10.4,<13, qrcode >=7.4,<9 and installed packaging for App Center dependency checks. Optional system ffmpeg/ffprobe must decode VP8, VP9 and WebP; one-click setup requires the Shell multimedia helper. PocketCHIP playback, uploads and keyboard controls were tested from staged source with the Shell VSync compositor. Managed App Center update to this version was not physically exercised.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "7eaa137f5e17199dbbd720ea9d9df0db2a492194",
+        "commit": "f82aadc59d765dd566b44a7b30bd3d991557a05a",
         "path": "apps/vitrallis-media-carousel"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 2377,
-          "sha256": "3ee4d73c2bcac441e427788c8a89fbdf9077f68c8aad3baae9e767f13f431c23"
+          "size": 4166,
+          "sha256": "5a73e120953b0ba73689a510f630219d053cf18e095fb9565abfe91f8952b02e"
+        },
+        {
+          "path": "LICENSE",
+          "size": 1105,
+          "sha256": "2dd5ab27f2b99034fd0f8e464f095f431f5c90ade71df3c660fb575c2ae154cd"
         },
         {
           "path": "README.md",
-          "size": 20915,
-          "sha256": "9eafc8cdb6da44b511f8b75e655552a3498fdb33b5b7a48c9614e8a7e82b98f4"
+          "size": 23827,
+          "sha256": "14c768d6d3fd6e703684b5579a8d063aeef0cce1eff868f5eca08bcc987d7847"
+        },
+        {
+          "path": "animation_cache.py",
+          "size": 5150,
+          "sha256": "22642336cd2ef7db68b8aae7d19046f8c5b415516d8d0d28b8bdf1f106b8d712"
         },
         {
           "path": "app.toml",
           "size": 203,
-          "sha256": "82eb9c155438e7ba1e2658f50229bec9b816d63106abd0eb240646c85352be44"
+          "sha256": "8e85c5237d9eaf73759b0e5d2d4930375b5496e7677f0f8917135f580f03576e"
         },
         {
           "path": "assets/README.md",
-          "size": 542,
-          "sha256": "e3f1b8b80889c69f5aa7a336942eabc86aec3a1bde12dbbe2e994ccbaaab678d"
+          "size": 599,
+          "sha256": "487b8e7aea89ce1b01dc533009e07e1a3e076aa7ada652e1345a1734c86ef3be"
         },
         {
           "path": "assets/capability-vp8.webm",
@@ -502,14 +1246,14 @@
           "sha256": "8990a49339924d3f3b1f132b2aa193fac92f374f8898480f6c6ac0b6fa4a690c"
         },
         {
+          "path": "convert.py",
+          "size": 13411,
+          "sha256": "2288372456f196fcb2811842bc3d1947f4e69683f9f16a93c9ed379f5af6559a"
+        },
+        {
           "path": "dependencies.py",
           "size": 3581,
           "sha256": "200174dab58d5ce8bf8aa9dc9fb45fa3406ba3b03a02d365a24c15d5c7c0b0a5"
-        },
-        {
-          "path": "gif_cache.py",
-          "size": 4999,
-          "sha256": "d3e9da5e873e68d2dd0f42967d3470e4c576056960bdc5417242a69d71d979ed"
         },
         {
           "path": "gpu.py",
@@ -523,18 +1267,18 @@
         },
         {
           "path": "library.py",
-          "size": 9460,
-          "sha256": "8b14a3b51c0628281f686eef1d804c1d494b353d642246bacd5e72ba6618e43d"
+          "size": 12379,
+          "sha256": "8ae60ad626d1c109e9cb167cd2ce5bfe7610e40bc5186354f3223bb62a7a27ff"
         },
         {
           "path": "main.py",
           "size": 1321,
-          "sha256": "5a6444b88b614f160169aeee325590cbad12fab8a0f7d08d6099e9625cd2bd90"
+          "sha256": "308028ffe32a24ae361c644557d46761b4cb30e689fb498542ef6bb4063d2ca2"
         },
         {
           "path": "media.py",
-          "size": 9377,
-          "sha256": "ebd591b07b3667ff0fbddcc34bcc50ba1a04a332f647290ecb082e87561a47d3"
+          "size": 9786,
+          "sha256": "1d19cd94bb5db00f79df4c1bfaaffa8b3880db2c180f1915e6bb2735fec82dbf"
         },
         {
           "path": "multimedia.py",
@@ -543,8 +1287,8 @@
         },
         {
           "path": "player.py",
-          "size": 14780,
-          "sha256": "b36c5e66b0fdddf4b2c8fdc1f786be9edbef2cc2a430548f03d23fe6a3d7e0ea"
+          "size": 16799,
+          "sha256": "b18829098393e94172efe8164411101b234f7dfbddaa7afa7b57ab3436203a72"
         },
         {
           "path": "previews.py",
@@ -558,8 +1302,8 @@
         },
         {
           "path": "settings.py",
-          "size": 1924,
-          "sha256": "af0946d5371a30c6d68e1895e4d4f89def99db38d5fd309e3b92761b7dcb35fb"
+          "size": 2232,
+          "sha256": "3c82f41790d898331cbdbe81768f3634f0d0066e5ae4fb94dea55ad579adbf6a"
         },
         {
           "path": "storage.py",
@@ -568,18 +1312,18 @@
         },
         {
           "path": "ui.py",
-          "size": 25042,
-          "sha256": "3d71285daa1f9080defa87b37356751fe7e825f8c20401cb7b35f6dabaa1032f"
+          "size": 32895,
+          "sha256": "b92836beef45328a62632664eb0f546f6e8a683308ff96134b8dc73a266cc0ca"
         },
         {
           "path": "web/app.js",
-          "size": 14702,
-          "sha256": "d8f6778672bf323994894dfba02429cd4eabe4bc14c9b6a43ec3f2459ada9b45"
+          "size": 17796,
+          "sha256": "a4a64d130ca0bdd2ccdc1b5c551a622be69df5a178765dd28af9639055d84926"
         },
         {
           "path": "web/index.html",
-          "size": 5202,
-          "sha256": "0b4b5c80077e25cab7f64628875a9c56b5b266af806b064dce26ad4d821211de"
+          "size": 5532,
+          "sha256": "94b6184cfec9d2f37647669dcacdd79d8a34cc8ab614324284c802124d95e4b7"
         },
         {
           "path": "web/style.css",
@@ -588,8 +1332,8 @@
         },
         {
           "path": "web_server.py",
-          "size": 20935,
-          "sha256": "4475316899f012176fa2f5b779b9e72e56ae84e644f11318d6669ba4732eb24e"
+          "size": 24527,
+          "sha256": "6c26143adb0693762d552e00529f1e611452f6c13ff8accd2c0d70039c6624f1"
         }
       ]
     }

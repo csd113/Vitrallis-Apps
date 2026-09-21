@@ -8,6 +8,14 @@ use America/Vancouver time. App IDs remain stable; each app ships its own
 and place new records in the newest date section. See the
 [changelog policy](docs/changelog-policy.md) for the required submission format.
 
+## 2026-09-21
+
+- Added `io.vitrallis.liminalrust` `0.1.0`: Publish the native ARMv7 walking game with three residential levels, material and lighting support, and installable App Manager metadata. [App changelog](apps/liminal-rust/CHANGELOG.md).
+- Updated `io.vitrallis.mediacarousel` `0.3.0`: Add animated WebP playback, validated GIF conversion, bounded media caching and streamed folder downloads. [App changelog](apps/vitrallis-media-carousel/CHANGELOG.md).
+- Updated `io.vitrallis.bitcoindashboard` `1.2.5`: Correct the publication guidance and include the project license. [App changelog](apps/bitcoin-dashboard/CHANGELOG.md).
+- Updated `io.vitrallis.debug` `0.3.1`: Publish the existing licensing clarification and include the project license. [App changelog](apps/vitrallis-debug/CHANGELOG.md).
+- Updated `io.vitrallis.carouselrust` `0.1.4`: Publish the existing MIT metadata and notices with distribution license texts, retaining the native payload. [App changelog](apps/carousel-rust/CHANGELOG.md).
+
 ## 2026-09-19
 
 - Updated `io.vitrallis.carouselrust` `0.1.3`: Retain the displayed frame between media items, correct QR sizing and margins, and center native labels and connection details. [App changelog](apps/carousel-rust/CHANGELOG.md).
