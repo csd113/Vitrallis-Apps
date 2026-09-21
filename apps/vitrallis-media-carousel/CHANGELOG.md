@@ -4,6 +4,8 @@ Changes are listed newest first. Dates use America/Vancouver time.
 
 ## 0.3.0 — 2026-09-20
 
+- Include the project MIT license in the installed package.
+
 - Play animated WebP frame by frame with per-frame durations, transparency and loop
   metadata through the existing animation pipeline; static WebP and GIF keep their
   current behavior.
