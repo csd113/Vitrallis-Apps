@@ -199,16 +199,20 @@ class ConversionTests(StorageCase):
     def test_failed_conversion_keeps_source_and_reclaims_staging(self):
         item = self.add("clip.gif", gif_bytes(), "gif")
         before = (self.paths.media / item["id"]).read_bytes()
-        with patch.object(Conversions, "_convert_gif2webp",
-                          side_effect=ConversionError("converter exploded")):
-            self.conversions.start(self.cid, item["id"])
-            state = self.wait()
-        self.assertEqual(state["status"], "failed")
-        self.assertEqual(state["message"], "converter exploded")
-        self.assertIsNone(state["replacement"])
-        self.assertEqual(self.library.playlist(self.cid), [item])
-        self.assertEqual((self.paths.media / item["id"]).read_bytes(), before)
-        self.assertEqual(list(self.paths.uploads.iterdir()), [])
+        for converter, method in (("gif2webp", "_convert_gif2webp"),
+                                  (None, "_convert_pillow")):
+            with self.subTest(converter=converter or "pillow"):
+                with patch("convert.converter_available", return_value=converter), \
+                        patch.object(Conversions, method,
+                                     side_effect=ConversionError("converter exploded")):
+                    self.conversions.start(self.cid, item["id"])
+                    state = self.wait()
+                self.assertEqual(state["status"], "failed")
+                self.assertEqual(state["message"], "converter exploded")
+                self.assertIsNone(state["replacement"])
+                self.assertEqual(self.library.playlist(self.cid), [item])
+                self.assertEqual((self.paths.media / item["id"]).read_bytes(), before)
+                self.assertEqual(list(self.paths.uploads.iterdir()), [])
 
     def test_publish_failure_keeps_source_and_reclaims_staging(self):
         item = self.add("clip.gif", gif_bytes(), "gif")
