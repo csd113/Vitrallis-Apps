@@ -1,9 +1,9 @@
 # Vitrallis Debug
 
-Current package: **0.3.0** · [Changelog](CHANGELOG.md).
+Current package: **0.3.1** · [Changelog](CHANGELOG.md).
 
 Vitrallis Debug is an offline instrument panel for a 480×272 Vitrallis/PocketCHIP
-profile. Version 0.3.0 retains the X11 process identity so Vitrallis Shell can
+profile. Version 0.3.1 retains the X11 process identity so Vitrallis Shell can
 focus and resume its window. It presents expandable Network, CPU, GPU, Temperature
 and Memory cards using local Linux system interfaces. Hardware and driver
 identification covers desktop Linux, Raspberry Pi and Allwinner/PocketCHIP sources.
@@ -206,7 +206,7 @@ and [CPU sysfs ABI](https://github.com/torvalds/linux/blob/master/Documentation/
 
 ## Publication
 
-The source package is version 0.3.0. The repository catalog pins the published
+The source package is version 0.3.1. The repository catalog pins the published
 source commit and its file hashes through the two-commit publication workflow.
 App Center receives an update only after the corresponding catalog publication
 is merged into the configured catalog branch.

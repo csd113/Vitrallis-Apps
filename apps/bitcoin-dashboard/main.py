@@ -22,7 +22,7 @@ from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 # Display and HTTP user-agent version; publication metadata comes from app.toml.
-VERSION = '1.2.4'
+VERSION = '1.2.5'
 BLOCK_HIGHLIGHT_SECONDS = 10
 SATOSHIS_PER_BTC = 100_000_000
 MAX_SUPPLY = 21_000_000 * SATOSHIS_PER_BTC

@@ -2,6 +2,10 @@
 
 Changes are listed newest first. Dates use America/Vancouver time.
 
+## 0.3.1 — 2026-09-21
+
+- Document the project MIT licensing scope and include the project license without changing diagnostics.
+
 ## 0.3.0 — 2026-09-19
 
 - Read fresh Lima devfreq metrics through the private platform trace pipe without changing global tracefs permissions.

@@ -1,5 +1,7 @@
 """Package and shared-contract checks, runnable by the existing Python CI loop."""
 import pathlib
+import re
+from html.parser import HTMLParser
 import sys
 import tomllib
 import unittest
@@ -20,10 +22,24 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(cargo['package']['version'], data['version'])
         self.assertFalse((PACKAGE / 'main.py').exists())
 
-    def test_browser_contract_matches_python(self):
-        original = ROOT / 'apps/vitrallis-media-carousel/web'
-        for filename in ('app.js', 'index.html', 'style.css'):
-            self.assertEqual((PACKAGE / 'web' / filename).read_bytes(), (original / filename).read_bytes())
+    def test_browser_controls_match_its_packaged_page(self):
+        # Python 0.3 adds conversion controls that the Rust backend does not
+        # implement. Validate this app's DOM contract instead of requiring
+        # byte-identical frontends for independently versioned apps.
+        class PageIds(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.ids = set()
+
+            def handle_starttag(self, tag, attrs):
+                self.ids.update(value for name, value in attrs if name == 'id')
+
+        page = PageIds()
+        page.feed((PACKAGE / 'web/index.html').read_text())
+        script = (PACKAGE / 'web/app.js').read_text()
+        controls = set(re.findall(r'\$\("([^"\n]+)"\)', script))
+        self.assertTrue(controls)
+        self.assertFalse(controls - page.ids, controls - page.ids)
         self.assertIn('io.vitrallis.mediacarousel', (PACKAGE / 'src/storage.rs').read_text())
 
     def test_keyboard_regressions_are_packaged_as_development_tests(self):

@@ -2,6 +2,10 @@
 
 Changes are listed newest first. Dates use America/Vancouver time.
 
+## 1.2.5 — 2026-09-21
+
+- Correct the README publication status to reference the current runtime integration guide and include the project license.
+
 ## 1.2.4 — 2026-09-12
 
 - Standardize dated release history for app submissions and package the updated
