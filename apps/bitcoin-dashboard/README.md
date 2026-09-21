@@ -1,7 +1,7 @@
 # Bitcoin Dashboard
 
 A lightweight Bitcoin dashboard for the PocketCHIP's **480 × 272** display,
-built with Python and Tkinter. Current native package version: **1.2.4**.
+built with Python and Tkinter. Current native package version: **1.2.5**.
 
 [Changelog](CHANGELOG.md) · [Native package contract](../../docs/creating-apps.md)
 
@@ -39,8 +39,9 @@ fetch data or write files. Close the app with Home or Escape to return to its
 launcher. Installed package files are read-only.
 
 Use the [native publication workflow](../../docs/publishing-apps.md) for updates.
-Catalog installation remains disabled until a native installer and launcher are
-verified; this package does not include a runtime or installation script.
+See the current [runtime integration guide](../../docs/runtime-integration.md)
+for catalog enablement, App Center actions and recorded device checks. This package
+does not include a runtime or installation script.
 
 ### Permissions and storage
 

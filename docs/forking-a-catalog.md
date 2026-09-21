@@ -66,10 +66,10 @@ On a Shell build with the current
 
 1. Open **App Center → Sources → Add**.
 2. Enter `your-owner/your-catalog` or its HTTPS GitHub repository URL, then save.
-3. Choose **Check** to load its root `apps.json` from the resolved default branch.
+3. Choose **Refresh** to load its root `apps.json` from the resolved default branch.
 4. Select an app and review **Details**. If its files come from a different
    repository, review **Trust source** and approve only a source you intend to
-   trust. Choose **Check** again after approval.
+   trust. Choose **Refresh** again after approval.
 5. Install once the package and runtime checks allow it.
 
 A configured catalog can supply files from its own repository. Separate source

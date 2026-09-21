@@ -50,10 +50,13 @@ manifest v1**. Runtime requirements and device verification vary by app; see
 | [Vitrallis Debug](apps/vitrallis-debug/README.md) | Offline network, CPU, temperature, and memory diagnostics for the PocketCHIP. |
 | [Vitrallis Media Carousel](apps/vitrallis-media-carousel/README.md) | Native media slideshow with LAN uploads, named collections and shared settings. |
 | [Carousel-Rust](apps/carousel-rust/README.md) | Rust media carousel sharing the Python photo library; requires the Shell native Rust runtime. |
+| [Liminal](apps/liminal-rust/README.md) | A native first-person walking game through three quiet, decaying residential interiors. |
 | [Firefly Field](apps/firefly-field/README.md) | A calm, fullscreen pixel-art firefly meadow rendered through SDL2. |
 
-[`apps.json`](apps.json) is authoritative for published versions, installation
-readiness, and compatibility notes. The [catalog changelog](CHANGELOG.md) records
+[`apps.json`](apps.json) records advertised versions, publisher enablement, and
+compatibility notes. Enablement is not hardware certification; source publication
+and dated device evidence are separate. Local edits do not update published pins.
+The [catalog changelog](CHANGELOG.md) records
 releases. [Hello Vitrallis](examples/hello-vitrallis/README.md) is a developer
 example and is not listed in the production catalog.
 
@@ -76,7 +79,7 @@ required, and permission declarations do not sandbox an app.
 
 ## Quick start
 
-**To use an app:** open **App Center → Check**, select an app, review **Details**,
+**To use an app:** open **App Center → Refresh**, select an app, review **Details**,
 then choose **Install**. Read its README for controls and prerequisites. You do
 not need to clone this repository to install through App Center.
 
@@ -103,11 +106,12 @@ App Center resolves the repository's default branch and reads its root
 [raw catalog](https://raw.githubusercontent.com/csd113/Vitrallis-Apps/main/apps.json)
 is also available for inspection.
 
-**Check** retrieves catalog metadata. **Install** downloads the selected package
-and handles first installation, updates, and repairs. Missing Python, Tkinter,
-or declared dependencies are reported; App Center does not install system
-packages for you. All currently listed apps are enabled, with app-specific
-verification limits documented in [runtime integration](docs/runtime-integration.md).
+**Refresh** retrieves catalog metadata. The selected row offers **Install**,
+**Update**, **Repair**, or **Open**; **Remove** is a separate confirmed action.
+App Center automatically provisions missing Python requirements in an app-local
+environment. System prerequisites remain separate. All currently listed apps are
+enabled, with app-specific verification limits and prerequisites documented in
+[runtime integration](docs/runtime-integration.md).
 
 For additional repositories use **Sources → Add** with `owner/repository`.
 See the [hosting guide](docs/forking-a-catalog.md) for source trust and the
@@ -165,10 +169,10 @@ redistribution rights.
 ## App and package format
 
 Each `apps/<app-slug>/app.toml` declares `manifest_version = 1`, a display name,
-stable ID, `MAJOR.MINOR.PATCH` version, `python` runtime, `.py` entry point, and
-boolean network/audio/storage requirements. The package includes `main.py`,
-`icon.png`, `requirements.txt`, `README.md`, `CHANGELOG.md`, and populated `assets/`
-and `tests/` directories.
+stable ID, `MAJOR.MINOR.PATCH` version, a `python` or `rust` runtime, and
+boolean network/audio/storage requirements. Python uses a `.py` entry and
+`requirements.txt`; Rust uses precompiled Linux ELF payloads in a `binaries`
+mapping. Both include an icon, README, changelog, assets and tests.
 
 Catalog entries add a description, compatibility notes, installation readiness,
 source repository/path/commit, and a complete file inventory. Only app-local
@@ -232,6 +236,7 @@ device data out of public issues.
 
 ## License
 
-No authoritative repository-wide license has been established. The owner must
-choose or confirm the license and imported content's redistribution rights.
-The technical copying and hosting instructions here do not grant a license.
+Project-owned code, documentation and original assets use [MIT](LICENSE).
+[Third-party notices](THIRD_PARTY_NOTICES.md) identify dependency terms and unresolved
+imported content excluded from that grant. Catalog pins and existing binaries are
+unchanged; this source licensing update does not republish app packages.

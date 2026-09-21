@@ -19,7 +19,7 @@ There is no dedicated help desk or guaranteed response time.
 
 ## Before filing a report
 
-- **Install unavailable or missing dependencies:** choose Check, select the app,
+- **Install unavailable or missing dependencies:** choose Refresh, select the app,
   and read Details. Compare its prerequisites with [runtime integration](docs/runtime-integration.md).
   App Center reports missing Python/Tk/Pillow dependencies but does not install
   system packages. Do not bypass checksum, trust, or recovery errors.

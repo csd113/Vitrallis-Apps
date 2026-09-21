@@ -167,7 +167,7 @@ def video_info(stream):
                             stderr=subprocess.DEVNULL, timeout=10, check=False)
     if result.returncode:
         raise MediaError("WebM has no decodable video frame")
-    return {"kind": "webm", "width": width, "height": height, "duration": duration}
+    return {"kind": "webm", "width": width, "height": height, "duration": duration, "animated": True}
 
 
 def video_command(fd, size):
@@ -192,23 +192,29 @@ def inspect_stream(stream):
         if width * height > MAX_PIXELS:
             raise MediaError("Images are limited to 8 million pixels")
         kind = source.format.lower()
-        if kind != "gif" and getattr(source, "is_animated", False):
-            raise MediaError("Use GIF or WebM for animated media")
+        # Animated WebP shares the frame budget that GIF already had; single-frame
+        # files of either format keep the ordinary image limits. Formats without a
+        # playback path (for example animated PNG) stay rejected.
+        is_animated = bool(getattr(source, "is_animated", False))
+        if is_animated and kind not in ("gif", "webp"):
+            raise MediaError("Use GIF, WebP or WebM for animation")
+        animation = kind == "gif" or (kind == "webp" and is_animated)
         frames, pixels, deadline = 0, 0, time.monotonic() + 25
         while True:
-            if kind == "gif" and source.width * source.height > MAX_GIF_PIXELS:
-                raise MediaError("GIFs are limited to 1 million pixels per frame")
+            if animation and source.width * source.height > MAX_GIF_PIXELS:
+                raise MediaError("Animation frames are limited to 1 million pixels")
             source.load()
             frames += 1
             pixels += source.width * source.height
-            if (frames > MAX_FRAMES or (kind == "gif" and pixels > MAX_ANIMATION_PIXELS)
+            if (frames > MAX_FRAMES or (animation and pixels > MAX_ANIMATION_PIXELS)
                     or time.monotonic() > deadline):
                 raise MediaError("Animation exceeds frame or decode budget")
             try:
                 source.seek(frames)
             except EOFError:
                 break
-        return {"kind": kind, "width": width, "height": height, "frames": frames}
+        return {"kind": kind, "width": width, "height": height, "frames": frames,
+                "animated": frames > 1}
 
 
 def inspection_main():

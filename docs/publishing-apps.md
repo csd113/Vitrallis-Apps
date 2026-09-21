@@ -93,7 +93,7 @@ after merge so a fresh clone can verify its published files.
 
    This verifies all entries for that repository against objects fetched from
    GitHub. For additional source repositories, supply additional mappings. Also
-   check the raw-file endpoint through the consuming client's Check/download flow
+   check the raw-file endpoint through the consuming client's Refresh/download flow
    under its HTTPS/redirect policy; a local Git check is not a network availability
    or client compatibility test. Never publish a commit available only locally.
 6. Push `apps.json` and the root changelog on the feature branch after source

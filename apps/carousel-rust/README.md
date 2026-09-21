@@ -1,6 +1,6 @@
 # Carousel-Rust
 
-**0.1.3** · `io.vitrallis.carouselrust` · native Rust · PocketCHIP ARMv7.
+**0.1.4** · `io.vitrallis.carouselrust` · native Rust · PocketCHIP ARMv7.
 [Release notes](CHANGELOG.md).
 
 A Rust implementation of Media Carousel's native screens, playlist, settings,

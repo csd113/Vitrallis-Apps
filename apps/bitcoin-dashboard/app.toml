@@ -1,7 +1,7 @@
 manifest_version = 1
 name = "Bitcoin Dashboard"
 id = "io.vitrallis.bitcoindashboard"
-version = "1.2.4"
+version = "1.2.5"
 runtime = "python"
 entry = "main.py"
 

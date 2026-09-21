@@ -55,7 +55,9 @@ def validate_metadata(data):
         if not isinstance(row["items"], list):
             raise ValueError("Invalid media list")
         for item in row["items"]:
-            if not isinstance(item, dict) or set(item) != {"id", "name", "kind", "size"}:
+            if (not isinstance(item, dict)
+                    or set(item) not in ({"id", "name", "kind", "size"},
+                                         {"id", "name", "kind", "size", "animated"})):
                 raise ValueError("Invalid media entry")
             mid = identifier(item["id"])
             if mid in ids or display_name(item["name"], 160) != item["name"]:
@@ -65,6 +67,10 @@ def validate_metadata(data):
                 raise ValueError("Invalid media kind")
             if type(item["size"]) is not int or not 1 <= item["size"] <= MAX_UPLOAD:
                 raise ValueError("Invalid media size")
+            if type(item.get("animated", item["kind"] in ("gif", "webm"))) is not bool:
+                raise ValueError("Invalid animation flag")
+            # Legacy entries predate animated WebP; only GIF and WebM were animated.
+            item["animated"] = item.get("animated", item["kind"] in ("gif", "webm"))
             total += 1
     if total > MAX_ITEMS:
         raise ValueError("Library capacity reached")
@@ -94,7 +100,8 @@ class Library:
                 if directory == self.paths.media and path.name in live:
                     continue
                 if ((directory == self.paths.media and ID_PATTERN.fullmatch(path.name))
-                        or (directory == self.paths.uploads and path.name.startswith("upload-"))):
+                        or (directory == self.paths.uploads
+                            and path.name.startswith(("upload-", "convert-")))):
                     with regular_open(path, MAX_UPLOAD):
                         pass
                     path.unlink()
@@ -198,7 +205,8 @@ class Library:
         with self.lock:
             data = copy.deepcopy(self.data)
             row = self.collection(data, cid)
-            item = {"id": uuid.uuid4().hex, "name": name, "kind": info["kind"], "size": size}
+            item = {"id": uuid.uuid4().hex, "name": name, "kind": info["kind"], "size": size,
+                    "animated": bool(info.get("animated", info["kind"] in ("gif", "webm")))}
             row["items"].append(item)
             validate_metadata(data)
             safe_directory(self.paths.media, private=True)
@@ -213,6 +221,54 @@ class Library:
                 destination.unlink()
                 sync_directory(self.paths.media)
                 raise
+            return dict(item)
+
+    def replace_upload(self, cid, mid, name, temporary, info):
+        """Atomically substitute an item in place, then reclaim the old blob."""
+        name = display_name(name, 160)
+        if (temporary.parent != self.paths.uploads
+                or not temporary.name.startswith(("upload-", "convert-"))):
+            raise ValueError("Invalid upload staging path")
+        with regular_open(temporary, MAX_UPLOAD) as stream:
+            size = os.fstat(stream.fileno()).st_size
+        with self.lock:
+            data = copy.deepcopy(self.data)
+            row = self.collection(data, cid)
+            mid = identifier(mid)
+            index = next((position for position, item in enumerate(row["items"])
+                          if item["id"] == mid), None)
+            if index is None:
+                raise KeyError("Media no longer exists")
+            doomed = row["items"][index]
+            item = {"id": uuid.uuid4().hex, "name": name, "kind": info["kind"], "size": size,
+                    "animated": bool(info.get("animated", info["kind"] in ("gif", "webm")))}
+            row["items"][index] = item
+            validate_metadata(data)
+            safe_directory(self.paths.media, private=True)
+            destination = self.paths.media / item["id"]
+            if destination.exists() or destination.is_symlink():
+                raise ValueError("Media ID collision")
+            os.replace(temporary, destination)
+            try:
+                sync_directory(self.paths.media)
+                self._commit(data)
+            except BaseException:
+                destination.unlink()
+                sync_directory(self.paths.media)
+                raise
+            # The index now names the replacement. Reclaiming the old blob can fail
+            # without making metadata point at bytes that are still being written.
+            try:
+                path = self.paths.media / doomed["id"]
+                try:
+                    with regular_open(path, MAX_UPLOAD):
+                        pass
+                    path.unlink()
+                except FileNotFoundError:
+                    pass
+                sync_directory(self.paths.media)
+            except (OSError, ValueError):
+                self.warning = "Replacement saved; old file cleanup failed. Check storage and restart."
             return dict(item)
 
     def playlist(self, cid):

@@ -9,6 +9,7 @@ from tkinter import ttk
 
 from PIL import ImageTk
 from connection import qr_image
+from convert import ConversionError, Conversions
 from gpu import GpuUnavailable, ImageRenderer
 from library import Library
 from media import capabilities
@@ -22,7 +23,7 @@ BG, PANEL, INK, MUTED, ACCENT = "#10191a", "#223232", "#f1f3e8", "#adbbb3", "#d4
 
 class Services:
     def __init__(self, paths=None, host="0.0.0.0", port=8765):
-        self.instance = self.server = self.decoder = None
+        self.instance = self.server = self.decoder = self.conversions = None
         self.paths = paths or Paths()
         try:
             self.instance = InstanceLock(self.paths.data)
@@ -31,6 +32,9 @@ class Services:
             # Cold decoder probes run on the service worker, never Tk's thread.
             capabilities()
             self.server = WebServer(self.library, self.settings, host, port)
+            # One conversion job is shared by the native UI and the HTTP API.
+            self.conversions = Conversions(self.library, self.server.processes)
+            self.server.conversions = self.conversions
             try:
                 self.server.start()
             except OSError as error:
@@ -42,7 +46,8 @@ class Services:
 
     def close(self):
         errors = []
-        for resource in (self.server, self.decoder, self.instance):
+        # Conversions first: they use the process pool owned by the server.
+        for resource in (self.conversions, self.server, self.decoder, self.instance):
             if resource is not None:
                 try:
                     resource.close()
@@ -74,6 +79,14 @@ class App:
         self.animated = False
         self.poll_id = None
         self.overlay_until = 0
+        self.overlay_visible = False
+        self.hidden = False
+        self.cid = None
+        self.conversion_label = None
+        self.conversion_message = ""
+        self.conversion_running = False
+        self.conversion_last = ""
+        self.conversion_poll = 0.0
         self.last_error = ""
         self.home_notice = "Starting local services…"
         self.root.title("Vitrallis Media Carousel")
@@ -91,6 +104,8 @@ class App:
         self.root.bind("<Up>", lambda event: self.move_focus(-1))
         self.root.bind("<Down>", lambda event: self.move_focus(1))
         self.root.bind("<space>", self.space)
+        self.root.bind("<c>", self.convert_key)
+        self.root.bind("<C>", self.convert_key)
         self.root.bind("<Tab>", self.tab, add="+")
         self.root.bind("<ISO_Left_Tab>", self.tab, add="+")
         self.root.bind("<Shift-Tab>", self.tab, add="+")
@@ -122,6 +137,8 @@ class App:
     def clear(self):
         self.close_gpu()
         self.last_frame = None
+        self.overlay_visible = False
+        self.conversion_label = self.convert_button = None
         for child in self.frame.winfo_children():
             child.destroy()
         self.photo = None
@@ -142,6 +159,8 @@ class App:
             self.services.decoder.stop()
         self.screen = "home"
         self.playlist = None
+        self.hidden = False
+        self.cid = None
         if message is not None:
             self.home_notice = message
         self.clear()
@@ -242,6 +261,7 @@ class App:
         self.repeats = tk.StringVar(value=str(config["repeats"]))
         self.order = tk.StringVar(value="In Order" if config["order"] == "ordered" else "Shuffle")
         self.loop = tk.StringVar(value="Loop Folder" if config["loop"] else "Return to Main Menu")
+        self.convert_gifs = tk.StringVar(value="Convert to WebP" if config["convert_gifs"] else "Keep as GIF")
         controls = []
         for row, (label, variable, maximum) in enumerate((("Still image seconds", self.seconds, 3600),
                                                         ("Animated/video repeats", self.repeats, 100))):
@@ -251,7 +271,8 @@ class App:
             control.grid(row=row, column=1, sticky="ew", ipady=5, pady=2)
             controls.append(control)
         for row, label, variable, values in ((2, "Playback order", self.order, ("In Order", "Shuffle")),
-                                             (3, "End of folder", self.loop, ("Loop Folder", "Return to Main Menu"))):
+                                             (3, "End of folder", self.loop, ("Loop Folder", "Return to Main Menu")),
+                                             (4, "GIF uploads", self.convert_gifs, ("Convert to WebP", "Keep as GIF"))):
             self.label(form, label).grid(row=row, column=0, sticky="w")
             ttk.Combobox(form, textvariable=variable, values=values, state="readonly", width=20).grid(
                 row=row, column=1, sticky="ew", ipady=4, pady=2)
@@ -267,7 +288,8 @@ class App:
         try:
             data = {"image_seconds": int(self.seconds.get()), "repeats": int(self.repeats.get()),
                     "order": "ordered" if self.order.get() == "In Order" else "shuffle",
-                    "loop": self.loop.get() == "Loop Folder"}
+                    "loop": self.loop.get() == "Loop Folder",
+                    "convert_gifs": self.convert_gifs.get() == "Convert to WebP"}
             from settings import validate
             validate(data)
         except ValueError as error:
@@ -289,6 +311,8 @@ class App:
             self.home("Empty collection. Open the address above to upload media.")
             return
         self.screen = "playback"
+        self.hidden = False
+        self.cid = cid
         self.clear()
         self.last_error = ""
         self.playlist = Playlist(items, self.services.settings.snapshot())
@@ -298,11 +322,18 @@ class App:
         self.canvas.bind("<ButtonRelease-1>", lambda event: self.show_controls())
         self.canvas.bind("<Configure>", self.center_frame)
         self.overlay = tk.Frame(self.frame, bg=PANEL)
-        self.button(self.overlay, "‹ Previous", lambda: self.advance(-1)).pack(side="left", fill="both", expand=True)
-        self.pause_button = self.button(self.overlay, "Pause", self.pause)
+        self.conversion_label = tk.Label(self.overlay, text="", bg=PANEL, fg=INK, anchor="w",
+                                         font=("DejaVu Sans", -11))
+        self.conversion_label.pack(side="bottom", fill="x", padx=4)
+        controls = tk.Frame(self.overlay, bg=PANEL)
+        self.button(controls, "‹ Previous", lambda: self.advance(-1)).pack(side="left", fill="both", expand=True)
+        self.pause_button = self.button(controls, "Pause", self.pause)
         self.pause_button.pack(side="left", fill="both", expand=True)
-        self.button(self.overlay, "Next ›", self.advance).pack(side="left", fill="both", expand=True)
-        self.button(self.overlay, "Back", self.escape).pack(side="left", fill="both", expand=True)
+        self.button(controls, "Next ›", self.advance).pack(side="left", fill="both", expand=True)
+        self.convert_button = self.button(controls, "To WebP", self.convert_current)
+        self.convert_button.pack(side="left", fill="both", expand=True)
+        self.button(controls, "Back", self.escape).pack(side="left", fill="both", expand=True)
+        controls.pack(side="top", fill="both", expand=True)
         self.canvas.focus_set()
         self.root.update_idletasks()
         self.open_gpu()
@@ -348,9 +379,12 @@ class App:
                 print("event=media_renderer mode=tk reason=%r" % str(error), file=sys.stderr)
                 self.close_gpu()
         if isinstance(image, GpuFrame):
+            # Convert once; later Tk repaints reuse this PIL copy from last_frame.
             image = image.convert("RGBA")
-        fitted = display_copy(image, size) if image.width > size[0] or image.height > size[1] else image
-        self.photo = ImageTk.PhotoImage(fitted, master=self.root)
+            self.last_frame = image
+        if image.width > size[0] or image.height > size[1]:
+            image = display_copy(image, size)
+        self.photo = ImageTk.PhotoImage(image, master=self.root)
         self.canvas.itemconfigure(self.image_id, image=self.photo)
         self.canvas.coords(self.image_id, size[0] / 2, size[1] / 2)
 
@@ -375,7 +409,8 @@ class App:
             return
         self.clock = PlaybackClock()
         self.next_present = 0.0
-        self.animated = item["kind"] in ("gif", "webm")
+        # Animated WebP is paced like GIF; metadata marks both.
+        self.animated = bool(item.get("animated", item["kind"] in ("gif", "webm")))
         self.last_frame = None
         if self.gpu_renderer is not None:
             try:
@@ -389,6 +424,8 @@ class App:
             (self.canvas.winfo_width(), self.canvas.winfo_height()), self.playlist.settings,
             gpu=self.gpu_renderer is not None, upcoming=self.playlist.upcoming())
         self.pause_button.configure(text="Pause")
+        # Keep the conversion action in step with the newly selected item.
+        self.refresh_conversion_ui()
 
     def advance(self, direction=1):
         if self.screen == "playback":
@@ -421,15 +458,123 @@ class App:
 
     def show_controls(self):
         if self.screen == "playback":
-            self.overlay.place(relx=0, rely=1, anchor="sw", relwidth=1, height=42)
+            self.refresh_conversion_ui()
+            # Status line plus 42 px control row; buttons stay >= 36 px touch targets.
+            self.overlay.place(relx=0, rely=1, anchor="sw", relwidth=1, height=58)
             self.overlay.lift()
+            self.overlay_visible = True
             self.overlay_until = time.monotonic() + 3
 
+    def refresh_conversion_ui(self):
+        if self.screen != "playback" or self.conversion_label is None:
+            return
+        item = self.playlist.current if self.playlist else None
+        busy = self.conversion_running
+        eligible = item is not None and item.get("kind") == "gif"
+        self.convert_button.configure(state="normal" if eligible and not busy else "disabled")
+        if busy:
+            text = self.conversion_message or "Converting…"
+        elif self.conversion_message:
+            text = self.conversion_message  # Success/failure stays readable, never a dead end.
+        elif not eligible:
+            text = "Only GIFs can convert to WebP" if item is not None else "Nothing to convert"
+        else:
+            text = ""
+        self.conversion_label.configure(text=text[:70])
+
+    def convert_current(self):
+        if self.screen != "playback" or not self.services:
+            return
+        item = self.playlist.current if self.playlist else None
+        if item is None or item.get("kind") != "gif" or self.conversion_running:
+            self.refresh_conversion_ui()
+            return
+        try:
+            self.services.conversions.start(self.cid, item["id"])
+        except ConversionError as error:
+            self.conversion_message = str(error)[:70]
+            self.refresh_conversion_ui()
+            return
+        self.conversion_running = True
+        self.conversion_message = "Converting " + item["name"][:33] + "…"
+        self.conversion_poll = 0.0
+        self.refresh_conversion_ui()
+
+    def convert_key(self, event):
+        if self.screen == "playback":
+            self.show_controls()
+            self.convert_current()
+            return "break"
+        return None
+
+    def track_conversion(self):
+        if self.screen != "playback":
+            return
+        now = time.monotonic()
+        if now < self.conversion_poll:
+            return
+        # One shared job: read the snapshot at most once per second, so a
+        # conversion started from the web UI appears here too.
+        self.conversion_poll = now + 1
+        conversions = self.services.conversions if self.services else None
+        if conversions is None:
+            return
+        snapshot = conversions.snapshot()
+        status = snapshot["status"]
+        if status == "running":
+            self.conversion_running = True
+            self.conversion_message = "Converting " + (snapshot["name"] or "media")[:33] + "…"
+            self.refresh_conversion_ui()
+            return
+        self.conversion_running = False
+        if status not in ("ready", "failed"):
+            return
+        signature = "%s:%s:%s" % (status, snapshot["item"], snapshot["replacement"])
+        if signature == self.conversion_last:
+            return
+        self.conversion_last = signature
+        self.conversion_finished(snapshot)
+        if self.overlay_visible:
+            self.refresh_conversion_ui()
+        else:
+            self.show_controls()  # Surface the finished message once.
+
+    def conversion_finished(self, snapshot):
+        name = (snapshot["name"] or "media")[:33]
+        if snapshot["status"] != "ready":
+            self.conversion_message = (snapshot["message"] or "Conversion failed")[:70]
+            return
+        self.conversion_message = "Converted " + name + " to WebP"
+        current = self.playlist.current if self.playlist else None
+        if (current is None or snapshot["item"] != current["id"] or self.cid is None
+                or snapshot["collection"] != self.cid):
+            return
+        try:
+            items = self.services.library.playlist(self.cid)
+        except (KeyError, ValueError):
+            return
+        settings = self.services.settings.snapshot()
+        playlist = Playlist(items, settings, rng=self.playlist.rng)
+        target, item = snapshot["replacement"], None
+        for _ in range(len(items) + 1):
+            item = playlist.next()
+            if item is None or item["id"] == target:
+                break
+        if item is None or item["id"] != target:
+            # The replacement vanished; restart the collection at the first item.
+            playlist = Playlist(items, settings, rng=self.playlist.rng)
+            item = playlist.next()
+        self.playlist = playlist
+        self.load_item(item)
+
     def playback_tick(self):
-        if (time.monotonic() > self.overlay_until and not self.clock.paused
+        now = time.monotonic()
+        # Focus queries stay off the hot path until the overlay is actually shown.
+        if (self.overlay_visible and now > self.overlay_until and not self.clock.paused
                 and self.root.focus_get() not in self.overlay.winfo_children()):
             self.overlay.place_forget()
-        if not self.clock.ready() or time.monotonic() < self.next_present:
+            self.overlay_visible = False
+        if not self.clock.ready() or now < self.next_present:
             return
         try:
             generation, kind, value, seconds = self.services.decoder.events.get_nowait()
@@ -460,9 +605,19 @@ class App:
 
     def schedule(self):
         if not self.finished:
-            delay = self.clock.delay_ms() if self.screen == "playback" else 200
-            if self.screen == "playback" and self.next_present > time.monotonic():
-                delay = max(delay, int((self.next_present - time.monotonic()) * 1000) + 1)
+            if self.screen == "playback":
+                if self.hidden:
+                    delay = 500  # Nothing visible: heartbeat only, no decode.
+                else:
+                    now = time.monotonic()
+                    # 4 ms floor: presentation is bounded to 30 FPS below, so a
+                    # tighter poll when the clock is due cannot show a frame sooner.
+                    delay = max(4, self.clock.delay_ms())
+                    if self.next_present > now:
+                        delay = max(delay, int((self.next_present - now) * 1000) + 1)
+            else:
+                # Home/settings change slowly; closing still checks its job promptly.
+                delay = 50 if self.screen == "closing" else 400
             self.poll_id = self.root.after(delay, self.poll)
 
     def poll(self):
@@ -503,7 +658,20 @@ class App:
                 self.pending_action = "close"
                 self.pending = self.executor.submit(self.services.close if self.services else lambda: None)
         elif self.screen == "playback":
-            self.playback_tick()
+            if not self.root.winfo_viewable():
+                # Hidden/iconified playback must not decode or present; stop the
+                # decoder once and idle at a slow heartbeat until shown again.
+                if not self.hidden:
+                    self.hidden = True
+                    if self.services:
+                        self.services.decoder.stop()
+            else:
+                if self.hidden:
+                    self.hidden = False
+                    self.load_item(self.playlist.current)
+                if self.screen == "playback":  # load_item(None) returns home.
+                    self.track_conversion()
+                    self.playback_tick()
         elif self.screen == "home" and self.services:
             self.update_address()
             if self.revision != self.services.library.revision:

@@ -1,10 +1,10 @@
 [package]
 name = "carousel-rust"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2024"
 rust-version = "1.89"
 description = "PocketCHIP Rust media carousel with the shared Vitrallis photo library"
-license-file = "LICENSE-NOTICE"
+license = "MIT"
 repository = "https://github.com/csd113/Vitrallis-Apps"
 readme = "README.md"
 keywords = ["vitrallis", "pocketchip", "carousel", "media"]

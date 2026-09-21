@@ -15,7 +15,7 @@
     <section id="login" class="panel intro">
       <p class="eyebrow">YOUR SCREEN. YOUR COLLECTIONS.</p>
       <h1>A little gallery,<br>always close to home.</h1>
-      <p>Send photos, GIFs and muted WebM videos to your Vitrallis device. Everything stays on your local network.</p>
+      <p>Send photos, GIFs, animated WebP and muted WebM videos to your Vitrallis device. Everything stays on your local network.</p>
       <form id="login-form"><label for="access-code">Access code shown on the device</label><div class="form-line"><input id="access-code" type="password" minlength="6" maxlength="6" autocomplete="off" spellcheck="false" required placeholder="6-character code"><button type="submit">Connect</button></div></form>
       <small>A new code is generated every time the app starts.</small>
     </section>
@@ -30,6 +30,7 @@
       <section id="folder-view" hidden>
         <button id="back" class="quiet">← All collections</button>
         <div class="section-title"><div><p class="eyebrow">READY FOR THE BIG LITTLE SCREEN</p><h1 id="folder-title"></h1></div><div class="actions"><button id="download-folder" class="secondary">Download folder</button><button id="rename" class="secondary">Rename</button><button id="delete-folder" class="danger">Delete collection</button></div></div>
+        <p id="conversion-status" class="muted" role="status" hidden></p>
         <form id="rename-form" class="form-line" hidden><label class="sr-only" for="rename-name">Collection name</label><input id="rename-name" maxlength="64" required><button type="submit">Save name</button><button id="cancel-rename" type="button" class="quiet">Cancel</button></form>
         <div id="drop-zone" class="drop-zone"><div class="upload-mark" aria-hidden="true">↑</div><h2>Drop files into this collection</h2><p>PNG, JPEG, WebP, GIF or WebM · up to 64 MiB each</p><label for="files" class="file-label">Choose files</label><input id="files" type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/webm" multiple><p class="muted">Two files upload at a time; each result is kept. Select this collection on your device to play.</p></div>
         <div id="upload-status" hidden><label for="progress" id="upload-label">Uploading</label><progress id="progress" max="100" value="0"></progress><ol id="upload-results"></ol></div>
@@ -43,11 +44,12 @@
           <label for="repeats">Animated / video repeats <small>Complete plays · 1–100</small></label><input id="repeats" type="number" min="1" max="100" step="1" required>
           <label for="order">Playback order</label><select id="order"><option value="ordered">In Order</option><option value="shuffle">Shuffle</option></select>
           <label for="loop">End of collection</label><select id="loop"><option value="true">Loop Folder</option><option value="false">Return to Main Menu</option></select>
+          <label for="convert-gifs">GIF uploads <small>Convert new GIFs to WebP, or keep the originals</small></label><select id="convert-gifs"><option value="false">Keep as GIF</option><option value="true">Convert to WebP</option></select>
           <button type="submit">Save settings</button>
         </form><p id="decoder-note" class="muted"></p><button id="install-media" type="button">Install multimedia support</button><p id="install-status" role="status"></p>
       </section>
     </div>
   </main>
-  <footer>Vitrallis Media Carousel · 0.2.0 <span>Local media. No cloud.</span></footer>
+  <footer>Vitrallis Media Carousel · 0.3.0 <span>Local media. No cloud.</span></footer>
 </body>
 </html>

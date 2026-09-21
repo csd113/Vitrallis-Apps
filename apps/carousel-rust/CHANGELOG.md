@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4 — 2026-09-21
+
+- Publish the existing MIT package metadata and license notice changes, and include distribution license texts without changing the native payload.
+
 ## 0.1.3 — 2026-09-19
 
 - Keep the last displayed media frame visible while the next item prepares or decodes, preventing loading-message flashes during automatic and manual transitions.
