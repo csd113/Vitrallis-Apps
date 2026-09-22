@@ -3,49 +3,107 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import queue
 import sys
+import threading
 import time
 import tkinter as tk
 from tkinter import ttk
 
 from PIL import ImageTk
 from connection import qr_image
-from convert import ConversionError, Conversions
+from convert import ConversionError, Conversions, needs_conversion
 from gpu import GpuUnavailable, ImageRenderer
 from library import Library
-from media import capabilities
-from player import Decoder, GpuFrame, PlaybackClock, Playlist, display_copy
+from multimedia import DetectionCancelled, capabilities
+from player import Decoder, PlaybackClock, Playlist, freeze
 from settings import Settings
 from storage import InstanceLock, Paths
 from web_server import WebServer
 
 BG, PANEL, INK, MUTED, ACCENT = "#10191a", "#223232", "#f1f3e8", "#adbbb3", "#d4f48a"
 
+# Bounded late-frame skipping: at most this many expired animation frames are
+# discarded per tick before playback resynchronises instead of drifting.
+MAX_CATCHUP = 8
+# Poll interval while the decoder has not caught up with a due deadline.
+STARVED_MS = 20
+
 
 class Services:
+    """Local playback services first; the management UI starts behind them.
+
+    The library, settings, decoder and conversion job are ready before this
+    constructor returns. Binding the HTTP server, discovering LAN addresses and
+    probing FFmpeg all happen on background threads, so a slow or missing
+    network interface can never delay slideshow playback.
+    """
+
     def __init__(self, paths=None, host="0.0.0.0", port=8765):
         self.instance = self.server = self.decoder = self.conversions = None
+        self.capabilities = None
+        self.capability_thread = None
+        self.probe_cancel = threading.Event()
         self.paths = paths or Paths()
         try:
             self.instance = InstanceLock(self.paths.data)
             self.library = Library(self.paths)
             self.settings = Settings(self.paths.config)
-            # Cold decoder probes run on the service worker, never Tk's thread.
-            capabilities()
+            # Cold decoder probes never run on Tk's thread and never gate playback.
+            self.decoder = Decoder(self.library)
             self.server = WebServer(self.library, self.settings, host, port)
             # One conversion job is shared by the native UI and the HTTP API.
             self.conversions = Conversions(self.library, self.server.processes)
             self.server.conversions = self.conversions
             try:
-                self.server.start()
-            except OSError as error:
-                self.server.state = "Server unavailable: " + str(error)
-            self.decoder = Decoder(self.library)
+                self.server.start_async()
+            except RuntimeError as error:
+                self.server.detail = "Web server unavailable: " + str(error)
+                self.server.state = WebServer.FAILED
+            self.capability_thread = threading.Thread(target=self._probe,
+                                                      name="carousel-capabilities", daemon=True)
+            self.capability_thread.start()
         except BaseException:
             self.close()
             raise
 
+    def _probe(self):
+        try:
+            self.capabilities = capabilities(cancel=self.probe_cancel)
+            if self.capabilities is not None:
+                self.report_decoders()
+        except DetectionCancelled:
+            pass
+        except Exception as error:  # A diagnostic must never take playback down.
+            print("event=decoder_probe status=failed reason=%r" % str(error), file=sys.stderr)
+
+    def report_decoders(self):
+        report = (self.capabilities or {}).get("acceleration") or {}
+        for codec, backend in sorted(report.get("codecs", {}).items()):
+            print("event=decoder_probe codec=%s backend=%s method=%r verified=%s reason=%r"
+                  % (codec, backend.get("name"), backend.get("method"),
+                     backend.get("verified"), backend.get("reason")), file=sys.stderr)
+
+    def media_note(self):
+        """A one-line decoder summary that never probes on the caller's thread."""
+        if self.capabilities is None:
+            return "Checking multimedia decoders…"
+        note = self.capabilities.get("webm_note", "")
+        accelerated = [codec for codec, backend
+                       in (self.capabilities.get("acceleration") or {}).get("codecs", {}).items()
+                       if backend.get("verified")]
+        if accelerated:
+            return note + " Hardware decode: " + ", ".join(sorted(accelerated)) + "."
+        return note
+
     def close(self):
         errors = []
+        thread, self.capability_thread = self.capability_thread, None
+        self.probe_cancel.set()  # A slow probe must never delay shutdown.
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=5)
+            if thread.is_alive():
+                # The probe thread is a daemon and owns nothing that needs
+                # releasing, so report it rather than failing the whole shutdown.
+                print("event=decoder_probe status=stopping", file=sys.stderr)
         # Conversions first: they use the process pool owned by the server.
         for resource in (self.conversions, self.server, self.decoder, self.instance):
             if resource is not None:
@@ -72,7 +130,9 @@ class App:
         self.screen = "home"
         self.playlist = None
         self.photo = None
-        self.next_present = 0.0
+        self.photo_mode = None
+        self.photo_size = None
+        self.starved = False
         self.gpu_renderer = None
         self.gpu_surface = None
         self.last_frame = None
@@ -142,6 +202,7 @@ class App:
         for child in self.frame.winfo_children():
             child.destroy()
         self.photo = None
+        self.photo_mode = self.photo_size = None
 
     def header(self, title, settings=False):
         header = tk.Frame(self.frame, bg=BG, height=38)
@@ -175,9 +236,10 @@ class App:
         self.url_label.pack(fill="x", pady=(4, 0))
         code = "Access code: " + server.token if server else "Access code pending…"
         self.label(connection, code, font=("DejaVu Sans Mono", -14)).pack(fill="x")
-        self.status_label = self.label(connection, self.home_notice, font=("DejaVu Sans", -12),
+        self.status_label = self.label(connection, self.home_status(), font=("DejaVu Sans", -12),
                                        wraplength=340, justify="left")
         self.status_label.pack(fill="x", pady=(1, 2))
+        self.status_text = ""
         self.qr_url = None
         self.update_address()
         footer = tk.Frame(self.frame, bg=BG, height=34)
@@ -190,6 +252,32 @@ class App:
         self.folder_frame = tk.Frame(self.frame, bg=BG)
         self.folder_frame.pack(fill="both", expand=True, padx=8)
         self.draw_folders()
+
+    def home_status(self):
+        """Playback state first, then the independent web-server lifecycle."""
+        if not self.services:
+            return self.home_notice
+        server = self.services.server
+        if server.state == WebServer.STARTING:
+            prefix = "Web server starting · playback ready."
+        elif server.state == WebServer.FAILED:
+            prefix = "Web server unavailable · playback continues locally."
+        else:
+            prefix = server.detail
+        note = self.services.media_note()
+        parts = [part for part in (prefix, self.home_notice, note) if part]
+        return " · ".join(parts)
+
+    def update_status(self):
+        """Refresh the home status line as the background services progress."""
+        if self.screen != "home" or getattr(self, "status_label", None) is None:
+            return
+        if not self.services:
+            return
+        text = self.home_status()
+        if self.status_text != text:
+            self.status_text = text
+            self.status_label.configure(text=text)
 
     def update_address(self):
         if not self.services or not self.services.server.urls:
@@ -211,7 +299,7 @@ class App:
             child.destroy()
         self.folder_buttons = []
         if not self.services:
-            self.label(self.folder_frame, "Upload from your phone or computer\nwhen the server is ready.", justify="left").pack(anchor="w", pady=8)
+            self.label(self.folder_frame, "Starting the local library…", justify="left").pack(anchor="w", pady=8)
             return
         collections = self.services.library.snapshot()
         self.revision = self.services.library.revision
@@ -364,29 +452,35 @@ class App:
                 pass  # The toplevel may already have been destroyed externally.
             self.gpu_surface = None
 
-    def present_frame(self, image):
-        if self.gpu_renderer is None or not getattr(self.gpu_renderer, 'vsync', False):
-            self.next_present = time.monotonic() + 1 / 30
-        else:
-            self.next_present = 0.0
-        self.last_frame = image
-        size = (self.canvas.winfo_width(), self.canvas.winfo_height())
+    def present_frame(self, frame):
+        """Compose one already-decoded frame; no resizing or channel work per frame."""
+        width, height = self.canvas.winfo_width(), self.canvas.winfo_height()
+        if frame.width > width or frame.height > height:
+            # Only a mid-playback window resize reaches here; the decoder already
+            # bounds every frame to the size it was asked for.
+            frame = freeze(frame.image(), size=(width, height), mode=frame.mode)
+        self.last_frame = frame
         if self.gpu_renderer is not None:
             try:
-                self.gpu_renderer.present(image, *size)
+                self.gpu_renderer.present(frame, width, height)
                 return
             except GpuUnavailable as error:
                 print("event=media_renderer mode=tk reason=%r" % str(error), file=sys.stderr)
                 self.close_gpu()
-        if isinstance(image, GpuFrame):
-            # Convert once; later Tk repaints reuse this PIL copy from last_frame.
-            image = image.convert("RGBA")
-            self.last_frame = image
-        if image.width > size[0] or image.height > size[1]:
-            image = display_copy(image, size)
-        self.photo = ImageTk.PhotoImage(image, master=self.root)
-        self.canvas.itemconfigure(self.image_id, image=self.photo)
-        self.canvas.coords(self.image_id, size[0] / 2, size[1] / 2)
+        self.show_photo(frame)
+
+    def show_photo(self, frame):
+        """Reuse one Tk photo image; only a changed frame shape rebuilds it."""
+        shape = (frame.mode, frame.size)
+        if self.photo is None or (self.photo_mode, self.photo_size) != shape:
+            self.photo = ImageTk.PhotoImage(frame.image(), master=self.root)
+            self.photo_mode, self.photo_size = frame.mode, frame.size
+            self.canvas.itemconfigure(self.image_id, image=self.photo)
+            self.canvas.coords(self.image_id, self.canvas.winfo_width() / 2,
+                               self.canvas.winfo_height() / 2)
+            return self.photo
+        self.photo.paste(frame.image())
+        return self.photo
 
     def center_frame(self, event=None):
         if self.screen == "playback":
@@ -408,7 +502,7 @@ class App:
             self.home(message)
             return
         self.clock = PlaybackClock()
-        self.next_present = 0.0
+        self.starved = False
         # Animated WebP is paced like GIF; metadata marks both.
         self.animated = bool(item.get("animated", item["kind"] in ("gif", "webm")))
         self.last_frame = None
@@ -470,14 +564,16 @@ class App:
             return
         item = self.playlist.current if self.playlist else None
         busy = self.conversion_running
-        eligible = item is not None and item.get("kind") == "gif"
+        eligible = item is not None and needs_conversion(item)
         self.convert_button.configure(state="normal" if eligible and not busy else "disabled")
         if busy:
             text = self.conversion_message or "Converting…"
         elif self.conversion_message:
             text = self.conversion_message  # Success/failure stays readable, never a dead end.
+        elif item is None:
+            text = "Nothing to convert"
         elif not eligible:
-            text = "Only GIFs can convert to WebP" if item is not None else "Nothing to convert"
+            text = item["kind"].upper() + " is already in its native format"
         else:
             text = ""
         self.conversion_label.configure(text=text[:70])
@@ -486,7 +582,7 @@ class App:
         if self.screen != "playback" or not self.services:
             return
         item = self.playlist.current if self.playlist else None
-        if item is None or item.get("kind") != "gif" or self.conversion_running:
+        if item is None or not needs_conversion(item) or self.conversion_running:
             self.refresh_conversion_ui()
             return
         try:
@@ -521,15 +617,23 @@ class App:
             return
         snapshot = conversions.snapshot()
         status = snapshot["status"]
+        job = snapshot.get("job") or {}
+        total = job.get("total", 1) or 1
         if status == "running":
             self.conversion_running = True
-            self.conversion_message = "Converting " + (snapshot["name"] or "media")[:33] + "…"
+            if total > 1:
+                done = job.get("completed", 0) + job.get("failed", 0)
+                self.conversion_message = "Converting %d/%d · %s" % (
+                    done, total, (snapshot["name"] or "media")[:22])
+            else:
+                self.conversion_message = "Converting " + (snapshot["name"] or "media")[:33] + "…"
             self.refresh_conversion_ui()
             return
         self.conversion_running = False
         if status not in ("ready", "failed"):
             return
-        signature = "%s:%s:%s" % (status, snapshot["item"], snapshot["replacement"])
+        signature = "%s:%s:%s:%s" % (status, job.get("id", 0), snapshot["item"],
+                                     snapshot["replacement"])
         if signature == self.conversion_last:
             return
         self.conversion_last = signature
@@ -540,6 +644,12 @@ class App:
             self.show_controls()  # Surface the finished message once.
 
     def conversion_finished(self, snapshot):
+        job = snapshot.get("job") or {}
+        if (job.get("total") or 1) > 1:
+            # A batch reports totals; it does not move the slideshow position.
+            self.conversion_message = (job.get("message") or snapshot["message"]
+                                       or "Conversion finished")[:70]
+            return
         name = (snapshot["name"] or "media")[:33]
         if snapshot["status"] != "ready":
             self.conversion_message = (snapshot["message"] or "Conversion failed")[:70]
@@ -574,34 +684,56 @@ class App:
                 and self.root.focus_get() not in self.overlay.winfo_children()):
             self.overlay.place_forget()
             self.overlay_visible = False
-        if not self.clock.ready() or now < self.next_present:
+        if not self.clock.ready():
+            self.starved = False
             return
-        try:
-            generation, kind, value, seconds = self.services.decoder.events.get_nowait()
-        except queue.Empty:
-            return
-        if generation != self.generation:
-            return
-        if kind == "frame":
-            if self.animated:
-                self.clock.arm(seconds, continuous=True)
-                # Consume expired animation frames without uploading them.
-                if not self.clock.ready() or self.services.decoder.events.empty():
+        dropped = 0
+        while True:
+            try:
+                generation, kind, value, seconds = self.services.decoder.events.get_nowait()
+            except queue.Empty:
+                # The deadline is due but the decoder has not caught up. Back the
+                # poll off so the decode worker keeps the CPU it needs.
+                self.starved = True
+                return
+            if generation != self.generation:
+                continue
+            if kind == "frame":
+                if not self.animated:
+                    self.starved = False
                     self.present_frame(value)
-            else:
+                    self.clock.arm(seconds)
+                    return
+                # Deadlines advance by the media's own durations, never by how
+                # long decode or upload took, so playback cannot drift slower.
+                self.clock.arm(seconds, continuous=True)
+                if self.clock.late():
+                    # This frame's whole display window has already passed: drop it
+                    # and keep time, bounded so catch-up can never run away.
+                    if dropped < MAX_CATCHUP:
+                        dropped += 1
+                        continue
+                    self.clock.resync()
+                self.starved = False
                 self.present_frame(value)
-                self.clock.arm(seconds)
-        elif kind == "done":
-            self.advance()
-        elif kind == "error":
-            self.last_error = value
-            self.load_item(self.playlist.failed())
-            if self.screen == "playback":
-                self.close_gpu()
-                self.show_controls()
-                self.canvas.delete("error")
-                self.canvas.create_text(8, 8, text="Skipped: " + value, anchor="nw", width=max(100, self.canvas.winfo_width()-16),
-                                        fill="#ffb7a8", font=("DejaVu Sans", -12), tags="error")
+                return
+            if kind == "done":
+                self.starved = False
+                self.advance()
+                return
+            self.starved = False
+            if kind == "error":
+                self.last_error = value
+                self.load_item(self.playlist.failed())
+                if self.screen == "playback":
+                    self.close_gpu()
+                    self.show_controls()
+                    self.canvas.delete("error")
+                    self.canvas.create_text(8, 8, text="Skipped: " + value, anchor="nw",
+                                            width=max(100, self.canvas.winfo_width() - 16),
+                                            fill="#ffb7a8", font=("DejaVu Sans", -12),
+                                            tags="error")
+                return
 
     def schedule(self):
         if not self.finished:
@@ -609,12 +741,11 @@ class App:
                 if self.hidden:
                     delay = 500  # Nothing visible: heartbeat only, no decode.
                 else:
-                    now = time.monotonic()
-                    # 4 ms floor: presentation is bounded to 30 FPS below, so a
-                    # tighter poll when the clock is due cannot show a frame sooner.
+                    # Wait for the next frame deadline, then let the Tk timer land
+                    # as close to it as the platform allows.
                     delay = max(4, self.clock.delay_ms())
-                    if self.next_present > now:
-                        delay = max(delay, int((self.next_present - now) * 1000) + 1)
+                    if self.starved:
+                        delay = max(delay, STARVED_MS)
             else:
                 # Home/settings change slowly; closing still checks its job promptly.
                 delay = 50 if self.screen == "closing" else 400
@@ -632,10 +763,8 @@ class App:
                 if action == "startup":
                     self.services = result
                     if not self.closing:
-                        note = result.library.warning or result.settings.warning or result.server.state
-                        if not capabilities()["webm"]:
-                            note += " · WebM needs ffmpeg/ffprobe"
-                        self.home(note)
+                        self.home(result.library.warning or result.settings.warning
+                                  or "Ready · select a collection to play")
                 elif action == "settings" and not self.closing and self.screen == "settings":
                     self.settings_message.configure(text=self.services.settings.warning or "Saved. Start a collection to apply.")
                     self.save_button.configure(state="normal")
@@ -674,6 +803,7 @@ class App:
                     self.playback_tick()
         elif self.screen == "home" and self.services:
             self.update_address()
+            self.update_status()
             if self.revision != self.services.library.revision:
                 self.draw_folders()
         self.schedule()

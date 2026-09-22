@@ -11,6 +11,7 @@ from convert import ConversionError
 from player import GpuFrame
 from settings import DEFAULTS
 from ui import App, Services
+from web_server import WebServer
 from main import install_shutdown_handlers
 
 
@@ -80,9 +81,11 @@ class NativeTests(StorageCase):
         self.app.poll()
 
     def test_home_480_layout_large_touch_targets_and_keyboard_focus(self):
+        # The address appears as soon as the background server binds; playback
+        # never waited for it.
+        self.wait_for(lambda: "http://127.0.0.1:" in self.app.url_label.cget("text"))
         self.root.update_idletasks()
         self.assertEqual((self.root.winfo_width(), self.root.winfo_height()), (480, 272))
-        self.assertIn("http://127.0.0.1:", self.app.url_label.cget("text"))
         for button in self.app.folder_buttons:
             self.assertGreaterEqual(button.winfo_height(), 36)
             self.assertLessEqual(button.winfo_rooty() + button.winfo_height(), self.root.winfo_rooty() + 272)
@@ -215,8 +218,12 @@ class NativeTests(StorageCase):
         with patch("web_server.BoundedServer", side_effect=OSError("Denied bind")):
             services = Services(self.paths, "127.0.0.1", 0)
         try:
-            self.assertIn("unavailable", services.server.state)
+            self.assertEqual(services.server.wait_ready(timeout=5), WebServer.FAILED)
+            self.assertIn("unavailable", services.server.detail)
             self.assertEqual(services.library.snapshot()[0]["name"], "Unsorted")
+            # Playback services are ready even though the management UI is not.
+            self.assertIsNotNone(services.decoder)
+            self.assertTrue(services.decoder.thread.is_alive())
         finally:
             services.close()
 
@@ -289,33 +296,45 @@ class NativeTests(StorageCase):
             self.app.playback_tick()
         self.assertTrue(self.app.overlay_visible)
 
-    def test_present_frame_converts_gpu_frame_once_and_skips_fitting_resize(self):
+    def test_present_frame_reuses_one_tk_photo_without_channel_conversion(self):
         from PIL import Image
-
-        class CountingFrame(GpuFrame):
-            converts = 0
-
-            def convert(self, mode):
-                CountingFrame.converts += 1
-                return super().convert(mode)
 
         self.app.canvas = tk.Canvas(self.app.frame, width=64, height=48)
         self.app.canvas.pack()
         self.app.image_id = self.app.canvas.create_image(0, 0)
         self.root.update_idletasks()
         self.app.close_gpu()
-        frame = CountingFrame.from_image(Image.new("RGBA", (8, 8), "red"))
-        with patch("ui.display_copy") as copy:
+        frame = GpuFrame.from_image(Image.new("RGBA", (8, 8), "red"))
+        with patch.object(Image.Image, "convert", side_effect=AssertionError("channel conversion")), \
+                patch("ui.freeze", side_effect=AssertionError("redundant resize")):
             self.app.present_frame(frame)
-            self.app.present_frame(self.app.last_frame)
-            copy.assert_not_called()
-        self.assertEqual(CountingFrame.converts, 1)
+            photo = self.app.photo
+            self.app.present_frame(frame)
+        self.assertIsNotNone(photo)
+        # One Tcl photo object serves the whole item; later frames paste into it.
+        self.assertIs(self.app.photo, photo)
+
+    def test_a_changed_frame_shape_rebuilds_the_tk_photo(self):
+        from PIL import Image
+
+        self.app.canvas = tk.Canvas(self.app.frame, width=64, height=48)
+        self.app.canvas.pack()
+        self.app.image_id = self.app.canvas.create_image(0, 0)
+        self.root.update_idletasks()
+        self.app.close_gpu()
+        self.app.present_frame(GpuFrame.from_image(Image.new("RGB", (8, 4), "red")))
+        first = self.app.photo
+        self.app.present_frame(GpuFrame.from_image(Image.new("RGB", (8, 4), "blue")))
+        self.assertIs(self.app.photo, first)
+        self.app.present_frame(GpuFrame.from_image(Image.new("RGB", (16, 8), "red")))
+        self.assertIsNot(self.app.photo, first)
 
     def test_convert_action_eligibility_and_keyboard_binding(self):
         self.assertTrue(self.root.bind("<c>"))
         self.assertTrue(self.root.bind("<C>"))
-        png = self.upload_to_services("photo.png", png_bytes(), "png")
+        webp = self.upload_to_services("already.webp", webp_bytes(), "webp")
         gif = self.upload_to_services("animation.gif", gif_bytes(), "gif")
+        png = self.upload_to_services("photo.png", png_bytes(), "png")
         self.app.services.settings.save(dict(DEFAULTS, repeats=1, loop=False))
         fake = FakeConversions()
         with patch.object(self.app.services, "conversions", fake):
@@ -327,9 +346,9 @@ class NativeTests(StorageCase):
                 self.assertGreaterEqual(button.winfo_height(), 36)
             self.assertLessEqual(self.app.overlay.winfo_rooty() + self.app.overlay.winfo_height(),
                                  self.root.winfo_rooty() + 272)
-            self.assertEqual(self.app.playlist.current["id"], png["id"])
+            self.assertEqual(self.app.playlist.current["id"], webp["id"])
             self.assertEqual(self.app.convert_button.cget("state"), "disabled")
-            self.assertIn("GIF", self.app.conversion_label.cget("text"))
+            self.assertIn("native", self.app.conversion_label.cget("text"))
             self.app.convert_key(None)
             self.assertEqual(fake.started, [])
             self.app.navigate(1)
@@ -341,6 +360,13 @@ class NativeTests(StorageCase):
             self.assertTrue(self.app.conversion_running)
             self.assertEqual(self.app.convert_button.cget("state"), "disabled")
             self.assertIn("Converting", self.app.conversion_label.cget("text"))
+            # Static images are convertible too, so the action stays useful.
+            fake.state.update(status="idle")
+            self.app.conversion_running = False
+            self.app.navigate(1)
+            self.assertEqual(self.app.playlist.current["id"], png["id"])
+            self.app.refresh_conversion_ui()
+            self.assertEqual(self.app.convert_button.cget("state"), "normal")
 
     def test_web_started_conversion_appears_in_the_overlay(self):
         self.upload_to_services("animation.gif", gif_bytes(), "gif")

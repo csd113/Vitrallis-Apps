@@ -13,8 +13,9 @@ from unittest.mock import patch
 from PIL import Image
 
 from support import StorageCase, animated_webp_bytes, gif_bytes, png_bytes, webp_bytes
-from media import MediaError, Processes, inspect_stream, probe, video_command
-from player import Decoder, PlaybackClock, Playlist, gif_seconds
+from media import (MediaError, Processes, cached_probe, forget_probe, frame_rate,
+                   inspect_stream, playback_fps, probe, remember_probe, video_command)
+from player import LOOKAHEAD, Decoder, PlaybackClock, Playlist, gif_seconds, video_backend
 from settings import DEFAULTS
 
 
@@ -158,7 +159,9 @@ class DecodeTests(StorageCase):
         frames = [event for event in events if event[1] == "frame"]
         self.assertEqual(len(frames), 9)
         self.assertEqual([event[3] for event in frames], [.04, .08, .12] * 3)
-        self.assertNotEqual(frames[0][2].getpixel((0, 0)), frames[1][2].getpixel((0, 0)))
+        self.assertEqual({frame[2].mode for frame in frames}, {"RGBA"})
+        self.assertNotEqual(frames[0][2].image().getpixel((0, 0)),
+                            frames[1][2].image().getpixel((0, 0)))
 
     def test_gpu_gif_keeps_native_size_and_reuses_bounded_composited_frames(self):
         item = self.add("animation.gif", gif_bytes(), "gif")
@@ -196,7 +199,9 @@ class DecodeTests(StorageCase):
         frames = [event for event in self.events(decoder) if event[1] == "frame"]
         self.assertEqual(len(frames), 9)
         self.assertEqual([event[3] for event in frames], [.04, .08, .12] * 3)
-        self.assertNotEqual(frames[0][2].getpixel((0, 0)), frames[1][2].getpixel((0, 0)))
+        self.assertEqual({frame[2].mode for frame in frames}, {"RGBA"})
+        self.assertNotEqual(frames[0][2].image().getpixel((0, 0)),
+                            frames[1][2].image().getpixel((0, 0)))
 
     def test_webp_and_gif_frames_share_the_same_durations(self):
         gif = self.add("animation.gif", gif_bytes(), "gif")
@@ -314,7 +319,7 @@ class DecodeTests(StorageCase):
         for _ in range(40):
             latest = decoder.request(item, (480, 272), dict(DEFAULTS, repeats=100))
         time.sleep(.1)
-        self.assertLessEqual(decoder.events.qsize(), 2)
+        self.assertLessEqual(decoder.events.qsize(), LOOKAHEAD + 2)
         # Cold ARMv7 decoders can take several seconds to supply their first frame.
         # This wait measures availability, not shutdown (still capped at 3 seconds).
         self.assertEqual(decoder.events.get(timeout=10)[0], latest)
@@ -347,9 +352,13 @@ class DecodeTests(StorageCase):
         decoder = self.decoder()
         decoder.request(item, (96, 64), dict(DEFAULTS, repeats=3))
         frames = [event for event in self.events(decoder) if event[1] == "frame"]
-        self.assertEqual(len(frames), 18)
+        # Three source frames at 10 fps repeated three times, paced at the source
+        # rate rather than a fixed decoder guess.
+        self.assertEqual(len(frames), 9)
         self.assertTrue(all(frame[2].size == (96, 64) for frame in frames))
-        self.assertNotEqual(frames[0][2].tobytes(), frames[4][2].tobytes())
+        self.assertEqual({frame[2].mode for frame in frames}, {"RGB"})
+        self.assertEqual([round(frame[3], 4) for frame in frames], [0.1] * 9)
+        self.assertNotEqual(frames[0][2].tobytes(), frames[1][2].tobytes())
         decoder.request(item, (480, 272), dict(DEFAULTS, repeats=100))
         decoder.events.get(timeout=10)
         active = list(decoder.processes.active)
@@ -364,6 +373,57 @@ class DecodeTests(StorageCase):
         self.assertIn("file,pipe", command)
         self.assertIn("/dev/fd/8", command)
         self.assertTrue(any("scale=480:272" in part for part in command))
+        self.assertTrue(any("fps=25" in part for part in command))
+
+    def test_video_command_uses_the_source_rate_and_verified_hardware(self):
+        with patch("media.shutil.which", return_value="/usr/bin/ffmpeg"):
+            command = video_command(8, (480, 272), fps=12.5, hwaccel="videotoolbox", loop=True)
+        self.assertIn("-hwaccel", command)
+        self.assertIn("videotoolbox", command)
+        self.assertIn("-stream_loop", command)
+        self.assertTrue(any("fps=12.5" in part for part in command))
+        self.assertLess(command.index("-hwaccel"), command.index("-i"),
+                        "hardware selection is an input option")
+        # The 20 fps guess and its 33% timing error are gone.
+        self.assertFalse(any("fps=20" in part for part in command))
+
+    def test_frame_rate_parsing_clamps_to_a_presentable_rate(self):
+        self.assertEqual(frame_rate("25/1"), 25.0)
+        self.assertEqual(frame_rate("30000/1001"), 30000 / 1001)
+        self.assertIsNone(frame_rate("0/0"))
+        self.assertIsNone(frame_rate(None))
+        self.assertIsNone(frame_rate("nonsense"))
+        self.assertEqual(playback_fps("60/1"), 30.0)
+        self.assertEqual(playback_fps("10/1"), 10.0)
+        self.assertEqual(playback_fps(None), 25.0)
+        self.assertEqual(playback_fps("0/1"), 25.0)
+
+    def test_hardware_acceleration_is_only_claimed_when_verified(self):
+        backend = video_backend("vp9")
+        self.assertIn("verified", backend)
+        self.assertIn("reason", backend)
+        if backend["verified"]:
+            self.assertIsNotNone(backend["method"])
+            self.assertIn(backend["method"], backend["name"] + backend["reason"])
+        else:
+            # A codec with no verified hardware path must fall back, never pretend.
+            self.assertIsNone(backend["method"])
+            self.assertEqual(backend["name"], "software")
+        self.assertIsNone(video_backend(None)["method"])
+        with patch("multimedia.executable_key", return_value=None):
+            self.assertIsNone(video_backend("vp9")["method"])
+        # A codec with no committed fixture is never claimed as accelerated.
+        self.assertIsNone(video_backend("av1")["method"])
+
+    def test_probe_cache_answers_playback_metadata_without_re_probing(self):
+        item = self.add("clip.mp4", b"video", "webm")
+        remember_probe((item["id"], item["size"]), {"kind": "webm", "duration": 1.5, "fps": 12})
+        cached = cached_probe((item["id"], item["size"]))
+        self.assertEqual(cached["fps"], 12)
+        remember_probe(("x", 1), {"kind": "webm"})
+        self.assertEqual(len(cached_probe(("x", 1))), 1)
+        forget_probe(("x", 1))
+        self.assertIsNone(cached_probe(("x", 1)))
 
 
 class InspectionTests(unittest.TestCase):

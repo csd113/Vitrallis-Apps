@@ -8,48 +8,216 @@
   <script src="/app.js" defer></script>
 </head>
 <body>
-  <header class="masthead"><a href="/" class="brand" aria-label="Vitrallis Media Carousel home"><span class="mark" aria-hidden="true">▧</span><span>Vitrallis<small>Media Carousel</small></span></a><span id="connection" class="badge">Device reached</span></header>
+  <a class="skip-link" href="#workspace">Skip to the media workspace</a>
+  <header class="masthead">
+    <a href="/" class="brand" aria-label="Vitrallis Media Carousel home">
+      <span class="mark" aria-hidden="true">▧</span>
+      <span>Vitrallis<small>Media Carousel</small></span>
+    </a>
+    <span id="connection" class="badge badge-quiet">Device reached</span>
+  </header>
+
   <main>
-    <noscript>This local management page requires JavaScript for uploads and ordering. Enable it and reload.</noscript>
+    <noscript>This local management page needs JavaScript for uploads, play order and conversion. Enable it and reload.</noscript>
     <p id="notice" role="status" aria-live="polite"></p>
-    <section id="login" class="panel intro">
+
+    <section id="login" class="panel intro" aria-labelledby="login-title">
       <p class="eyebrow">YOUR SCREEN. YOUR COLLECTIONS.</p>
-      <h1>A little gallery,<br>always close to home.</h1>
-      <p>Send photos, GIFs, animated WebP and muted WebM videos to your Vitrallis device. Everything stays on your local network.</p>
-      <form id="login-form"><label for="access-code">Access code shown on the device</label><div class="form-line"><input id="access-code" type="password" minlength="6" maxlength="6" autocomplete="off" spellcheck="false" required placeholder="6-character code"><button type="submit">Connect</button></div></form>
-      <small>A new code is generated every time the app starts.</small>
+      <h1 id="login-title">A little gallery,<br>always close to home.</h1>
+      <p>Send photos, GIFs, animated WebP and muted WebM videos to your Vitrallis
+        device, then play them as a slideshow. Everything stays on your local network.</p>
+      <form id="login-form">
+        <label for="access-code">Access code shown on the device</label>
+        <div class="form-line">
+          <input id="access-code" type="password" minlength="6" maxlength="6"
+                 autocomplete="off" spellcheck="false" required placeholder="6-character code"
+                 aria-describedby="login-help">
+          <button type="submit">Connect</button>
+        </div>
+        <small id="login-help">A new code is generated every time the app starts.</small>
+      </form>
     </section>
+
     <div id="workspace" hidden>
-      <nav aria-label="Main"><button id="collections-tab" class="active">Collections</button><button id="settings-tab">Settings</button><button id="lock" class="quiet">Lock</button></nav>
+      <nav aria-label="Sections">
+        <button id="collections-tab" class="active" aria-current="page">Collections</button>
+        <button id="convert-tab">Convert to WebP</button>
+        <button id="settings-tab">Settings</button>
+        <button id="lock" class="quiet">Lock</button>
+      </nav>
       <p id="device" class="muted"></p>
-      <section id="collections-view">
-        <div class="section-title"><div><p class="eyebrow">MAKE ROOM FOR YOUR FAVORITES</p><h1>Your collections</h1></div><button id="refresh" class="secondary">Refresh</button></div>
-        <form id="create-form" class="form-line"><label class="sr-only" for="collection-name">New collection name</label><input id="collection-name" maxlength="64" placeholder="New collection name" required><button type="submit">Create collection</button></form>
+
+      <section id="collections-view" aria-label="Collections">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">MAKE ROOM FOR YOUR FAVORITES</p>
+            <h1>Your collections</h1>
+          </div>
+          <button id="refresh" class="secondary" type="button">Refresh</button>
+        </div>
+        <form id="create-form" class="form-line" aria-label="Create a collection">
+          <label class="sr-only" for="collection-name">New collection name</label>
+          <input id="collection-name" maxlength="64" placeholder="New collection name" required>
+          <button type="submit">Create collection</button>
+        </form>
         <div id="collections" class="collections"></div>
       </section>
-      <section id="folder-view" hidden>
-        <button id="back" class="quiet">← All collections</button>
-        <div class="section-title"><div><p class="eyebrow">READY FOR THE BIG LITTLE SCREEN</p><h1 id="folder-title"></h1></div><div class="actions"><button id="download-folder" class="secondary">Download folder</button><button id="rename" class="secondary">Rename</button><button id="delete-folder" class="danger">Delete collection</button></div></div>
-        <p id="conversion-status" class="muted" role="status" hidden></p>
-        <form id="rename-form" class="form-line" hidden><label class="sr-only" for="rename-name">Collection name</label><input id="rename-name" maxlength="64" required><button type="submit">Save name</button><button id="cancel-rename" type="button" class="quiet">Cancel</button></form>
-        <div id="drop-zone" class="drop-zone"><div class="upload-mark" aria-hidden="true">↑</div><h2>Drop files into this collection</h2><p>PNG, JPEG, WebP, GIF or WebM · up to 64 MiB each</p><label for="files" class="file-label">Choose files</label><input id="files" type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/webm" multiple><p class="muted">Two files upload at a time; each result is kept. Select this collection on your device to play.</p></div>
-        <div id="upload-status" hidden><label for="progress" id="upload-label">Uploading</label><progress id="progress" max="100" value="0"></progress><ol id="upload-results"></ol></div>
-        <div class="section-title"><h2>Play order <span id="item-count" class="muted"></span></h2><small>Use ↑ / ↓ to move an item. Order saves immediately.</small></div>
+
+      <section id="folder-view" hidden aria-label="Collection media">
+        <button id="back" class="quiet" type="button">← All collections</button>
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">READY FOR THE BIG LITTLE SCREEN</p>
+            <h1 id="folder-title"></h1>
+            <p id="folder-summary" class="muted"></p>
+          </div>
+          <div class="actions">
+            <button id="download-folder" class="secondary" type="button">Download ZIP</button>
+            <button id="rename" class="secondary" type="button">Rename</button>
+            <button id="delete-folder" class="danger" type="button">Delete collection</button>
+          </div>
+        </div>
+        <form id="rename-form" class="form-line" hidden aria-label="Rename collection">
+          <label class="sr-only" for="rename-name">Collection name</label>
+          <input id="rename-name" maxlength="64" required>
+          <button type="submit">Save name</button>
+          <button id="cancel-rename" type="button" class="quiet">Cancel</button>
+        </form>
+
+        <section class="card" aria-labelledby="convert-heading">
+          <div class="card-head">
+            <h2 id="convert-heading">Convert this collection to WebP</h2>
+            <p class="muted">WebP loads faster on the device and keeps animation, timing
+              and transparency. Original files are only replaced after the converted
+              file is verified.</p>
+          </div>
+          <div class="bulk-actions" role="group" aria-label="Bulk conversion">
+            <button type="button" data-kinds="gif">Convert GIFs</button>
+            <button type="button" data-kinds="image" class="secondary">Convert images</button>
+            <button type="button" data-kinds="gif,image" class="secondary">Convert all supported</button>
+          </div>
+          <label class="check-line" for="folder-replace">
+            <input id="folder-replace" type="checkbox">
+            <span>Re-convert files that are already WebP</span>
+          </label>
+          <p id="convert-hint" class="muted"></p>
+        </section>
+
+        <section class="card" aria-labelledby="upload-heading">
+          <div class="card-head">
+            <h2 id="upload-heading">Add media</h2>
+            <p class="muted">PNG, JPEG, WebP, GIF or muted WebM · up to 64 MiB each.
+              Two files upload at a time.</p>
+          </div>
+          <div id="drop-zone" class="drop-zone">
+            <div class="upload-mark" aria-hidden="true">↑</div>
+            <h3>Drop files into this collection</h3>
+            <label for="files" class="file-label">Choose files</label>
+            <input id="files" type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/webm" multiple>
+            <p class="muted">Select this collection on the device to play it.</p>
+          </div>
+          <div id="upload-status" hidden>
+            <label for="progress" id="upload-label">Uploading</label>
+            <progress id="progress" max="100" value="0"></progress>
+            <ol id="upload-results" class="results"></ol>
+          </div>
+        </section>
+
+        <div class="section-title">
+          <div>
+            <h2>Play order <span id="item-count" class="muted"></span></h2>
+            <small>Use ↑ / ↓ to move an item. Order saves immediately.</small>
+          </div>
+        </div>
         <ol id="media" class="media"></ol>
       </section>
-      <section id="settings-view" class="panel" hidden>
-        <p class="eyebrow">SET THE PACE</p><h1>Playback settings</h1><p>Shared with the device. Changes apply the next time you start a collection.</p>
+
+      <section id="convert-view" hidden aria-label="Library-wide conversion">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">ONE ACTION, WHOLE LIBRARY</p>
+            <h1>Convert to WebP</h1>
+            <p class="muted">Runs in the background on the device. Playback keeps
+              working and progress below refreshes itself.</p>
+          </div>
+        </div>
+        <section class="card" aria-labelledby="library-convert-heading">
+          <div class="card-head">
+            <h2 id="library-convert-heading">Everything, or one folder</h2>
+          </div>
+          <label class="check-line" for="library-scope">
+            <span>Scope</span>
+            <select id="library-scope">
+              <option value="all">All collections</option>
+            </select>
+          </label>
+          <div class="bulk-actions" role="group" aria-label="Bulk conversion">
+            <button type="button" data-kinds="gif">Convert GIFs</button>
+            <button type="button" data-kinds="image" class="secondary">Convert images</button>
+            <button type="button" data-kinds="gif,image" class="secondary">Convert all supported</button>
+          </div>
+          <label class="check-line" for="library-replace">
+            <input id="library-replace" type="checkbox">
+            <span>Re-convert files that are already WebP</span>
+          </label>
+          <p class="muted">Files already in WebP are reported as skipped and left untouched
+            unless you ask for re-conversion.</p>
+        </section>
+        <div id="convert-empty" class="empty" hidden>Nothing is being converted right now.</div>
+      </section>
+
+      <section id="settings-view" class="panel" hidden aria-labelledby="settings-title">
+        <p class="eyebrow">SET THE PACE</p>
+        <h1 id="settings-title">Playback settings</h1>
+        <p>Shared with the device. Changes apply the next time you start a collection.</p>
         <form id="settings-form" class="settings-form">
-          <label for="image-seconds">Still image duration <small>Whole seconds · 1–3600</small></label><input id="image-seconds" type="number" min="1" max="3600" step="1" required>
-          <label for="repeats">Animated / video repeats <small>Complete plays · 1–100</small></label><input id="repeats" type="number" min="1" max="100" step="1" required>
-          <label for="order">Playback order</label><select id="order"><option value="ordered">In Order</option><option value="shuffle">Shuffle</option></select>
-          <label for="loop">End of collection</label><select id="loop"><option value="true">Loop Folder</option><option value="false">Return to Main Menu</option></select>
-          <label for="convert-gifs">GIF uploads <small>Convert new GIFs to WebP, or keep the originals</small></label><select id="convert-gifs"><option value="false">Keep as GIF</option><option value="true">Convert to WebP</option></select>
+          <label for="image-seconds">Still image duration <small>Whole seconds · 1–3600</small></label>
+          <input id="image-seconds" type="number" min="1" max="3600" step="1" required>
+          <label for="repeats">Animated / video repeats <small>Complete plays · 1–100</small></label>
+          <input id="repeats" type="number" min="1" max="100" step="1" required>
+          <label for="order">Playback order</label>
+          <select id="order"><option value="ordered">In Order</option><option value="shuffle">Shuffle</option></select>
+          <label for="loop">End of collection</label>
+          <select id="loop"><option value="true">Loop Folder</option><option value="false">Return to Main Menu</option></select>
+          <label for="convert-gifs">GIF uploads <small>Convert new GIFs to WebP, or keep the originals</small></label>
+          <select id="convert-gifs"><option value="false">Keep as GIF</option><option value="true">Convert to WebP</option></select>
           <button type="submit">Save settings</button>
-        </form><p id="decoder-note" class="muted"></p><button id="install-media" type="button">Install multimedia support</button><p id="install-status" role="status"></p>
+        </form>
+        <div class="card">
+          <div class="card-head">
+            <h2>Media support</h2>
+            <p id="decoder-note" class="muted"></p>
+          </div>
+          <p id="acceleration-note" class="muted"></p>
+          <button id="install-media" type="button" class="secondary">Install multimedia support</button>
+          <p id="install-status" role="status"></p>
+        </div>
       </section>
     </div>
   </main>
-  <footer>Vitrallis Media Carousel · 0.3.0 <span>Local media. No cloud.</span></footer>
+
+  <div id="job" class="job" role="status" aria-live="polite" hidden>
+    <div class="job-head">
+      <span id="job-state" class="badge">Converting</span>
+      <span id="job-scope" class="muted"></span>
+      <button id="job-dismiss" class="quiet" type="button" aria-label="Hide conversion progress">Hide</button>
+    </div>
+    <progress id="job-progress" max="100" value="0"></progress>
+    <p id="job-line"></p>
+    <dl class="totals">
+      <div><dt>Found</dt><dd id="job-total">0</dd></div>
+      <div><dt>Converted</dt><dd id="job-done">0</dd></div>
+      <div><dt>Failed</dt><dd id="job-failed">0</dd></div>
+      <div><dt>Skipped</dt><dd id="job-skipped">0</dd></div>
+    </dl>
+    <p id="job-message" class="muted"></p>
+    <details id="job-details" hidden><summary id="job-details-summary">Failures</summary><ul id="job-failures" class="results"></ul></details>
+    <button id="job-cancel" class="danger" type="button">Cancel conversion</button>
+  </div>
+
+  <footer>
+    <span>Vitrallis Media Carousel · 0.4.0</span>
+    <span id="footer-state">Local media. No cloud.</span>
+  </footer>
 </body>
 </html>

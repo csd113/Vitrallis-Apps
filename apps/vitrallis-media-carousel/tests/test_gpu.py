@@ -3,11 +3,12 @@ import os
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 import unittest
 
 from PIL import Image
 from gpu import ImageRenderer, GpuUnavailable, hardware_renderer
+from player import GpuFrame
 
 
 class RendererTests(unittest.TestCase):
@@ -20,6 +21,7 @@ class RendererTests(unittest.TestCase):
         renderer.texture = c.c_uint(1)
         renderer.max_texture = c.c_int(2048)
         renderer.image_size = None
+        renderer.image_shape = None
         return renderer
 
     def test_cpu_rasterizer_is_not_claimed_as_hardware(self):
@@ -34,8 +36,28 @@ class RendererTests(unittest.TestCase):
         renderer.present(image, 480, 272)
         self.assertEqual(renderer.gl.glTexImage2D.call_count, 1)
         self.assertEqual(renderer.gl.glTexSubImage2D.call_count, 1)
+        # RGBA frames upload as RGBA; opaque RGB frames keep their own format.
+        self.assertEqual(renderer.gl.glTexImage2D.call_args[0][2], 0x1908)
+        self.assertEqual(renderer.gl.glTexImage2D.call_args[0][6], 0x1908)
+        renderer.present(Image.new('RGB', (800, 400)), 480, 272)
+        self.assertEqual(renderer.gl.glTexImage2D.call_count, 2)
+        self.assertEqual(renderer.gl.glTexImage2D.call_args[0][2], 0x1907)
+        self.assertEqual(renderer.gl.glTexImage2D.call_args[0][6], 0x1907)
+        renderer.present(Image.new('RGB', (800, 400)), 480, 272)
+        self.assertEqual(renderer.gl.glTexSubImage2D.call_count, 2)
         renderer.gl.glViewport.assert_called_with(0, 16, 480, 240)
-        self.assertEqual(renderer.gl.glDrawArrays.call_count, 2)
+        self.assertEqual(renderer.gl.glDrawArrays.call_count, 4)
+
+    def test_no_channel_conversion_happens_on_the_gpu_path(self):
+        renderer = self.renderer()
+        frame = GpuFrame.from_image(Image.new('RGB', (32, 16), 'red'), mode='RGB')
+        image = frame.image()
+        with patch.object(Image.Image, 'convert', side_effect=AssertionError('converted')):
+            for _ in range(3):
+                renderer.present(frame, 480, 272)
+        self.assertEqual((image.size, image.mode), ((32, 16), 'RGB'))
+        self.assertEqual(renderer.gl.glTexImage2D.call_count, 1)
+        self.assertEqual(renderer.gl.glTexSubImage2D.call_count, 2)
 
     def test_upload_failure_oversize_and_surface_loss_trigger_fallback(self):
         renderer = self.renderer()
@@ -50,7 +72,6 @@ class RendererTests(unittest.TestCase):
         renderer.egl.eglSwapBuffers.return_value = 0
         with self.assertRaises(GpuUnavailable):
             renderer.present(Image.new('RGB', (10, 10)), 480, 272)
-
 
 @unittest.skipUnless(os.environ.get('VITRALLIS_REQUIRE_EGL') == '1', 'Opt-in EGL integration test')
 class EglIntegrationTests(unittest.TestCase):

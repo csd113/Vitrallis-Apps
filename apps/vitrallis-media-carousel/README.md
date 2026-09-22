@@ -4,7 +4,7 @@ A locally managed slideshow for the screen running Vitrallis. Upload from your
 phone/computer, organize collections, then select one in the native Python app.
 Playback does not open a browser.
 
-**0.3.0** · `io.vitrallis.mediacarousel` · manifest v1.
+**0.4.0** · `io.vitrallis.mediacarousel` · manifest v1.
 
 [Changelog](CHANGELOG.md).
 
@@ -63,13 +63,47 @@ package is read-only, including interpreter bytecode.
 5. Select a collection on the device. Its playlist/settings are a stable snapshot;
    uploads/reordering affect the next start, and concurrent deletions are skipped.
 
+The native app starts its slideshow services first and binds the management server
+on a background thread, so the home screen and playback are usable immediately even
+while LAN address discovery or the FFmpeg capability probe is still running. The
+home screen reports the server as `starting`, `ready`, `failed` or `stopped`. A
+server that cannot bind is logged and shown on screen; playback and local collection
+browsing continue normally.
+
+### Bulk conversion to WebP
+
+Open a collection and use **Convert GIFs**, **Convert images** or **Convert all
+supported** in the conversion card, or use the **Convert to WebP** tab for the whole
+library (all collections, or one selected folder). One action queues every matching
+item. The job runs on the device with a small bounded worker pool (one worker on a
+single/dual-core host, two on four or more cores; `CAROUSEL_CONVERT_WORKERS`
+overrides it), so the page never freezes and the slideshow keeps playing.
+
+The progress panel is docked at the bottom of the page and shows the current file,
+`found / converted / failed / skipped` counts, an overall bar and a final summary;
+failures are listed individually and can be hidden or cancelled at any time.
+Items already in WebP are reported as **skipped** and left untouched. Ticking
+**Re-convert files that are already WebP** re-encodes them deliberately.
+
+Conversion is transactional per item: the source is opened read-only, the result is
+written to a staged temporary file, then verified for frame count, per-frame
+duration, looping, dimensions, transparency and orientation, and only then atomically
+swapped into the library at the same playlist position. A malformed, unsupported or
+failed item is reported and skipped while the rest of the batch continues, every
+staged file is removed, and the original bytes are kept on every failure path. GIFs
+convert through system `gif2webp` when present and through the bounded Pillow
+fallback otherwise; still PNG/JPEG images always use Pillow with EXIF orientation
+baked into the pixels. Animated media never loses its animation, timing or
+transparency to a static first frame.
+
 The bundled responsive phone/desktop site shows device name/IP/status, filename,
 actual type, size and shared settings. JavaScript is required. Batch size is 100
 files, with two concurrent transfers: each accepted file commits independently, failures
 are reported, and earlier successes remain saved. Refresh reads other browsers'
 changes; the native folder list updates automatically. Only a requested dependency
-installation or GIF conversion polls its status. There is no cloud functionality
-or telemetry.
+installation or a running conversion job polls its status, and a conversion keeps
+its progress panel visible until it finishes or is dismissed. There is no cloud
+functionality or telemetry.
 
 Codes change at every launch and are kept only in the browser tab's session
 storage (or memory when storage is denied). Lock removes the saved code. Codes
@@ -88,24 +122,29 @@ Someone observing LAN traffic can observe the code. This app does not provide TL
 | PNG/JPEG/WebP | Pillow-decodable still images; proportional fit, JPEG draft downsampling where available, EXIF orientation, transparency over black. Static WebP uses this still path. |
 | GIF | Sequential Pillow frame compositing with disposal/transparency. Original timing clamped to 20 ms–10 s; missing/zero timing uses 100 ms. Complete replays override embedded loop hints. |
 | Animated WebP | Every frame plays through the same compositing, timing and bounded-cache path as GIF, including repeat counts and the 20 ms–10 s clamp. |
-| WebM | Real muted VP8/VP9/AV1 video where the system decoder supports it. Proportional scale/letterboxing, 20 fps RGB output toward the actual display, capped at 1280×720. Reopen the stream for every complete replay. |
+| WebM | Real muted VP8/VP9/AV1 video where the system decoder supports it. Proportional scale/letterboxing, RGB output paced at the source's own frame rate (clamped to 30 fps) toward the actual display, capped at 1280×720. One decoder process serves every repeat through `-stream_loop`, driven by a bounded reader queue. |
 
 GIF and animated WebP preparation follows the current playlist order and starts as
 early as cache space allows, rather than waiting for a fixed item number. The
-current animation waits for complete preparation before its playback clock starts;
-upcoming animations are prepared by one worker with a 10 ms pause between
-speculative frames. Finished items leave the window, while upcoming cached items
-remain available. Ordered loops can prepare across the playlist boundary; shuffled
-loops prepare the next cycle only once its order is chosen. Navigation prioritizes
-the newly selected animation and exit cancels preparation. The cache lives only in
-memory for playback.
+animation on screen is streamed frame by frame as it decodes, so its first frame
+appears immediately instead of after the whole animation is prepared, and the
+streamed frames are recorded for its repeats and for the next visit. Upcoming
+animations are prepared by one worker that yields the CPU while the on-screen
+animation is streaming, and that never bothers with the item already being streamed.
+Finished items leave the window, while upcoming cached items remain available.
+Ordered loops can prepare across the playlist boundary; shuffled loops prepare the
+next cycle only once its order is chosen. Navigation prioritizes the newly selected
+animation and exit cancels preparation. The cache lives only in memory for playback.
 
-The initial animation may show a loading delay. The limits count decoded pixels, not
+Animations that do not fit are recorded as unfitted for the current window instead
+of being decoded again on every visit. The limits count decoded pixel bytes, not
 compressed file sizes, so fewer than ten animations may fit. Oversized animations and
-preparation failures fall back to the existing bounded streaming decoder;
-preparation has a 30-second deadline. The 32 MiB limit covers retained/preparing
-cache pixels, not decoder work buffers, queued frames, or renderer textures.
-Smoothness under background decoding still requires a device performance check.
+preparation failures fall back to the bounded streaming decoder; preparation has a
+30-second deadline. The 32 MiB limit covers retained/preparing cache pixels, not
+decoder work buffers, queued frames, or renderer textures. Smoothness under
+background decoding still requires a device performance check. Queued work is
+bounded: six decoded frames may sit ahead of the presentation loop, and video
+buffering is bounded by bytes as well as frame count.
 
 Animated PNG is rejected; use GIF, animated WebP or WebM for animation. Missing
 ffmpeg or ffprobe disables WebM with an explanation while images, GIF and WebP
@@ -132,35 +171,56 @@ larger windows. Two collection rows per page preserve touch target size.
   activates buttons. Up/Down navigates collection rows/pages; Left/Right pages.
 - During playback: Left = previous (restart the first item at the beginning),
   Right = next, Space on the media canvas = pause/resume, and **C** (or the
-  **To WebP** button) converts the current GIF to animated WebP. Tap/click the
-  media or use Tab to reveal controls. Controls hide after three seconds unless
-  paused or focused. Tk's normal press/release cancellation applies to buttons.
+  **To WebP** button) converts the current GIF or still image to WebP. Tap/click
+  the media or use Tab to reveal controls. Controls hide after three seconds
+  unless paused or focused. Tk's normal press/release cancellation applies to
+  buttons. A batch conversion started from the web page shows its progress in the
+  overlay as counts instead of moving the slideshow position.
 - Escape/Back leaves playback/settings; Home/Exit or Escape on Home stops services
   and exits the Python process. Back discards unsaved settings edits. The app
   does not force fullscreen or start another desktop/window manager.
 - Shell SIGTERM and terminal SIGINT request the same orderly shutdown, including
   decoder processes and active HTTP transfers.
 
-GIF and WebP decoding and disposal/transparency compositing remain in Pillow. On X11,
-playback automatically tries a hardware EGL/GLES2 surface inside the existing Tk
-window. The GPU scales and presents RGBA textures instead of creating Tk images
-and applying CPU resampling every frame. Texture allocation is reused while
-frame size stays constant. Tk retains keyboard navigation and the control overlay.
-Software GL rasterizers and unknown GPU names are rejected as hardware; missing
-libraries, unsupported desktops (including native macOS Tk), or a lost surface
-fall back to Tk and log the reason as `event=media_renderer mode=tk`. Successful
-initialization logs `mode=hardware` and the GL renderer name.
+GIF and WebP decoding and disposal/transparency compositing remain in Pillow and are
+never hardware accelerated. On X11, playback automatically tries a hardware
+EGL/GLES2 surface inside the existing Tk window. The GPU scales and presents RGBA
+(for animation) or RGB (for opaque video) textures instead of creating Tk images and
+applying CPU resampling every frame. Texture allocation is reused while the frame
+shape stays constant, and the Tk fallback pastes every frame into one reused photo
+image instead of creating a Tcl image per frame. Tk retains keyboard navigation and
+the control overlay. Software GL rasterizers and unknown GPU names are rejected as
+hardware; missing libraries, unsupported desktops (including native macOS Tk), or a
+lost surface fall back to Tk and log the reason as `event=media_renderer mode=tk`.
+Successful initialization logs `mode=hardware` and the GL renderer name.
 
-Animation deadlines follow media time, so uploads and UI polling do not add a
-new delay to every frame. Expired frames can be skipped to catch up; decoded
-replay counts and frame delays are preserved. Pause retains remaining frame time.
-GIFs and animated WebP are prepared ahead of playback in a rolling window of up to
-**10 animations**, with an **8 MiB per-animation** and **32 MiB total**
-decoded-frame cache. Larger animations stream with two queued frames. GPU animation
-frames retain native resolution (within the existing one-million-pixel limit) for
-GPU filtering. Neither GIF/WebP decompression nor WebM decoding is claimed to be
-hardware accelerated. A GPU cannot guarantee full speed when CPU decoding exceeds
-the frame budget.
+Video decoding is selected by capability detection, not by assumption. At startup
+the app lists the FFmpeg build's `-hwaccel` methods and then decodes a small
+committed sample of each codec with each candidate, accepting a method only when
+FFmpeg's own log shows that a hardware pixel format was actually negotiated
+(`requires hwaccel …_videotoolbox initialisation`). Anything else is reported as
+software. `CAROUSEL_HWACCEL=off` forces software. If a hardware decoder later fails
+to produce frames for a specific file, the item is retried once in software and the
+backend change is logged. On macOS this verifies VideoToolbox for **VP9 only**: VP8
+has no VideoToolbox decoder and always reports `backend=software`. No hardware
+decoding is claimed for GIF, WebP, or any codec without a verified path. Every item
+logs `event=video_decoder codec=… backend=… hwaccel=… verified=… reason=…`, and the
+same information appears on the web Settings tab.
+
+Hardware decode is not always faster: on a fast desktop with a small clip,
+VideoToolbox's session setup and per-frame download cost more than software VP9
+decode, even though CPU time falls. `tests/bench_media.py` measures this on the
+host, and `CAROUSEL_HWACCEL=off` selects the software path when a host prefers it.
+Both paths always produce correct frames and correct timing.
+
+Animation and video deadlines follow media time on a monotonic clock, so decoding and
+presentation work never add a new delay to every frame. Expired animation frames can
+be skipped to catch up, bounded per tick, with a resynchronisation instead of
+unlimited drift. Pause retains remaining frame time. GIFs and animated WebP are
+prepared ahead of playback in a rolling window of up to **10 animations**, with an
+**8 MiB per-animation** and **32 MiB total** decoded-frame cache. Larger animations
+stream with a bounded look-ahead queue. GPU animation frames retain native resolution
+(within the existing one-million-pixel limit) for GPU filtering.
 
 Resize refits the current GPU texture. Tk fallback recenters its current frame;
 the next item or previous/next action decodes at the new size. High-resolution
@@ -169,10 +229,13 @@ and high-frame-rate video can exceed PocketCHIP decoding capacity.
 The 0.2.0 GPU path and timing fixes have desktop/fake-device regression coverage;
 physical Lima/Mali throughput and overlay behavior still need target verification.
 The 0.3.0 animated-WebP playback, on-device conversion, streamed 4 GiB downloads
-and hidden-window pause also have desktop regression coverage; ARMv7 decode speed,
-long-transfer endurance and the overlay's five-button layout still need a physical
-PocketCHIP check. The following device evidence describes the earlier playback
-implementation.
+and hidden-window pause also have desktop regression coverage. The 0.4.0 bulk
+conversion pipeline, background web-server startup, timestamped video decoding and
+deadline-based pacing have desktop regression coverage and local benchmarks
+(`tests/bench_media.py`); ARMv7 decode speed, hardware-acceleration availability on
+Lima/Mali, long-transfer endurance and the overlay's five-button layout still need a
+physical PocketCHIP check. The following device evidence describes the earlier
+playback implementation.
 
 Source-run validation on an ARMv7 PocketCHIP with the current Vitrallis Shell used
 Debian 13.6, Python 3.13.5, Tk 8.6, Pillow 11.1.0 and FFmpeg 7.1.5. The native
@@ -299,11 +362,29 @@ same native app and accepts simple status/navigation commands over standard inpu
 use separate XDG roots for test media. It exits after ten minutes and is excluded
 from the installed package along with the other tests.
 
-Modules: `main.py` entry; `ui.py` screens/services; `player.py` playlist/clock/single
-decoder worker; `animation_cache.py` bounded prepared animation frames; `convert.py`
-GIF-to-WebP conversion; `gpu.py` optional EGL/GLES2 presentation; `media.py` inspection/FFmpeg; `storage.py` paths/atomic writes/lock;
-`library.py` collections/order; `settings.py` validation; `web_server.py` HTTP;
-`web/` bundled site; `assets/` original artwork; `tests/` development-only tests.
+`tests/bench_media.py` is a reproducible local benchmark rather than a unit test.
+Run it directly and compare checkouts:
+
+```sh
+python3 tests/bench_media.py
+python3 tests/bench_media.py --package /path/to/another/checkout --json /tmp/that.json
+```
+
+It measures capability probing, time until the slideshow path is usable, animated
+GIF/WebP decode and first-frame latency, replay cost and file opens, WebM decode
+throughput and delivered frame rate, conversion cost, its own bounded caches, and
+presentation FPS through the real Tk loop. It writes fixtures to a temporary
+directory, binds only to loopback, and performs no device access.
+
+Modules: `main.py` entry; `ui.py` screens/services; `player.py` playlist/clock/bounded
+decoders (animation frames and a timestamped FFmpeg video stream); `animation_cache.py`
+bounded prepared animation frames; `convert.py` batch GIF/image-to-WebP conversion;
+`gpu.py` optional EGL/GLES2 presentation; `media.py` inspection/cached metadata/FFmpeg
+commands; `multimedia.py` verified decoder and hardware-acceleration detection;
+`storage.py` paths/atomic writes/lock; `library.py` collections/order;
+`settings.py` validation; `web_server.py` HTTP and its background start/stop
+lifecycle; `web/` bundled site; `assets/` original artwork; `tests/` development-only
+tests and benchmarks.
 
 Reference APIs: [Pillow Image](https://pillow.readthedocs.io/en/stable/reference/Image.html),
 [Pillow GIF](https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html#gif),
@@ -331,18 +412,24 @@ symlinks rejected before headers commit. A mid-transfer failure closes the
 connection without finalizing an archive, so a truncated download never looks like
 a complete file.
 
-Convert an existing GIF to animated WebP on the device from the playback overlay
-(**To WebP**, `C`) or from the web page's per-item button. System `gif2webp` is
-preferred (Debian package **webp**); without it a bounded Pillow encoder at a
-32-megapixel budget is used. The result must open, keep the frame count, durations
-and looping before the library atomically replaces the GIF at the same position;
-the original GIF is deleted only after that successful validation, and any failure
-keeps it byte-for-byte and removes the staged output. A conversion status line
-progresses through reading, converting and verifying. One conversion runs at a
-time, and an optional setting converts newly uploaded GIFs automatically.
+Convert media to WebP on the device from the playback overlay (**To WebP**, `C`),
+from the web page's per-item button, or as a bulk job for a whole collection or the
+entire library. System `gif2webp` is preferred for GIFs (Debian package **webp**);
+without it, and always for still PNG/JPEG images and for re-encoding an animated
+WebP, a bounded Pillow encoder at a 32-megapixel budget is used. The result must
+open, keep the frame count, durations, looping, dimensions, orientation and
+transparency before the library atomically replaces the source at the same
+position; the original is deleted only after that successful validation, and any
+failure keeps it byte-for-byte and removes the staged output. A conversion status
+line progresses through reading, converting and verifying, and a bulk job reports
+found/converted/failed/skipped counts. One job runs at a time, cancelled jobs
+publish nothing, and an optional setting converts newly uploaded GIFs
+automatically.
 
 Multimedia readiness runs actual 16×16 VP8, VP9 and static WebP decode probes, with cached results. When missing, the authenticated web interface offers one explicit installation action through a no-argument root-owned helper configured at platform installation. It installs Debian `ffmpeg` with necessary dependencies only, without update/upgrade/autoremove, then repeats decode checks. On older platform installations an administrator must provision the helper using `tools/install_carousel_media_support.py --user chip`; app startup never grants itself privileges. Installation failure and missing decoder capabilities are reported separately. Do not interrupt an active package-manager operation.
 
-EGL now requests backbuffer presentation synchronized to VSync and uses absolute GIF deadlines. A rolling GIF cache stores prepared RGBA bytes off the UI thread, bounded to 8 MiB per GIF and 32 MiB total. Unsynchronized/Tk fallback is limited to 30 presentations per second while media time continues correctly. The physical display test exposed tearing even with an accepted EGL swap interval; see the [rendering contract](../../docs/rendering.md) and device verification report for platform limitations.
+EGL now requests backbuffer presentation synchronized to VSync and uses absolute GIF deadlines. A rolling GIF cache stores prepared RGBA bytes off the UI thread, bounded to 8 MiB per GIF and 32 MiB total. Media time continued correctly in the unsynchronized/Tk fallback, which was limited to 30 presentations per second. The physical display test exposed tearing even with an accepted EGL swap interval; see the [rendering contract](../../docs/rendering.md) and device verification report for platform limitations.
+
+Since 0.4.0, 0.3.0's 30 FPS presentation ceiling is gone: the Tk fallback presents at the media's own deadline and drops expired frames with a bounded catch-up instead of slowing the animation down. The animation on screen streams its first frame immediately and records itself for later repeats, so the earlier "complete preparation before the clock starts" loading delay no longer applies. Video uses one decoder process per item instead of one per repeat, and is paced from the source frame rate rather than a fixed 20 FPS resample.
 
 See the [2026-09-19 verification report](../../docs/verification/platform-app-refinements-2026-09-19/README.md) for measured app performance, physical tearing confirmation, reboot evidence and installation-validation limits.

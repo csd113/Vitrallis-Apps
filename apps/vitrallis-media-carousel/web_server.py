@@ -15,9 +15,10 @@ import time
 import zipfile
 from urllib.parse import parse_qs, urlsplit
 
-from convert import ConversionError, Conversions
+from convert import BUCKETS, ConversionError, Conversions
 from library import display_name, identifier
-from media import MAX_UPLOAD, Processes, capabilities, probe
+from media import MAX_UPLOAD, Processes, probe, remember_probe
+from multimedia import capabilities
 from storage import unique_keys
 from previews import Thumbnails
 from dependencies import Installation
@@ -29,6 +30,10 @@ ASSETS = {"/": ("index.html", "text/html; charset=utf-8"),
 
 MAX_DOWNLOAD = 4 * 1024 * 1024 * 1024
 REQUEST_DEADLINE = 160
+
+
+def convert_kinds():
+    return BUCKETS
 
 
 def archive_member_names(items):
@@ -161,6 +166,18 @@ class BoundedServer(ThreadingMixIn, HTTPServer):
 
 
 class WebServer:
+    """The management UI is a background service: it never gates playback.
+
+    `start_async` binds, discovers addresses and begins serving on its own
+    thread, so a slow or unavailable network interface cannot delay the
+    slideshow. Failure is recorded and surfaced, never raised into the caller.
+    """
+
+    STARTING = "starting"
+    READY = "ready"
+    FAILED = "failed"
+    STOPPED = "stopped"
+
     def __init__(self, library, settings, host="0.0.0.0", port=8765, conversions=None):
         self.library, self.settings = library, settings
         self.token = secrets.token_hex(3)
@@ -168,6 +185,7 @@ class WebServer:
         self.name = socket.gethostname()[:64]
         self.http = None
         self.thread = None
+        self.serve_thread = None
         self.address_thread = None
         self.processes = Processes()
         self.conversions = conversions or Conversions(library, self.processes)
@@ -177,31 +195,75 @@ class WebServer:
         self.thumbnails = Thumbnails(library, self.processes, self.media_slot)
         self.download_slot = threading.Lock()
         self.stopping = threading.Event()
+        self.ready = threading.Event()
+        self.start_lock = threading.Lock()
+        self.closed = False
         self.urls = []
-        self.state = "Starting"
+        self.state = self.STARTING
+        self.detail = "Web server starting…"
+        self.error = ""
         self.installation = Installation()
         self.auth_lock = threading.Lock()
         self.auth_window = 0
         self.auth_failures = 0
 
-    def start(self):
-        if self.http is not None or self.stopping.is_set():
-            raise RuntimeError("Server already started or stopped")
-        try:
-            self.http = BoundedServer((self.host, self.port), self)
-        except OSError as error:
-            import errno
-            if self.port != 8765 or error.errno != errno.EADDRINUSE:
-                raise
-            self.http = BoundedServer((self.host, 0), self)
-        self.port = self.http.server_port
-        self.refresh_addresses()
-        self.thread = threading.Thread(target=self.http.serve_forever, kwargs={"poll_interval": 0.1},
-                                       name="carousel-http")
-        self.thread.start()
+    def start_async(self):
+        """Begin serving on a worker thread and return immediately."""
+        with self.start_lock:
+            if self.http is not None or self.thread is not None:
+                raise RuntimeError("Server already started or starting")
+            if self.stopping.is_set():
+                raise RuntimeError("Server already stopped")
+            thread = threading.Thread(target=self._serve, name="carousel-http-start")
+            self.thread = thread
+            thread.start()
+            return thread
 
-        self.address_thread = threading.Thread(target=self.watch_addresses, name="carousel-address")
-        self.address_thread.start()
+    def _serve(self):
+        try:
+            if self.stopping.is_set():
+                return
+            try:
+                server = BoundedServer((self.host, self.port), self)
+            except OSError as error:
+                import errno
+                if self.port != 8765 or error.errno != errno.EADDRINUSE:
+                    raise
+                server = BoundedServer((self.host, 0), self)
+            if self.stopping.is_set():
+                server.server_close()
+                return
+            self.http = server
+            self.port = server.server_port
+            self.detail = "Discovering the local address…"
+            self.refresh_addresses()
+            serve = threading.Thread(target=server.serve_forever,
+                                     kwargs={"poll_interval": 0.1}, name="carousel-http")
+            self.serve_thread = serve
+            serve.start()
+            address = threading.Thread(target=self.watch_addresses, name="carousel-address")
+            self.address_thread = address
+            address.start()
+        except Exception as error:  # Playback must continue without a management UI.
+            self.error = str(error)
+            self.state = self.FAILED
+            self.detail = "Web server unavailable: " + self.error
+        finally:
+            self.ready.set()
+
+    @property
+    def available(self):
+        return self.state == self.READY
+
+    def wait_ready(self, timeout=None):
+        self.ready.wait(timeout)
+        return self.state
+
+    def start(self):
+        """Compatibility helper for callers and tests that want a bound server."""
+        self.start_async()
+        self.wait_ready(timeout=30)
+        return self.state
 
     def watch_addresses(self):
         while not self.stopping.wait(60):
@@ -212,9 +274,11 @@ class WebServer:
         self.urls = [f"http://{address}:{self.port}" for address in addresses]
         if not self.urls:
             self.urls = [f"http://127.0.0.1:{self.port}"]
-            self.state = "Local only address · check Wi-Fi"
+            self.state = self.READY
+            self.detail = "Local only address · check Wi-Fi"
         else:
-            self.state = "Ready"
+            self.state = self.READY
+            self.detail = "Ready"
 
     def authenticated(self, header):
         valid = (isinstance(header, str) and header.isascii()
@@ -231,33 +295,50 @@ class WebServer:
         return False
 
     def close(self):
+        with self.start_lock:
+            if self.closed:
+                return
+            self.closed = True
         self.stopping.set()
-        if self.address_thread is not None:
-            self.address_thread.join(timeout=3)
+        starter = self.thread
+        if starter is not None and starter is not threading.current_thread():
+            starter.join(timeout=6)
+        address, self.address_thread = self.address_thread, None
+        if address is not None:
+            address.join(timeout=3)
         self.conversions.close()
-        if self.http is None:
+        server = self.http
+        if server is None:
             self.processes.close()
+            self.state = self.STOPPED
+            self.detail = "Stopped"
             return
-        if self.thread is not None:
-            self.http.shutdown()
-            self.thread.join(timeout=2)
-        with self.http.worker_lock:
-            sockets = list(self.http.sockets)
+        serve = self.serve_thread
+        if serve is not None:
+            server.shutdown()
+            serve.join(timeout=2)
+        with server.worker_lock:
+            sockets = list(server.sockets)
         for connection in sockets:
             try:
                 connection.shutdown(socket.SHUT_RDWR)
             except OSError:
                 pass
         self.processes.close()
-        self.http.server_close()
-        with self.http.worker_lock:
-            workers = list(self.http.workers)
+        server.server_close()
+        with server.worker_lock:
+            workers = list(server.workers)
         deadline = time.monotonic() + 4
         for worker in workers:
             worker.join(timeout=max(0, deadline - time.monotonic()))
         if any(worker.is_alive() for worker in workers):
             raise RuntimeError("HTTP worker did not stop within 4 seconds")
-        self.state = "Stopped"
+        self.state = self.STOPPED
+        self.detail = "Stopped"
+
+    def snapshot(self):
+        return {"state": self.state, "detail": self.detail, "error": self.error,
+                "urls": list(self.urls), "name": self.name}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -385,10 +466,17 @@ class Handler(BaseHTTPRequestHandler):
         library, settings = self.owner.library, self.owner.settings
         if self.command == "GET" and parsed.path == "/api/state":
             self.reply(200, {"collections": library.snapshot(), "settings": settings.snapshot(),
-                            "device": self.owner.name, "urls": self.owner.urls, "status": self.owner.state,
+                            "device": self.owner.name, "urls": self.owner.urls,
+                            "status": self.owner.detail,
+                            "server": self.owner.snapshot(),
                             "capabilities": capabilities(blocking=False), "installation": self.owner.installation.snapshot(),
                             "conversion": self.owner.conversions.snapshot(), "max_upload": MAX_UPLOAD,
                             "max_download": MAX_DOWNLOAD, "warning": library.warning or settings.warning})
+        elif self.command == "POST" and parsed.path == "/api/convert":
+            self.reply(202, self.bulk_convert(self.json_body()))
+        elif self.command == "POST" and parsed.path == "/api/convert/cancel":
+            self.owner.conversions.request_cancel()
+            self.reply(202, self.owner.conversions.snapshot())
         elif self.command == "POST" and parsed.path == "/api/dependencies/install":
             if self.json_body() != {"install": "ffmpeg"}:
                 raise ValueError("Expected explicit FFmpeg installation request")
@@ -441,6 +529,29 @@ class Handler(BaseHTTPRequestHandler):
                 raise HTTPError(404, "Unknown API route")
         else:
             raise HTTPError(404, "Unknown API route")
+
+    def bulk_convert(self, body):
+        """Queue one bulk job: {"scope", "collection", "kinds", "replace"}."""
+        if not isinstance(body, dict) or set(body) - {"scope", "collection", "kinds", "replace"}:
+            raise ValueError("Expected scope, collection, kinds and replace")
+        scope = body.get("scope", "collection")
+        if scope not in ("collection", "all"):
+            raise ValueError("scope must be collection or all")
+        kinds = body.get("kinds", ["gif"])
+        if (not isinstance(kinds, list) or not kinds
+                or len(kinds) > len(convert_kinds()) or not all(isinstance(kind, str) for kind in kinds)
+                or set(kinds) - set(convert_kinds())):
+            raise ValueError("kinds must be a non-empty subset of gif and image")
+        replace = body.get("replace", False)
+        if type(replace) is not bool:
+            raise ValueError("replace must be true or false")
+        collection = None
+        if scope == "collection":
+            collection = identifier(body.get("collection", ""))
+        try:
+            return self.owner.conversions.start_bulk(scope, kinds, replace, collection)
+        except ConversionError as error:
+            raise HTTPError(error.code, str(error))
 
     def download(self, cid):
         items = self.owner.library.playlist(cid)
@@ -543,6 +654,7 @@ class Handler(BaseHTTPRequestHandler):
             if self.owner.stopping.is_set():
                 raise HTTPError(503, "Server stopping")
             item = self.owner.library.add_upload(cid, name, temporary, info)
+            remember_probe((item["id"], item["size"]), info)
             if item["kind"] == "gif" and self.owner.settings.snapshot().get("convert_gifs"):
                 try:
                     self.owner.conversions.start(cid, item["id"])

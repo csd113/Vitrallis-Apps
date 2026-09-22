@@ -9,10 +9,14 @@ from collections import namedtuple
 from urllib.parse import quote
 from unittest.mock import patch
 
+import re
+import unittest
+from pathlib import Path
+
 from support import StorageCase, gif_bytes, png_bytes
 from media import MAX_UPLOAD
 from convert import ConversionError
-from web_server import WebServer, MAX_DOWNLOAD
+from web_server import WEB, WebServer, MAX_DOWNLOAD
 
 
 from support import WebCase
@@ -42,6 +46,18 @@ class ConversionsStub:
         self.value.update(status="running", message="Converting GIF to WebP…", item=mid,
                           name=item["name"], collection=cid, converter="gif2webp")
         return self.snapshot()
+
+    def start_bulk(self, scope, kinds, replace=False, collection=None):
+        if self.value["status"] == "running":
+            raise ConversionError("A conversion is already running", code=409)
+        self.bulk = (scope, list(kinds), bool(replace), collection)
+        self.value.update(status="running", message="Converting", item=None,
+                          name="", collection=collection, converter="pillow")
+        return self.snapshot()
+
+    def request_cancel(self):
+        self.cancelled = True
+        self.value.update(status="cancelled", message="Conversion cancelled")
 
     def close(self):
         self.closed = True
@@ -253,8 +269,11 @@ class WebTests(WebCase):
         self.assertEqual(status, 200)
         self.assertEqual(data["max_download"], MAX_DOWNLOAD)
         self.assertEqual(set(data["conversion"]), {"status", "message", "item", "replacement",
-                                                   "name", "collection", "converter"})
+                                                   "name", "collection", "converter", "job"})
         self.assertEqual(data["conversion"]["status"], "idle")
+        self.assertEqual(data["conversion"]["job"]["status"], "idle")
+        self.assertEqual(data["server"]["state"], "ready")
+        self.assertEqual(data["capabilities"]["acceleration"]["policy"], "auto")
 
     def test_close_closes_conversions_before_processes(self):
         closed = []
@@ -282,6 +301,50 @@ class WebTests(WebCase):
         self.assertEqual(self.request("POST", route.format("0" * 32))[0], 404)
         self.assertEqual(self.request("POST", "/api/collections/not-an-id/media/" + gif["id"] + "/convert")[0], 400)
 
+    def test_bulk_convert_route_validates_scope_kinds_and_replace(self):
+        stub = ConversionsStub(self.library)
+        self.server.conversions = stub
+        status, snapshot, _ = self.request("POST", "/api/convert", {
+            "scope": "collection", "collection": self.cid, "kinds": ["gif"], "replace": False})
+        self.assertEqual(status, 202)
+        self.assertEqual(snapshot["status"], "running")
+        self.assertEqual(stub.bulk, ("collection", ["gif"], False, self.cid))
+        self.assertEqual(self.request("POST", "/api/convert", {
+            "scope": "all", "kinds": ["gif", "image"], "replace": True})[0], 409)
+        for body in ({"scope": "elsewhere", "kinds": ["gif"]},
+                     {"scope": "collection", "collection": "not-an-id", "kinds": ["gif"]},
+                     {"scope": "all", "kinds": []},
+                     {"scope": "all", "kinds": ["video"]},
+                     {"scope": "all", "kinds": ["gif"], "replace": "yes"},
+                     {"scope": "all", "kinds": ["gif"], "extra": 1}):
+            with self.subTest(body=body):
+                self.assertEqual(self.request("POST", "/api/convert", body)[0], 400)
+
+    def test_bulk_convert_cancel_route_requests_cancellation(self):
+        stub = ConversionsStub(self.library)
+        self.server.conversions = stub
+        self.request("POST", "/api/convert", {"scope": "all", "kinds": ["image"]})
+        status, snapshot, _ = self.request("POST", "/api/convert/cancel", {})
+        self.assertEqual(status, 202)
+        self.assertTrue(stub.cancelled)
+        self.assertEqual(snapshot["status"], "cancelled")
+
+    def test_bulk_conversion_uses_the_real_engine_over_http(self):
+        self.request("POST", f"/api/collections/{self.cid}/media?name=clip.gif",
+                     gif_bytes(), headers={"Content-Type": "application/octet-stream"})
+        self.request("POST", "/api/convert", {
+            "scope": "collection", "collection": self.cid, "kinds": ["gif"]})
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline:
+            _, data, _ = self.request("GET", "/api/state")
+            if data["conversion"]["job"]["status"] not in ("queued", "running"):
+                break
+            time.sleep(.05)
+        job = data["conversion"]["job"]
+        self.assertEqual(job["status"], "completed", job["message"])
+        self.assertEqual(job["completed"], 1)
+        self.assertEqual([row["kind"] for row in self.library.playlist(self.cid)], ["webp"])
+
     def test_upload_auto_converts_gifs_when_setting_is_on(self):
         stub = ConversionsStub(self.library)
         self.server.conversions = stub
@@ -302,3 +365,117 @@ class WebTests(WebCase):
         self.assertEqual(status, 507)
         self.assertIn("free space", data["error"])
         self.assertEqual(list(self.paths.uploads.iterdir()), [])
+
+
+class WebAssetTests(unittest.TestCase):
+    """The shipped page, stylesheet and script must still agree with each other."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html = (WEB / "index.html").read_text(encoding="utf-8")
+        cls.css = (WEB / "style.css").read_text(encoding="utf-8")
+        cls.js = (WEB / "app.js").read_text(encoding="utf-8")
+
+    def test_every_element_id_is_unique_and_present_for_the_script(self):
+        ids = re.findall(r'id="([^"]+)"', self.html)
+        self.assertEqual(len(ids), len(set(ids)), "duplicate element ids")
+        used = set(re.findall(r'\$\("([^"]+)"\)', self.js))
+        self.assertEqual(sorted(used - set(ids)), [], "script reads missing element ids")
+        self.assertEqual(sorted(set(re.findall(r'id="([^"]+)"', self.html)) - used - {
+            "collections-view", "folder-view", "convert-view", "settings-view",
+            "login-title", "login-help", "convert-heading", "upload-heading",
+            "library-convert-heading", "settings-title"}), [],
+            "unreferenced element ids")
+
+    def test_the_content_security_policy_has_no_inline_script_or_style_to_catch(self):
+        self.assertNotIn("style=", self.html)
+        self.assertNotRegex(self.html, r"<\w+[^>]*\son[a-z]+=")
+        for script in re.findall(r"<script([^>]*)>", self.html):
+            self.assertIn('src="/app.js"', script)
+        self.assertEqual(re.findall(r"<style", self.html), [])
+
+    def test_every_bulk_conversion_action_is_offered_by_name(self):
+        labels = re.findall(r'data-kinds="([^"]+)"', self.html)
+        self.assertIn("gif", labels)
+        self.assertIn("image", labels)
+        self.assertIn("gif,image", labels)
+        # Both the per-collection and the library-wide views offer all three.
+        for kinds in ("gif", "image", "gif,image"):
+            self.assertGreaterEqual(labels.count(kinds), 2, kinds)
+        for text in ("Convert GIFs", "Convert images", "Convert all supported"):
+            self.assertGreaterEqual(self.html.count(text), 2, text)
+
+    def test_progress_reporting_names_every_count_the_job_maintains(self):
+        for element in ("job-progress", "job-state", "job-scope", "job-total", "job-done",
+                        "job-failed", "job-skipped", "job-message", "job-cancel",
+                        "job-details", "job-failures"):
+            self.assertIn('id="%s"' % element, self.html)
+        self.assertIn('role="status"', self.html)
+        self.assertIn('aria-live="polite"', self.html)
+
+    def test_the_hidden_workspace_and_destructive_actions_stay_explicit(self):
+        self.assertIn("Delete collection", self.html)
+        self.assertIn("confirm(", self.js)
+        # Every interactive control is a real button so keyboard users can reach it.
+        self.assertNotRegex(self.html, r"<div[^>]*onclick")
+
+class WebAccessibilityTests(unittest.TestCase):
+    """Structural checks that stand in for eyeballing: names, labels and targets."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.parser = None
+        cls.html = (WEB / "index.html").read_text(encoding="utf-8")
+        cls.elements = []
+        outer = cls
+
+        class Collector(HTMLParser):
+            def handle_starttag(self, tag, attrs):
+                outer.elements.append((tag, dict(attrs)))
+
+            def handle_startendtag(self, tag, attrs):
+                outer.elements.append((tag, dict(attrs)))
+
+        Collector().feed(cls.html)
+
+    def attributes(self, tag):
+        return [attrs for name, attrs in self.elements if name == tag]
+
+    def test_every_control_has_an_accessible_name(self):
+        labelled = set(re.findall(r'<label[^>]*for="([^"]+)"', self.html))
+        for attrs in self.attributes("input"):
+            if attrs.get("type") in ("hidden",):
+                continue
+            name = attrs.get("aria-label") or attrs.get("id") in labelled
+            self.assertTrue(name, "unlabelled input %r" % attrs)
+        for attrs in self.attributes("select"):
+            self.assertTrue(attrs.get("aria-label") or attrs.get("id") in labelled,
+                            "unlabelled select %r" % attrs)
+        for attrs in self.attributes("button"):
+            self.assertNotIn("onclick", attrs)
+
+    def test_every_button_has_visible_text_or_an_aria_label(self):
+        for match in re.finditer(r"<button([^>]*)>(.*?)</button>", self.html, re.S):
+            attributes, inner = match.group(1), match.group(2).strip()
+            self.assertTrue("aria-label" in attributes or inner,
+                            "unnamed button: %s" % match.group(0)[:90])
+        for attrs in self.attributes("img"):
+            self.assertIn("alt", attrs)
+
+    def test_bulk_actions_are_labelled_and_not_icon_only(self):
+        for match in re.finditer(r'<button[^>]*data-kinds="([^"]+)"[^>]*>([^<]+)</button>', self.html):
+            self.assertTrue(match.group(2).strip(), match.group(1))
+
+    def test_responsive_and_focus_styles_exist(self):
+        css = (WEB / "style.css").read_text(encoding="utf-8")
+        self.assertIn(":focus-visible", css)
+        self.assertIn("overflow-wrap:anywhere", css)
+        self.assertIn("@media (max-width:580px)", css)
+        self.assertIn("button:disabled", css)
+
+    def test_dangerous_actions_are_marked_and_confirmed(self):
+        danger = [attrs for attrs in self.attributes("button") if attrs.get("class") == "danger"]
+        self.assertTrue(danger)
+        js = (WEB / "app.js").read_text(encoding="utf-8")
+        self.assertIn("confirm(", js)
+        self.assertIn("Delete collection", self.html)
