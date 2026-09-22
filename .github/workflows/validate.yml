@@ -22,6 +22,8 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Fetch external Places package source
+        run: git clone https://github.com/csd113/Places.git "$RUNNER_TEMP/places"
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
@@ -31,7 +33,7 @@ jobs:
         run: python -m pip install -r apps/vitrallis-media-carousel/requirements.txt
       - name: Validate schema, catalog, pinned hashes and example manifest
         run: |
-          python tools/validate_catalog.py --catalog apps.json --package examples/hello-vitrallis
+          python tools/validate_catalog.py --source-repo csd113/Places="$RUNNER_TEMP/places" --catalog apps.json --package examples/hello-vitrallis
           python tools/validate_catalog.py --package examples/hello-rust
       - name: Native Rust application validation
         env:

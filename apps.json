@@ -459,8 +459,8 @@
     {
       "id": "io.vitrallis.liminalrust",
       "installable": true,
-      "name": "Liminal",
-      "version": "0.1.0",
+      "name": "Places",
+      "version": "0.3.1",
       "runtime": "rust",
       "binaries": {
         "armv7-unknown-linux-gnueabihf": "bin/armv7-unknown-linux-gnueabihf/app"
@@ -473,8 +473,8 @@
       "description": "A native first-person walking game through three quiet, decaying residential interiors.",
       "compatibility_notes": "Requires ARMv7 hard-float Linux, glibc 2.36+, SDL2 2.26.5+, Mali/Lima OpenGL ES 2.0 and an X11 session.",
       "source": {
-        "repository": "csd113/Vitrallis-Apps",
-        "commit": "9db9a7a8044c11e21cb435ee38cff79f81accd96",
+        "repository": "csd113/Places",
+        "commit": "1932dbb559029dc33069b1d02e89d65e2b4fd38c",
         "path": "apps/liminal-rust"
       },
       "files": [
@@ -485,18 +485,18 @@
         },
         {
           "path": "CHANGELOG.md",
-          "size": 32636,
-          "sha256": "ee5e2dab73456e76e8253c5b4ae1d23874a34b82268241502518750491a2b01a"
+          "size": 37948,
+          "sha256": "07cfee26b57f78f8e6e66e34ff64a7d484180a35bee9413b5638683da08007bf"
         },
         {
           "path": "Cargo.lock",
           "size": 12337,
-          "sha256": "48e8e7c2863c5441fae56800d7646432a5d96a3ccb98b67b2d32c2e102ed4d25"
+          "sha256": "8f607d76e06ea712a2b19eaec3109ef3830d5632b5dfb4a01d76aab37b2aacec"
         },
         {
           "path": "Cargo.toml",
-          "size": 590,
-          "sha256": "86b0e3069087474cb3e960090373ee1090f291a6627265f36e5b3f2ee2e3302b"
+          "size": 582,
+          "sha256": "48e7453eb26aa9aa1ed1ccc1435f23aaac774db8e2300b4e172c450f504a67ec"
         },
         {
           "path": "LICENSE",
@@ -510,8 +510,8 @@
         },
         {
           "path": "README.md",
-          "size": 3936,
-          "sha256": "57a7a2c33977fe10cc7022554a32625a4849e87372d1e4f4360bcf093f161ed3"
+          "size": 4115,
+          "sha256": "0743148684f2f692b8fd78fbd43e38a58ca06ac736193d86aeda7cf748e3f40d"
         },
         {
           "path": "THIRD_PARTY_LICENSES.txt",
@@ -520,8 +520,8 @@
         },
         {
           "path": "app.toml",
-          "size": 249,
-          "sha256": "c8c34196a145c2b94dfed6565b6e34bb02b406f6f7f5874f8188c87a497481ec"
+          "size": 248,
+          "sha256": "013fd5423bcd2d52ea0d63d2e932c020a2ff48d083c277e72ad17a1c87150c13"
         },
         {
           "path": "assets/levels/after_the_leak.json",
@@ -532,6 +532,11 @@
           "path": "assets/levels/level1.json",
           "size": 53756,
           "sha256": "ea782b73a694f137cc4f15f2467efc94e19101c9c94c161d37a24476666f4605"
+        },
+        {
+          "path": "assets/levels/lighting_diagnostic.json",
+          "size": 10581,
+          "sha256": "c96a033186a02fd2503c58c00b893b3aa1cd03378e706f484e00380c7744f63b"
         },
         {
           "path": "assets/levels/prop_showcase.json",
@@ -547,6 +552,11 @@
           "path": "assets/levels/quiet_apartments.json",
           "size": 45134,
           "sha256": "649cc7808f1d7618f1deca7be2f7127c84151da70d1a23ca2d20f03565238e33"
+        },
+        {
+          "path": "assets/levels/rendering_diagnostic.json",
+          "size": 3424,
+          "sha256": "13edfd04f7a8e709003afeb12d33e202772f09d0e29808e42fe7fad05a0b1d5a"
         },
         {
           "path": "assets/levels/test_room.json",
@@ -690,8 +700,8 @@
         },
         {
           "path": "level-editor/README.md",
-          "size": 12252,
-          "sha256": "2b537af2bea9bfe7168909f39b7fade7098cd97da9fec847a5e8951c1b61003c"
+          "size": 13495,
+          "sha256": "a6c4adcf8f56a1e7dda10f3e8315adc0c648c6c65949e8d5abcd766b6928604d"
         },
         {
           "path": "level-editor/assets/thumbs/armchair.png",
@@ -825,8 +835,8 @@
         },
         {
           "path": "level-editor/js/geometry.js",
-          "size": 42627,
-          "sha256": "fe8f700cb5a67f44e174587ea6c50557d5d6ee4adf33bcbb5fb1a8e53c30f944"
+          "size": 43311,
+          "sha256": "9e3d61f07a060840b280b612c1c66ae5542d414f1ed8493ed03e1ad9dfe72378"
         },
         {
           "path": "level-editor/js/history.js",
@@ -845,23 +855,23 @@
         },
         {
           "path": "level-editor/js/lighting.js",
-          "size": 13823,
-          "sha256": "800143ff198b543f9db820a44089cbd8e38f97e1a66eeeca8afd3b3e65eeb7c8"
+          "size": 18105,
+          "sha256": "f05b512c636a6116ae208bc7296347b7be1d6f3652be7ae9436739abb64bd33f"
         },
         {
           "path": "level-editor/js/model.js",
-          "size": 27871,
-          "sha256": "915714499baf6f9a0ced60732bafea6ba316acf3be84dc0b51018034f03cc648"
+          "size": 32834,
+          "sha256": "493b1904287e2eceaf5f9e1a16d531bf5cd1ef9e52b21baaa7ecf2836f8345e2"
         },
         {
           "path": "level-editor/js/ops.js",
-          "size": 22711,
-          "sha256": "a332a713fb1664d071f59d11ccdc3c5ace3456d0b27e152e5bf854b5b32f5de4"
+          "size": 23509,
+          "sha256": "8466155362f3d01c65b2a82497a720090f44715faaaab37f27627606affdb257"
         },
         {
           "path": "level-editor/js/properties.js",
-          "size": 37526,
-          "sha256": "91b43fd7df8e9803d1e50c62ea3704c881e6e3e493bbfe6a8d300e86a7fc100b"
+          "size": 41240,
+          "sha256": "b42c716b9eaa2185e2553d7c30a67fa6c12daa5a5f7e1193cb9fd96bb216531a"
         },
         {
           "path": "level-editor/js/props.js",
@@ -870,8 +880,8 @@
         },
         {
           "path": "level-editor/js/renderer.js",
-          "size": 20582,
-          "sha256": "bc5c722592c42d2b89066b211fefebe3fe45b0b31e82a11c68b50a248e459a6e"
+          "size": 21752,
+          "sha256": "4a5ac83cd46def40dbbb2099b5665ec5264274e239e46335ff16324839b8f9fe"
         },
         {
           "path": "level-editor/js/viewport3d.js",
@@ -900,18 +910,18 @@
         },
         {
           "path": "level-editor/tests/lighting-parity.test.mjs",
-          "size": 3136,
-          "sha256": "697d28019b8e43cf2f6d2fb00aac4b7b8501bbdde71a9f9e6f762e58dd888856"
+          "size": 3902,
+          "sha256": "aaeeb3c0b513d8f0c2321cf0fa1e9f4c2691e1ec5c01de22ce570b05cac7cab5"
         },
         {
           "path": "level-editor/tests/lighting.test.mjs",
-          "size": 11195,
-          "sha256": "3f2882657328dd000596b6af824efd95e1078e07efcadc8cf3e9191e2d9015e4"
+          "size": 14921,
+          "sha256": "257eb8662062f63662b2294104d2dcb77fee1617ea460fb0796bc9000609a819"
         },
         {
           "path": "level-editor/tests/model.test.mjs",
-          "size": 11267,
-          "sha256": "9aaedf86059dc31f0081ecf97f3c40f1bc1edafad38e59471a238b21d9ff09a9"
+          "size": 15433,
+          "sha256": "eb81870d2c1d5f3c04864c8b4e6942ae8d442fe3a32f58793d8e218085c10a70"
         },
         {
           "path": "level-editor/tests/ops.test.mjs",
@@ -935,8 +945,8 @@
         },
         {
           "path": "level-editor/tests/support/lighting_vectors.json",
-          "size": 13302,
-          "sha256": "39c8766c688be5abdd68e7070fe4982e478740231988548a5ff384da2859f8d5"
+          "size": 26380,
+          "sha256": "7aea3b0094b469139b985c30fa3ac7109175aa0a8147ac39046ee9ed6fe2ce5c"
         },
         {
           "path": "level-editor/tests/viewport3d.test.mjs",
@@ -954,104 +964,104 @@
           "sha256": "6d5c3b36a3b695f9c2ea4e77f9549fcfff36c18a77c1eaedd12613f9ea3528aa"
         },
         {
-          "path": "liminal-design.txt",
-          "size": 34678,
-          "sha256": "5e5ea4ad16574c106cb6b63582e10c2cafbe2c492724704ea3dd482dd407fa7c"
-        },
-        {
           "path": "src/bench.rs",
-          "size": 22008,
-          "sha256": "3278fa8893b5f37ba481b9d8c325667e0a8cadd6f89faaab835e6d47a5698202"
+          "size": 23713,
+          "sha256": "35b01d408407688ddb7f9589aa96b28a8672e6dbc0b4e2ceb906cb08c5ec622f"
         },
         {
           "path": "src/collision.rs",
-          "size": 13049,
-          "sha256": "bb6f4c34e640ab81e97a0232f358b3a06e499d7c8d37a7b52f83924086c06fc6"
+          "size": 13180,
+          "sha256": "498cbef54bef1664e68d7d895bf4f1c771684abf438d781a96bd6052bd23f310"
         },
         {
           "path": "src/font.rs",
-          "size": 10404,
-          "sha256": "e9fcf1479474eca66f8ec91781e5897a2872e010372e6748bf48bba2ca10d12c"
+          "size": 10426,
+          "sha256": "59137bf59170d25bf48d4d3d7c37704790a2c446ca67e566520562977aed666a"
         },
         {
           "path": "src/game.rs",
-          "size": 10883,
-          "sha256": "3cbae97f21620a13a648324f93b904d988d9fe1964a4f2ddc14e260333d57aee"
+          "size": 11018,
+          "sha256": "d7c77ef5c45df122b3b79a2cfa558671a5fdad04225f51a2921d85e9ed6bf8d9"
         },
         {
           "path": "src/gltf.rs",
-          "size": 31688,
-          "sha256": "fb1aaedfeba9f9c162f67ddf3bfe5bf109919f2638a5a451f15f3264f75686d9"
+          "size": 34020,
+          "sha256": "cadb72b5fc8819ab8f98ce176f8382285ed25b7fd17f2d7d65b71fe029312aff"
         },
         {
           "path": "src/input.rs",
-          "size": 11104,
-          "sha256": "0a102d66572241741124e4d790dfdca52d4cd4aa6e3332ee94eed5bd075931c4"
+          "size": 12767,
+          "sha256": "196a967274432ed022f56e344d0ebb65d9dc9ee3e3abadf4efb08a4078ec8bd2"
         },
         {
           "path": "src/level.rs",
-          "size": 44332,
-          "sha256": "79cfd2629f041daa9a597fd85964de55f428a4129eb10b093e453e43012969fd"
+          "size": 49844,
+          "sha256": "11d9a5d91849887042b92b223e24dc53e8ce5a2e9cfed281cb9cb1e0ea8a1217"
         },
         {
           "path": "src/lighting.rs",
-          "size": 56055,
-          "sha256": "1bc0c3b0682799e4acec08aacf7f80132fcd104a4a55a97ae2289f746b4ab929"
+          "size": 83811,
+          "sha256": "e79153e1e68d0caa7979772d3bb7a6b960381293b1410c6d26b5e566c5e8681d"
         },
         {
           "path": "src/lighting_audit.rs",
-          "size": 54648,
-          "sha256": "47540ecb78bdcfb33e25ae10388a57c658a6fffdbe5753ca8b265b563c1a2c6c"
+          "size": 56984,
+          "sha256": "b909d0d381dbbba6f8bf884e2506eb144c801bb7edd592c013fa354ac36b9525"
         },
         {
           "path": "src/lighting_audit_cases.rs",
-          "size": 63477,
-          "sha256": "408a172b7a15d94a702814696248be4f2816d36b3d1b460519e244fe8786a873"
+          "size": 72458,
+          "sha256": "8bc53986c2eea2975f6250ab284e862ce77c1e462abb287f9f8b0aeebc680ef5"
         },
         {
           "path": "src/lighting_parity.rs",
-          "size": 11249,
-          "sha256": "20cde0af698e508a6e39f978cfccfd88eb0a9908f2daaadbe64ad97170e3c05d"
+          "size": 15747,
+          "sha256": "07805cd4b7a719fa602fda0f47c2d85bb069d6af1f92a14700e12736711d459f"
         },
         {
           "path": "src/loader.rs",
-          "size": 99379,
-          "sha256": "423886d4ad18d3003f267959dbc2d5df8509b8ca5e306d593eb0a8c370829709"
+          "size": 111808,
+          "sha256": "a081566cd20a8523ebd90c8d82829441dd6123d9a21dfff1d5164c3e380f0ae8"
         },
         {
           "path": "src/main.rs",
-          "size": 33060,
-          "sha256": "dd0c9ded0c738261f4c7fffc9ab0065af71d3e774a797c6ad54abc8955b3e9a8"
+          "size": 32657,
+          "sha256": "d5f74b68497683262431f0e6f1ceae43857a4ab1cc33a9b5535d8b154f740e95"
         },
         {
           "path": "src/perf.rs",
-          "size": 19916,
-          "sha256": "179a1fc99dca4909dbbc3e587dc6865064d7b09a9d7eae94896d03f094cbaa4d"
+          "size": 20039,
+          "sha256": "4770d7c5afa1b21d025816939f0fd7c9cb1c366a183540265cf434023650747f"
         },
         {
           "path": "src/props.rs",
-          "size": 13281,
-          "sha256": "be2645adeebe020ac83e8153c578771cea70d60c6aaa624d0fcaa9c2512607a9"
+          "size": 13499,
+          "sha256": "d903efb6082fb2f68e48b32f66484e82c734ecf439696743d1b94f8ffa4f4047"
         },
         {
           "path": "src/render.rs",
-          "size": 247334,
-          "sha256": "bb4ad748fcc7929f6b144d6d31441a31cd04b7c992830a3c05f35976ca6f6441"
+          "size": 315392,
+          "sha256": "aae52169f3e8988e709d1a2b7aa31b3c1fe596660f5d0b76ea9bb51582420348"
         },
         {
           "path": "src/settings.rs",
-          "size": 9648,
-          "sha256": "67ec0377bc82c4b68602a8467d950b5b503f45f744130a36059602e066f270d8"
+          "size": 10209,
+          "sha256": "2b931004f5650cc911255548757b3ccd64571a08f652bc5bfe4792ed1aead13f"
         },
         {
           "path": "src/spatial.rs",
-          "size": 43422,
-          "sha256": "343b3ae2b29520a3bd60082c15f8f7468c0c5608cd2902476d936f9935c57c5d"
+          "size": 43899,
+          "sha256": "a00b35b0050c2147d8ac0fcfdf37086c615bb957646f4eacc6d6e43d493d8cac"
+        },
+        {
+          "path": "src/test_support.rs",
+          "size": 2465,
+          "sha256": "d7b3f346c1328c65ee2c297a4b29b5b1b039ed7c55541782d6789beceae7f770"
         },
         {
           "path": "src/ui.rs",
-          "size": 20807,
-          "sha256": "1eed9445d2bea256a091cab9f8256a074363cf08691f1e8f566f8e0c3b839237"
+          "size": 20877,
+          "sha256": "97f6d43dbef18d3097d7ab1fceb08ae933b7f3441b49d299796a714a821f41a7"
         },
         {
           "path": "tools/bench/README.md",

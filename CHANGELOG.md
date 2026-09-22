@@ -10,6 +10,7 @@ and place new records in the newest date section. See the
 
 ## 2026-09-21
 
+- Updated `io.vitrallis.liminalrust` `0.3.1`: Move the Places package to its standalone repository while preserving App Center's stable application ID and native ARMv7 package contract. [App changelog](https://github.com/csd113/Places/blob/main/apps/liminal-rust/CHANGELOG.md).
 - Added `io.vitrallis.liminalrust` `0.1.0`: Publish the native ARMv7 walking game with three residential levels, material and lighting support, and installable App Manager metadata. [App changelog](apps/liminal-rust/CHANGELOG.md).
 - Updated `io.vitrallis.mediacarousel` `0.3.0`: Add animated WebP playback, validated GIF conversion, bounded media caching and streamed folder downloads. [App changelog](apps/vitrallis-media-carousel/CHANGELOG.md).
 - Updated `io.vitrallis.bitcoindashboard` `1.2.5`: Correct the publication guidance and include the project license. [App changelog](apps/bitcoin-dashboard/CHANGELOG.md).
