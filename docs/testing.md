@@ -43,7 +43,10 @@ same names do not interfere with one another.
   set -eu
   export PYTHONDONTWRITEBYTECODE=1
   export VITRALLIS_REQUIRE_GUI=1
-  python3 tools/validate_catalog.py --catalog apps.json --package examples/hello-vitrallis
+  places_checkout="$(mktemp -d)"
+  git clone https://github.com/csd113/Places.git "$places_checkout"
+  source_mapping="csd113/Places=$places_checkout"
+  python3 tools/validate_catalog.py --source-repo "$source_mapping" --catalog apps.json --package examples/hello-vitrallis
   python3 -m unittest discover -s tools/tests -v
   python3 -m unittest discover -s examples/hello-vitrallis/tests -v
   python3 tools/validate_catalog.py --package examples/hello-rust
@@ -76,7 +79,7 @@ as a guarantee that every GUI test ran. Linux/Xvfb CI exercises that guard.
 ## Check committed release history
 
 ```sh
-python3 tools/validate_changelogs.py
+python3 tools/validate_changelogs.py --source-repo "csd113/Places=/path/to/Places"
 ```
 
 For a completed, committed feature branch, fetch the comparison branch and check
@@ -84,7 +87,7 @@ against its full commit ID:
 
 ```sh
 git fetch origin main
-python3 tools/validate_changelogs.py --base "$(git rev-parse origin/main)"
+python3 tools/validate_changelogs.py --source-repo "csd113/Places=/path/to/Places" --base "$(git rev-parse origin/main)"
 ```
 
 `--base` must be an ancestor of the checked head. If `origin/main` has advanced

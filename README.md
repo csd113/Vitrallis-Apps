@@ -50,7 +50,7 @@ manifest v1**. Runtime requirements and device verification vary by app; see
 | [Vitrallis Debug](apps/vitrallis-debug/README.md) | Offline network, CPU, temperature, and memory diagnostics for the PocketCHIP. |
 | [Vitrallis Media Carousel](apps/vitrallis-media-carousel/README.md) | Native media slideshow with LAN uploads, named collections and shared settings. |
 | [Carousel-Rust](apps/carousel-rust/README.md) | Rust media carousel sharing the Python photo library; requires the Shell native Rust runtime. |
-| [Liminal](apps/liminal-rust/README.md) | A native first-person walking game through three quiet, decaying residential interiors. |
+| [Places](https://github.com/csd113/Places) | A native first-person walking game through three quiet, decaying residential interiors. |
 | [Firefly Field](apps/firefly-field/README.md) | A calm, fullscreen pixel-art firefly meadow rendered through SDL2. |
 
 [`apps.json`](apps.json) records advertised versions, publisher enablement, and

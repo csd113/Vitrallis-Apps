@@ -18,6 +18,8 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Fetch external Places package source
+        run: git clone https://github.com/csd113/Places.git "$RUNNER_TEMP/places"
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
@@ -29,7 +31,8 @@ jobs:
           import os
           import subprocess
           import sys
-          command = [sys.executable, 'tools/validate_changelogs.py']
+          command = [sys.executable, 'tools/validate_changelogs.py',
+                     '--source-repo', f"csd113/Places={os.environ['RUNNER_TEMP']}/places"]
           base = os.environ.get('CHANGELOG_BASE', '')
           if base and base != '0' * 40:
               command.extend(['--base', base])
