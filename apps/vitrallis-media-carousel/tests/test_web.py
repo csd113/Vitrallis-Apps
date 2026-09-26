@@ -266,7 +266,14 @@ class WebTests(WebCase):
         self.assertNotEqual(old_token, replacement.token)
 
     def test_worker_cap_and_close_stalled_headers(self):
-        connections = [socket.create_connection(("127.0.0.1", self.server.port), timeout=2) for _ in range(7)]
+        connections = []
+        for _ in range(7):
+            try:
+                connections.append(socket.create_connection(("127.0.0.1", self.server.port), timeout=2))
+            except ConnectionResetError:
+                # A saturated listener may reject the connection during accept.
+                pass
+        self.assertTrue(connections)
         try:
             for connection in connections:
                 try:
@@ -298,7 +305,11 @@ class WebTests(WebCase):
                 for accepted in self.server.http.sockets:
                     self.server.http.sockets[accepted] = 0
             self.server.http.service_actions()
-            self.assertEqual(connection.recv(1024), b"")
+            try:
+                self.assertEqual(connection.recv(1024), b"")
+            except ConnectionResetError:
+                # Closing a socket with unread request bytes can send RST.
+                pass
         finally:
             connection.close()
 

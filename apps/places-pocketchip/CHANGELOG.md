@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.1 — 2026-09-26
+
+- Keep fitted decal and fixture artwork at power-of-two dimensions in the
+  catalog-sized PocketCHIP package.
+- Repair the pool ceiling's wrapped texture edge after downscaling so repeated
+  ceiling tiles meet without a visible seam.
+- Rebuild the ARMv7 package binary with the matching patch version.
+
 ## 0.11.0 — 2026-09-25
 
 - Package the PocketCHIP edition for App Manager under the existing Places app

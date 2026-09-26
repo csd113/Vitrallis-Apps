@@ -1,6 +1,6 @@
 # Places for PocketCHIP
 
-**0.11.0** · `io.vitrallis.liminalrust` · native Rust · PocketCHIP ARMv7.
+**0.11.1** · `io.vitrallis.liminalrust` · native Rust · PocketCHIP ARMv7.
 [Release notes](CHANGELOG.md).
 
 Explore an office, empty pool and unfinished interior in a first-person walking
