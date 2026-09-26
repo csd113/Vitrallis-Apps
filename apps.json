@@ -458,7 +458,7 @@
     },
     {
       "id": "io.vitrallis.liminalrust",
-      "installable": false,
+      "installable": true,
       "name": "Places",
       "version": "0.11.1",
       "runtime": "rust",
@@ -471,10 +471,10 @@
         "storage": true
       },
       "description": "A native first-person exploration game through an office, empty pool and unfinished interior on PocketCHIP.",
-      "compatibility_notes": "Requires PocketCHIP ARMv7 hard-float Linux, glibc 2.36+, SDL2 2.32+, Mali/Lima OpenGL ES 2.0 and X11. App Manager install, update and repair of this edition still need device verification.",
+      "compatibility_notes": "Requires PocketCHIP ARMv7 hard-float Linux, glibc 2.36+, SDL2 2.32+, Mali/Lima OpenGL ES 2.0 and X11. In Details, trust the csd113/Places source before installing. Native Rust installation, update and repair use the verified Shell App Manager lifecycle.",
       "source": {
-        "repository": "csd113/Vitrallis-Apps",
-        "commit": "86c1fe4b908a34ef99cdc0fe1054d2711a8260ec",
+        "repository": "csd113/Places",
+        "commit": "b208b4647d20b1e2a9cf75f733afe1d207b8301d",
         "path": "apps/places-pocketchip"
       },
       "files": [
