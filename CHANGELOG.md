@@ -11,7 +11,6 @@ and place new records in the newest date section. See the
 ## 2026-09-26
 
 - Updated `io.vitrallis.liminalrust` `0.11.1`: Replace the older Liminal package with the PocketCHIP edition of Places, including its ARMv7 build, baked lighting and catalog-sized artwork with repaired texture seams. Installation remains disabled pending App Manager lifecycle verification. [App changelog](apps/places-pocketchip/CHANGELOG.md).
-- Updated `io.vitrallis.liminalrust` `0.11.0`: Replace the older Liminal package with the PocketCHIP edition of Places, including its ARMv7 build, baked lighting and device-sized artwork. Installation remains disabled pending App Manager lifecycle verification. [App changelog](apps/places-pocketchip/CHANGELOG.md).
 - Updated `io.vitrallis.mediacarousel` `0.4.1`: Add bulk WebP conversion and improve playback, settings, upload handling, streaming downloads and service shutdown. [App changelog](apps/vitrallis-media-carousel/CHANGELOG.md).
 
 ## 2026-09-21
