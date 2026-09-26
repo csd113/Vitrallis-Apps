@@ -1102,7 +1102,10 @@ class SourceHygieneTests(unittest.TestCase):
 
     def test_readme_documents_controls_and_prerequisites(self):
         readme = (PACKAGE / "README.md").read_text(encoding="utf-8")
-        for needle in ("## Controls", "## Desktop prerequisites", "settings.json"):
+        # The PocketCHIP edition documents the cross-compile recipe instead of a
+        # desktop prerequisites heading; the SDL2 development dependency is
+        # still the prerequisite the test is about.
+        for needle in ("## Controls", "For a quick look on a development machine", "settings.json"):
             self.assertIn(needle, readme)
         self.assertIn("SDL2", readme)
 

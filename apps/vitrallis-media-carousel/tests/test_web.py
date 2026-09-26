@@ -158,6 +158,13 @@ class WebTests(WebCase):
         self.assertEqual(status, 413)
         self.assertEqual(list(self.paths.uploads.iterdir()), [])
 
+    def test_empty_upload_is_rejected_as_an_empty_file(self):
+        status, data, _ = self.request("POST", f"/api/collections/{self.cid}/media?name=x.png", b"",
+            headers={"Content-Type": "application/octet-stream", "Content-Length": "0"})
+        self.assertEqual(status, 400)
+        self.assertIn("empty", data["error"])
+        self.assertEqual(list(self.paths.uploads.iterdir()), [])
+
     def test_duplicate_length_and_chunked_upload_rejected(self):
         for extra in ("Content-Length: 10\r\nContent-Length: 11", "Content-Length: 10\r\nTransfer-Encoding: chunked"):
             with socket.create_connection(("127.0.0.1", self.server.port), timeout=3) as connection:
@@ -188,6 +195,47 @@ class WebTests(WebCase):
             time.sleep(.01)
         self.assertEqual(list(self.paths.uploads.iterdir()), [])
         self.assertEqual(self.library.playlist(self.cid), [])
+
+    def test_stopping_upload_reports_503_instead_of_a_deadline(self):
+        connection = self.begin_partial_upload()
+        try:
+            self.server.stopping.set()
+            connection.sendall(b"more bytes")
+            deadline, data = time.monotonic() + 5, b""
+            while b"\r\n\r\n" not in data and time.monotonic() < deadline:
+                chunk = connection.recv(4096)
+                if not chunk:
+                    break
+                data += chunk
+            self.assertIn(b"503", data.split(b"\r\n", 1)[0])
+        finally:
+            self.server.stopping.clear()
+            connection.close()
+
+    def test_asset_query_strings_are_public_and_served(self):
+        status, raw, _ = self.request("GET", "/style.css?v=3", authorized=False)
+        self.assertEqual(status, 200)
+        self.assertTrue(raw.startswith(b":root"))
+
+    def test_json_content_type_with_charset_is_accepted(self):
+        status, data, _ = self.request(
+            "PUT", "/api/settings", json.dumps(self.settings.snapshot()).encode(),
+            headers={"Content-Type": "application/json; charset=utf-8"})
+        self.assertEqual(status, 200)
+        self.assertEqual(data["image_seconds"], self.settings.snapshot()["image_seconds"])
+
+    def test_host_header_must_be_directly_reachable(self):
+        with socket.create_connection(("127.0.0.1", self.server.port), timeout=3) as connection:
+            request = (f"GET /api/state HTTP/1.1\r\nHost: 0.0.0.0:{self.server.port}\r\n"
+                       f"Authorization: Bearer {self.server.token}\r\n\r\n")
+            connection.sendall(request.encode())
+            data, deadline = b"", time.monotonic() + 5
+            while b"\r\n\r\n" not in data and time.monotonic() < deadline:
+                chunk = connection.recv(4096)
+                if not chunk:
+                    break
+                data += chunk
+            self.assertIn(b"403", data.split(b"\r\n", 1)[0])
 
     def test_two_upload_slots_allow_parallel_upload_and_bound_third(self):
         connection = self.begin_partial_upload()

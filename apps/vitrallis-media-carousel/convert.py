@@ -237,7 +237,7 @@ class Conversions:
                              item=first["id"], name=converted_name(first["name"]),
                              collection=candidates[0][0], converter=self.job["converter"])
             coordinator = threading.Thread(target=self._work, name="carousel-conversion",
-                                           args=(self.cancel, candidates))
+                                           args=(self.cancel, candidates), daemon=True)
             self.threads = [coordinator]
             coordinator.start()
         return self.snapshot()
@@ -252,6 +252,8 @@ class Conversions:
 
     def close(self):
         with self.lock:
+            if self.closed:
+                return
             self.closed = True
             self.cancel.set()
             threads, children = list(self.threads), list(self.children)
@@ -261,7 +263,10 @@ class Conversions:
         for thread in threads:
             thread.join(timeout=max(0, deadline - time.monotonic()))
         if any(thread.is_alive() for thread in threads):
-            raise RuntimeError("Conversion worker did not stop within 5 seconds")
+            # A C-level Pillow encode cannot observe cancellation. The workers are
+            # daemon threads, every publish is transactional and any staging file
+            # is reclaimed at the next start, so report instead of blocking exit.
+            print("event=conversion status=stopping", file=sys.stderr)
 
     # ---- internal publication ------------------------------------------
 
@@ -341,7 +346,7 @@ class Conversions:
                 return next(cursor)
 
         workers = [threading.Thread(target=self._drain, name="carousel-conversion-item",
-                                    args=(cancel, plan, take))
+                                    args=(cancel, plan, take), daemon=True)
                    for _ in range(max(1, min(self.workers, len(plan))))]
         for worker in workers:
             worker.start()

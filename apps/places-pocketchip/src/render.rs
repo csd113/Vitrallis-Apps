@@ -20,6 +20,7 @@ mod dynamic;
 mod fixtures;
 mod geometry;
 mod mesh;
+mod prop_atlas;
 mod props;
 mod renderer;
 mod view;
@@ -54,6 +55,7 @@ pub use mesh::{
     spatial_cell_grid,
 };
 use mesh::{MeshChunk, MeshPacker, finish_indexed_mesh};
+pub use prop_atlas::{AtlasPlacement, PropAtlas};
 pub use props::PropMeshBatch;
 pub use renderer::{LevelBuildStats, RenderStats, Renderer};
 
@@ -1154,8 +1156,13 @@ fn wall_coverage(index: usize, wall: &WallDef, surfaces: &LevelSurfaces<'_>) -> 
 /// own surface already draws that plane, so the cross-section must not be
 /// emitted there: two coplanar faces at the same depth are exactly the
 /// z-fighting the coincidence resolution exists to remove. Every wall whose
-/// volume contains the plane contributes its own footprint rectangle, and the
-/// caller subtracts their union from the exposed face.
+/// volume contains the plane contributes the solid part of its own footprint,
+/// and the caller subtracts their union from the exposed face.
+///
+/// A perpendicular abutting wall contributes **per solid slice**, so a doorway
+/// or window cut through it leaves the strip of this wall's end face that shows
+/// through the opening exposed. Using the abutting wall's whole length for
+/// every slice would delete that strip and leave a void in the opening.
 pub(in crate::render) fn cross_section_covered(
     coverages: &[WallCoverage],
     axis: WallAxis,
@@ -1184,8 +1191,20 @@ pub(in crate::render) fn cross_section_covered(
         } else {
             coverage.length
         };
-        for (_, _, bottom, top) in &coverage.solids {
-            covered.push((across.0, across.1, *bottom, *top));
+        // A parallel wall's slices run along the plane's normal, so its own
+        // thickness is the whole across span; a perpendicular wall's slices run
+        // along the across direction and only their own span is solid.
+        let perpendicular = coverage.axis != axis;
+        for (along_low, along_high, bottom, top) in &coverage.solids {
+            let (low, high) = if perpendicular {
+                (along_low.max(across.0), along_high.min(across.1))
+            } else {
+                (across.0, across.1)
+            };
+            if high - low <= WALL_COINCIDENCE_EPS {
+                continue;
+            }
+            covered.push((low, high, *bottom, *top));
         }
     }
     covered
@@ -1601,14 +1620,18 @@ fn add_wall_cross_quad(
     let (t0, t1) = thickness;
     // The four corners are supplied in the order (low thickness, high
     // thickness) at the bottom, then the same two at the top, and each keeps
-    // its own baked colour.
+    // its own baked colour. They are paired into the `a -> b -> c -> d` walk
+    // that faces the *positive* length direction on both axes: X runs its
+    // cross section down the thickness axis, Z runs it up, so the same
+    // `facing_positive` decision yields the same visible side whichever axis
+    // the wall's length runs along.
     let (a, b, c, d) = match axis {
         // Length runs along X, so the cross section lies in the Z/Y plane.
         WallAxis::X => (
-            ([at, bottom, t0], corners[0]),
             ([at, bottom, t1], corners[1]),
-            ([at, top, t1], corners[2]),
+            ([at, bottom, t0], corners[0]),
             ([at, top, t0], corners[3]),
+            ([at, top, t1], corners[2]),
         ),
         // Length runs along Z, so the cross section lies in the X/Y plane.
         WallAxis::Z => (

@@ -4,7 +4,7 @@ A locally managed slideshow for the screen running Vitrallis. Upload from your
 phone/computer, organize collections, then select one in the native Python app.
 Playback does not open a browser.
 
-**0.4.0** · `io.vitrallis.mediacarousel` · manifest v1.
+**0.4.1** · `io.vitrallis.mediacarousel` · manifest v1.
 
 [Changelog](CHANGELOG.md).
 
@@ -144,12 +144,23 @@ preparation failures fall back to the bounded streaming decoder; preparation has
 decoder work buffers, queued frames, or renderer textures. Smoothness under
 background decoding still requires a device performance check. Queued work is
 bounded: six decoded frames may sit ahead of the presentation loop, and video
-buffering is bounded by bytes as well as frame count.
+buffering is bounded by bytes as well as frame count. Navigating onto an animation
+whose preparation is still running cancels that preparation and streams the item in
+the foreground instead, which is correct at the cost of one extra decode.
+
+When the hardware EGL path is active, animation frames keep their native resolution
+(within the one-million-pixel limit) and are minified with linear filtering without
+mipmaps; a very large animation can therefore alias on the small panel. The Tk
+fallback performs one bilinear downscale at decode time. Confirm the GPU path on
+the target device.
 
 Animated PNG is rejected; use GIF, animated WebP or WebM for animation. Missing
 ffmpeg or ffprobe disables WebM with an explanation while images, GIF and WebP
 continue working. WebM upload validation checks EBML DocType, stream metadata and a
-decoded first frame; later corruption is reported and skipped during playback.
+decoded first frame; a file with a corrupt or truncated tail can therefore play
+less than its declared duration or repeat the decodable part, but it is contained
+and never crashes or hangs playback. Later errors that the decoder does report are
+shown and skipped during playback.
 
 Settings persist and apply when a collection starts:
 
@@ -216,7 +227,10 @@ Both paths always produce correct frames and correct timing.
 Animation and video deadlines follow media time on a monotonic clock, so decoding and
 presentation work never add a new delay to every frame. Expired animation frames can
 be skipped to catch up, bounded per tick, with a resynchronisation instead of
-unlimited drift. Pause retains remaining frame time. GIFs and animated WebP are
+unlimited drift. Pause retains remaining frame time. Selecting a new item re-arms the
+presentation timer immediately, so a decoded first frame is shown without waiting for
+the previous item's timer, while a still image or paused view wakes the UI a few
+times per second instead of at frame rate. GIFs and animated WebP are
 prepared ahead of playback in a rolling window of up to **10 animations**, with an
 **8 MiB per-animation** and **32 MiB total** decoded-frame cache. Larger animations
 stream with a bounded look-ahead queue. GPU animation frames retain native resolution
@@ -234,8 +248,11 @@ conversion pipeline, background web-server startup, timestamped video decoding a
 deadline-based pacing have desktop regression coverage and local benchmarks
 (`tests/bench_media.py`); ARMv7 decode speed, hardware-acceleration availability on
 Lima/Mali, long-transfer endurance and the overlay's five-button layout still need a
-physical PocketCHIP check. The following device evidence describes the earlier
-playback implementation.
+physical PocketCHIP check. The 0.4.1 reliability, layout and download fixes have
+desktop plus headless-browser regression coverage; physical confirmation of the
+revised 480×272/400×240 layout, the >2 GiB ZIP64 download path and signal-shutdown
+behavior on the device remains outstanding. The following device evidence describes
+the earlier playback implementation.
 
 Source-run validation on an ARMv7 PocketCHIP with the current Vitrallis Shell used
 Debian 13.6, Python 3.13.5, Tk 8.6, Pillow 11.1.0 and FFmpeg 7.1.5. The native
@@ -270,7 +287,9 @@ A pre-commit failure preserves the previous document. A directory sync failure
 after replacement retains the committed state and displays a durability warning.
 Logical deletion commits before reclaiming bytes; unreachable media/incomplete
 uploads left after a crash are safely reclaimed on startup. Cleanup failures are
-reported. There are no per-frame or refresh-only metadata writes.
+reported; a leftover that fails validation (unsafe, unreadable or linked) is left
+in place with a warning instead of preventing the app from starting. There are no
+per-frame or refresh-only metadata writes.
 
 Invalid settings use defaults with a warning and preserve the original until an
 explicit successful save; unsafe/oversized settings need local administrator repair.
@@ -405,7 +424,9 @@ Download a collection in one action as a ZIP, capped at **4 GiB** of media (the
 archive size bound, checked before any bytes are sent). The archive is streamed
 straight to the client in 64 KiB chunks with no temporary file and no in-RAM
 buffer; only one folder download runs at a time, and its progress reports bytes
-received. The current library has flat logical collections, not user-controlled
+received. The browser saves the streamed archive as a Blob before writing it, so a
+download near the cap needs enough free memory on the controlling device. The
+current library has flat logical collections, not user-controlled
 filesystem folders. Original basenames are preserved; duplicate names get separate
 internal-ID subdirectories so neither file is lost. Names and IDs are validated and
 symlinks rejected before headers commit. A mid-transfer failure closes the

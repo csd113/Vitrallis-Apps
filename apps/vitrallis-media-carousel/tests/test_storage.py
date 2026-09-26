@@ -233,6 +233,22 @@ class LibraryTests(StorageCase):
         self.assertFalse(temporary.exists())
         self.assertTrue((self.paths.media / item["id"]).exists())
 
+    def test_startup_survives_an_unsafe_unreferenced_entry(self):
+        item = self.add()
+        fifo = self.paths.media / ("b" * 32)
+        os.mkfifo(fifo)
+        library = Library(self.paths)
+        self.assertTrue(fifo.exists())  # An entry that fails validation is never unlinked.
+        self.assertIn("could not be cleaned up", library.warning)
+        self.assertEqual(library.playlist(self.cid), [item])
+
+    def test_startup_survives_a_dangling_unreferenced_symlink(self):
+        link = self.paths.media / ("c" * 32)
+        link.symlink_to(self.paths.media / "missing")
+        library = Library(self.paths)
+        self.assertTrue(link.is_symlink())
+        self.assertIn("could not be cleaned up", library.warning)
+
 
 class PathTests(StorageCase):
     def test_filename_traversal_controls_and_absolute_paths(self):

@@ -1283,7 +1283,10 @@ fn emit_glass_panes(
             {
                 continue;
             }
-            let key = context.materials.key(MaterialSlot::Wall, material);
+            let key = context
+                .materials
+                .key(MaterialSlot::Wall, material)
+                .with_two_sided();
             let tile = context.materials.tile_metres(key);
             let tint = context.materials.tint(key);
             let base = wall.y;
@@ -1302,9 +1305,10 @@ fn emit_glass_panes(
                     WallAxis::Z => (x0, x1),
                 }
             };
-            // The pane sits in the middle of the wall's thickness: one surface,
-            // drawn from both sides (nothing in the world is back-face culled,
-            // and the shader flips the normal towards the viewer).
+            // The pane sits in the middle of the wall's thickness: one surface
+            // visible from both sides. Its key declares that, so every pass
+            // draws it with back-face culling disabled whichever alpha mode
+            // its material uses.
             let across = f32::midpoint(t0, t1);
             // Corners in the wall's own winding: p0 -> p1 runs along the opening
             // (u), p0 -> p3 runs up it (v).

@@ -194,6 +194,15 @@ fn parse_spawn_override(value: &str) -> Option<[f32; 4]> {
 /// When `gles` is true, requests an OpenGL ES 2.0 context (`PocketCHIP` baseline);
 /// otherwise the platform default profile is used so desktop development still
 /// works. Double buffering is always requested.
+///
+/// The window's visual is *not* requested. On this driver GLX always returns a
+/// 32-bit ARGB config even though the screen is 24-bit, which makes Xorg
+/// composite every presented frame; no combination of `SDL_VIDEO_X11_VISUALID`,
+/// `SDL_VIDEO_X11_WINDOW_VISUALID`, `SDL_VIDEO_X11_NODIRECTCOLOR`,
+/// `SDL_GL_ALPHA_SIZE=0` or explicit RGB sizes changes it (a plain `glxgears`
+/// gets the same visual). That is a property of the stack, and
+/// `docs/presentation.md` measures what it costs and records that it cannot be
+/// removed from inside the game.
 fn configure_gl_attributes(video: &VideoSubsystem, gles: bool) {
     let attr = video.gl_attr();
     attr.set_double_buffer(true);

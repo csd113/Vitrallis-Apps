@@ -201,7 +201,9 @@ class AnimationCache:
                             break
             except (OSError, ValueError, EOFError, SyntaxError, Image.DecompressionBombError):
                 # Foreground streaming reports the original media error normally.
-                frames, used = None, 0
+                # Settle the key as unfittable: a corrupt blob must not be decoded
+                # again on every worker pass while the playlist sits on a still item.
+                frames, used = NO_ROOM, 0
             with self.condition:
                 if not cancel.is_set() and key in self.plan and frames is not None:
                     self.settled.add(key)

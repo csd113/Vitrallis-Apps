@@ -65,6 +65,24 @@ class CacheTests(unittest.TestCase):
         self.assertNotIn(cache.key(playlist[0], (2, 1), True), cache.entries)
         self.assertGreaterEqual(len(calls), WINDOW - 1)
 
+    def test_a_failed_prefetch_is_settled_and_never_retried(self):
+        calls = []
+        def loader(*args):
+            calls.append(args[0]["id"])
+            raise ValueError("corrupt")
+            yield  # unreachable; keeps this a generator like a real loader
+        cache = self.cache(loader)
+        playlist = items(2)
+        cache.update(playlist, (2, 1), True)
+        self.idle(cache)
+        key = cache.key(playlist[1], (2, 1), True)
+        self.assertIn(key, cache.settled)
+        self.assertNotIn(key, cache.entries)
+        attempts = len(calls)
+        self.assertEqual(attempts, 1)
+        time.sleep(.2)
+        self.assertEqual(len(calls), attempts)
+
     def test_store_publishes_frames_the_decoder_streamed(self):
         cache = self.cache(self.frames)
         playlist = items(3)

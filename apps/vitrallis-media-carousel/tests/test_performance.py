@@ -8,7 +8,7 @@ from unittest.mock import patch
 from support import StorageCase, png_bytes
 from player import Decoder, PlaybackClock
 from settings import DEFAULTS
-from ui import App, MAX_CATCHUP, STARVED_MS
+from ui import App, MAX_CATCHUP, STARVED_MS, WAKE_MS
 
 
 class DecoderStillCacheTests(StorageCase):
@@ -306,3 +306,54 @@ class ScheduleIntervalTests(TickHarness, unittest.TestCase):
         app.services.decoder.events.put((1, "frame", "current", 0.04))
         app.playback_tick()
         self.assertEqual(app.presented, ["current"])
+
+
+class LoadItemWakeTests(unittest.TestCase):
+    """A hand-driven load must not wait out the previously scheduled poll."""
+
+    def load_app(self, poll_id):
+        app = App.__new__(App)
+        app.poll_id = poll_id
+        app.screen = "playback"
+        app.gpu_renderer = None
+        app.conversion_label = None
+        item = {"id": "item-1", "kind": "png", "name": "photo.png"}
+        app.playlist = SimpleNamespace(current=item, settings=dict(DEFAULTS),
+                                       next=lambda: item, previous=lambda: item,
+                                       upcoming=lambda: [])
+        requests = []
+        app.services = SimpleNamespace(decoder=SimpleNamespace(
+            request=lambda *args, **kwargs: requests.append((args, kwargs)) or 7))
+        app.canvas = SimpleNamespace(delete=lambda tag: None,
+                                     itemconfigure=lambda *args, **kwargs: None,
+                                     winfo_width=lambda: 480, winfo_height=lambda: 272)
+        app.image_id = 1
+        app.pause_button = SimpleNamespace(configure=lambda **kwargs: None)
+        app.requests = requests
+        app.calls = []
+        app.timers = []
+
+        def after(delay, callback):
+            app.calls.append(("after", delay, callback))
+            app.timers.append((delay, callback))
+            return "new-timer"
+
+        app.root = SimpleNamespace(
+            after=after, after_cancel=lambda tid: app.calls.append(("cancel", tid)))
+        return app
+
+    def test_hand_driven_load_restarts_the_pending_timer(self):
+        app = self.load_app("pending-timer")
+        app.advance()
+        self.assertEqual(len(app.requests), 1)
+        self.assertEqual(app.calls, [("cancel", "pending-timer"), ("after", WAKE_MS, app.poll)])
+        self.assertEqual(WAKE_MS, 4)
+        self.assertEqual(app.poll_id, "new-timer")
+        self.assertEqual(app.timers, [(WAKE_MS, app.poll)])
+
+    def test_load_inside_poll_leaves_pacing_to_poll_end(self):
+        app = self.load_app(None)
+        app.advance()
+        self.assertEqual(len(app.requests), 1)
+        self.assertEqual(app.calls, [])
+        self.assertIsNone(app.poll_id)

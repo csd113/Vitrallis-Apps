@@ -231,6 +231,49 @@ class VideoDecoderTests(StorageCase):
             self.assertIsNone(decoder.video)
 
     @unittest.skipUnless(ffmpeg_ready(), "Optional system FFmpeg unavailable")
+    def test_a_cancelled_backend_probe_leaves_the_worker_usable(self):
+        from multimedia import DetectionCancelled
+        item = self.add_video(rate=10, duration=0.4)
+        photo = self.add("photo.png", self.photo_bytes(), "png")
+        decoder = Decoder(self.library)
+        self.addCleanup(decoder.close)
+        probed = threading.Event()
+
+        def cancelled(codec, ffmpeg=None, cancel=None):
+            probed.set()
+            raise DetectionCancelled()
+
+        with patch("player.video_backend", side_effect=cancelled):
+            decoder.request(item, (64, 32), dict(DEFAULTS, repeats=1))
+            self.assertTrue(probed.wait(10), "backend probe never ran")
+        self.assertTrue(decoder.thread.is_alive())
+        decoder.request(photo, (64, 32), DEFAULTS)
+        deadline = time.monotonic() + 15
+        kinds = []
+        while time.monotonic() < deadline and "done" not in kinds:
+            kinds.append(decoder.events.get(timeout=5)[1])
+        self.assertEqual(kinds[0], "frame")
+        self.assertIn("done", kinds)
+
+    def test_an_unexpected_decoder_failure_becomes_an_error_event(self):
+        item = self.add("photo.png", self.photo_bytes(), "png")
+        decoder = Decoder(self.library)
+        self.addCleanup(decoder.close)
+        with patch("player.freeze", side_effect=RuntimeError("synthetic")):
+            decoder.request(item, (64, 32), DEFAULTS)
+            deadline = time.monotonic() + 10
+            events = []
+            while time.monotonic() < deadline:
+                event = decoder.events.get(timeout=5)
+                events.append(event)
+                if event[1] in ("done", "error"):
+                    break
+        self.assertEqual(events[-1][1], "error")
+        self.assertIn("Media could not be decoded (RuntimeError)", events[-1][2])
+        decoder.request(item, (64, 32), DEFAULTS)
+        self.assertEqual(decoder.events.get(timeout=10)[1], "frame")
+
+    @unittest.skipUnless(ffmpeg_ready(), "Optional system FFmpeg unavailable")
     def test_switching_media_mid_video_leaves_nothing_running(self):
         item = self.add_video(rate=30, duration=4.0)
         photo = self.add("photo.png", self.photo_bytes(), "png")

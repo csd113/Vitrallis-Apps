@@ -7,8 +7,9 @@ import threading
 import time
 import tkinter as tk
 from tkinter import ttk
+from tkinter import font as tkfont
 
-from PIL import ImageTk
+from PIL import Image, ImageTk
 from connection import qr_image
 from convert import ConversionError, Conversions, needs_conversion
 from gpu import GpuUnavailable, ImageRenderer
@@ -26,6 +27,19 @@ BG, PANEL, INK, MUTED, ACCENT = "#10191a", "#223232", "#f1f3e8", "#adbbb3", "#d4
 MAX_CATCHUP = 8
 # Poll interval while the decoder has not caught up with a due deadline.
 STARVED_MS = 20
+# Re-arm delay after a hand-driven item load so the decoded frame is presented
+# immediately instead of waiting out the previous (capped) timer.
+WAKE_MS = 4
+# The home status band is capped so long diagnostics can never squeeze the
+# collection list out of a short window.
+STATUS_LINES_SMALL, STATUS_LINES_LARGE = 2, 3
+SMALL_WINDOW_HEIGHT = 260
+# Touch-target floor for the collection rows, kept in pixels.
+MIN_FOLDER_ROW = 36
+# Friendly replacement shown when startup fails, instead of raw exception text.
+STARTUP_FAILURE = ("Cannot start the local library. Your files were left untouched. "
+                   "See the README troubleshooting section, then repair or remove the "
+                   "storage files and restart the app.")
 
 
 class Services:
@@ -149,6 +163,13 @@ class App:
         self.conversion_poll = 0.0
         self.last_error = ""
         self.home_notice = "Starting local services…"
+        self.startup_failed = ""
+        self.status_text = ""
+        self.status_layout = None
+        self.qr_photo = None
+        self.qr_limit_used = None
+        self.settings_text = ""
+        self.conversion_lines = 1
         self.root.title("Vitrallis Media Carousel")
         if self.root.tk.call("tk", "windowingsystem") == "x11":
             # Tk publishes _NET_WM_PID when the client hostname is set.
@@ -192,7 +213,41 @@ class App:
         return button
 
     def label(self, parent, text, **kwargs):
-        return tk.Label(parent, text=text, bg=BG, fg=INK, anchor="w", **kwargs)
+        return tk.Label(parent, text=text, bg=BG, fg=INK, anchor="w", bd=0, **kwargs)
+
+    @staticmethod
+    def wrap_text(text, font, width):
+        """Greedy word wrap that mirrors how a Tk label wraps its text."""
+        lines = []
+        for paragraph in str(text).split("\n"):
+            current = ""
+            for word in paragraph.split(" "):
+                candidate = word if not current else current + " " + word
+                if current and font.measure(candidate) > width:
+                    lines.append(current)
+                    current = word
+                else:
+                    current = candidate
+            lines.append(current)
+        return lines or [""]
+
+    def clamp_text(self, text, font, width, lines):
+        """Fit text to `lines` wrapped lines, marking any cut with an ellipsis."""
+        wrapped = self.wrap_text(text, font, max(1, width))
+        if len(wrapped) <= lines:
+            return text
+        wrapped = wrapped[:max(1, lines)]
+        while wrapped and font.measure(wrapped[-1].strip() + " …") > width:
+            head = wrapped[-1].rsplit(" ", 1)[0] if " " in wrapped[-1].strip() else ""
+            if not head:
+                break
+            wrapped[-1] = head
+        wrapped[-1] = (wrapped[-1].strip() + " …").strip()
+        return "\n".join(wrapped)
+
+    def status_lines(self):
+        return (STATUS_LINES_LARGE if self.root.winfo_height() >= SMALL_WINDOW_HEIGHT
+                else STATUS_LINES_SMALL)
 
     def clear(self):
         self.close_gpu()
@@ -209,8 +264,10 @@ class App:
         header.pack(fill="x", padx=8, pady=(4, 0))
         header.pack_propagate(False)
         self.button(header, "Home / Exit" if self.screen == "home" else "Back", self.escape).pack(side="right", fill="y")
+        self.settings_button = None
         if settings:
-            self.button(header, "Settings", self.settings_screen).pack(side="right", fill="y", padx=4)
+            self.settings_button = self.button(header, "Settings", self.settings_screen)
+            self.settings_button.pack(side="right", fill="y", padx=4)
         self.label(header, title, font=("DejaVu Sans", -15, "bold")).pack(side="left", fill="both", expand=True)
 
     def home(self, message=None):
@@ -226,58 +283,120 @@ class App:
             self.home_notice = message
         self.clear()
         self.header("Media Carousel", settings=True)
+        failed = self.services is None and bool(self.startup_failed)
+        if failed and self.settings_button is not None:
+            self.settings_button.configure(state="disabled", takefocus=False)
         server = self.services.server if self.services else None
-        address = server.urls[0] if server and server.urls else "Management address pending…"
-        connection = tk.Frame(self.frame, bg=BG)
-        connection.pack(fill="x", padx=10)
-        self.qr_label = self.label(connection, "")
+        if server and server.urls:
+            address = server.urls[0]
+        elif failed:
+            address = "Management page unavailable"
+        else:
+            address = "Management address pending…"
+        self.connection = tk.Frame(self.frame, bg=BG)
+        self.connection.pack(fill="x", padx=10)
+        self.connection.bind("<Configure>", self.layout_connection)
+        self.qr_label = self.label(self.connection, "")
         self.qr_label.pack(side="right", padx=(4, 0))
-        self.url_label = self.label(connection, address, font=("DejaVu Sans", -14, "bold"))
-        self.url_label.pack(fill="x", pady=(4, 0))
-        code = "Access code: " + server.token if server else "Access code pending…"
-        self.label(connection, code, font=("DejaVu Sans Mono", -14)).pack(fill="x")
-        self.status_label = self.label(connection, self.home_status(), font=("DejaVu Sans", -12),
-                                       wraplength=340, justify="left")
+        self.url_label = self.label(self.connection, address, font=("DejaVu Sans", -14, "bold"))
+        self.url_label.pack(fill="x", pady=(2, 0))
+        if server:
+            code = "Access code: " + server.token
+        elif failed:
+            code = "Access code unavailable"
+        else:
+            code = "Access code pending…"
+        self.label(self.connection, code, font=("DejaVu Sans Mono", -14)).pack(fill="x")
+        self.status_font = tkfont.Font(root=self.root, family="DejaVu Sans", size=-12)
+        self.status_label = self.label(self.connection, "", font=self.status_font, justify="left")
         self.status_label.pack(fill="x", pady=(1, 2))
         self.status_text = ""
+        self.status_layout = None
         self.qr_url = None
-        self.update_address()
-        footer = tk.Frame(self.frame, bg=BG, height=34)
-        footer.pack(side="bottom", fill="x", padx=8, pady=4)
+        self.qr_photo = None
+        self.qr_limit_used = None
+        self.layout_connection()
+        self.update_status(force=True)
+        footer = tk.Frame(self.frame, bg=BG, height=36)
+        footer.pack(side="bottom", fill="x", padx=8, pady=(2, 4))
         footer.pack_propagate(False)
-        self.button(footer, "‹", lambda: self.change_page(-1), width=3).pack(side="left", fill="y")
+        self.page_back = self.button(footer, "‹", lambda: self.change_page(-1), width=3)
+        self.page_back.pack(side="left", fill="y")
         self.page_label = self.label(footer, "Collections", font=("DejaVu Sans", -12))
         self.page_label.pack(side="left", padx=10)
-        self.button(footer, "›", lambda: self.change_page(1), width=3).pack(side="right", fill="y")
+        self.page_forward = self.button(footer, "›", lambda: self.change_page(1), width=3)
+        self.page_forward.pack(side="right", fill="y")
         self.folder_frame = tk.Frame(self.frame, bg=BG)
         self.folder_frame.pack(fill="both", expand=True, padx=8)
+        self.folder_frame.bind("<Configure>", self.layout_folders)
         self.draw_folders()
+        self.update_address()
 
     def home_status(self):
-        """Playback state first, then the independent web-server lifecycle."""
+        """One concise status: failure, web-server lifecycle, notice, decoder note."""
         if not self.services:
-            return self.home_notice
+            if self.startup_failed:
+                return STARTUP_FAILURE
+            return self.home_notice or "Starting local services…"
         server = self.services.server
+        parts = []
         if server.state == WebServer.STARTING:
-            prefix = "Web server starting · playback ready."
+            parts.append("Web server starting · playback ready.")
         elif server.state == WebServer.FAILED:
-            prefix = "Web server unavailable · playback continues locally."
-        else:
-            prefix = server.detail
+            parts.append("Web server unavailable · playback continues locally.")
+        elif server.detail and server.detail != "Ready":
+            parts.append(server.detail)
+        if self.home_notice and self.home_notice not in parts:
+            parts.append(self.home_notice)
         note = self.services.media_note()
-        parts = [part for part in (prefix, self.home_notice, note) if part]
+        if note and note != "Checking multimedia decoders…" and note not in parts:
+            parts.append(note)
+        if not parts:
+            return note
         return " · ".join(parts)
 
-    def update_status(self):
+    def layout_connection(self, event=None):
+        """Track the width the QR code actually takes so the status never clips."""
+        if self.screen != "home" or getattr(self, "status_label", None) is None:
+            return
+        height = self.root.winfo_height()
+        if (self.qr_photo is not None and height > 1
+                and self.qr_limit_used != self.qr_limit()):
+            # A short window shrinks the QR instead of the collection rows.
+            self.qr_url = None
+            self.update_address()
+            return
+        total = self.connection.winfo_width()
+        if total <= 1:
+            total = max(240, self.root.winfo_width() - 20)
+        qr = self.qr_label.winfo_width() + 4  # QR image or its 0-width placeholder
+        layout = (max(140, total - qr - 6), self.status_lines())
+        if layout == self.status_layout:
+            return
+        self.status_layout = layout
+        self.status_label.configure(wraplength=layout[0])
+        self.update_status(force=True)
+
+    def qr_limit(self):
+        """Tallest QR that still leaves two 36 px collection rows on screen."""
+        height = self.root.winfo_height()
+        if height <= 1:
+            return 48
+        return max(48, height - 42 - 42 - (2 * MIN_FOLDER_ROW + 3) - 2)
+
+    def update_status(self, force=False):
         """Refresh the home status line as the background services progress."""
         if self.screen != "home" or getattr(self, "status_label", None) is None:
             return
-        if not self.services:
-            return
         text = self.home_status()
-        if self.status_text != text:
-            self.status_text = text
-            self.status_label.configure(text=text)
+        width, lines = self.status_layout or (max(200, self.root.winfo_width() - 20),
+                                              self.status_lines())
+        if not force and self.status_text == text:
+            return
+        self.status_text = text
+        display = self.clamp_text(text, self.status_font, width, lines)
+        if display != self.status_label.cget("text"):
+            self.status_label.configure(text=display)
 
     def update_address(self):
         if not self.services or not self.services.server.urls:
@@ -291,34 +410,91 @@ class App:
             image = qr_image(url)
         except ImportError:
             image = None
+        limit = self.qr_limit()
+        if image is not None and image.height > limit:
+            width = max(24, int(round(image.width * limit / image.height)))
+            image = image.resize((width, limit), Image.LANCZOS)
+        self.qr_limit_used = limit
         self.qr_photo = ImageTk.PhotoImage(image, master=self.root) if image else None
-        self.qr_label.configure(image=self.qr_photo or "", text="" if image else "QR unavailable")
+        # Without a QR image the right-hand slot is reclaimed so the URL and
+        # status lines get the full width; no dead "QR unavailable" stub stays.
+        self.qr_label.configure(image=self.qr_photo or "", text="")
+        self.layout_connection()
 
     def draw_folders(self):
         for child in self.folder_frame.winfo_children():
             child.destroy()
         self.folder_buttons = []
+        self.folder_message = None
         if not self.services:
-            self.label(self.folder_frame, "Starting the local library…", justify="left").pack(anchor="w", pady=8)
+            message = STARTUP_FAILURE if self.startup_failed else "Starting the local library…"
+            self.page_label.configure(text="Library unavailable" if self.startup_failed else "Starting…")
+            self.show_folder_message(message)
+            self.set_page_buttons(False)
             return
         collections = self.services.library.snapshot()
         self.revision = self.services.library.revision
+        if not collections:
+            self.page_label.configure(text="Collections 0/0")
+            self.show_folder_message("Library is empty. Upload media from the management page above.")
+            self.set_page_buttons(False)
+            return
         self.page = min(self.page, max(0, (len(collections) - 1) // 2))
-        self.page_label.configure(text=f"Collections {self.page + 1}/{(len(collections) + 1) // 2} · Enter to play")
+        pages = (len(collections) + 1) // 2
+        self.page_label.configure(text=f"Collections {self.page + 1}/{pages} · Enter to play")
+        self.set_page_buttons(pages > 1)
         for index, row in enumerate(collections[self.page * 2:self.page * 2 + 2]):
             label = row["name"] if len(row["name"]) <= 33 else row["name"][:30] + "…"
             button = self.button(self.folder_frame, f"{label}   ·   {len(row['items'])} items",
                                  lambda cid=row["id"]: self.play(cid), anchor="w", padx=10)
-            button.place(relx=0, rely=index * 0.5, relwidth=1, relheight=0.5, height=-3)
+            button.place(relx=0, rely=index * 0.5, relwidth=1)
             self.folder_buttons.append(button)
+        self.layout_folders()
         if self.folder_buttons:
             self.folder_buttons[0].focus_set()
+
+    def show_folder_message(self, text):
+        self.folder_message = self.label(self.folder_frame, text, justify="left")
+        self.folder_message.pack(anchor="w", pady=8)
+        self.layout_folders()
+
+    def set_page_buttons(self, enabled):
+        state = "normal" if enabled else "disabled"
+        for button in (getattr(self, "page_back", None), getattr(self, "page_forward", None)):
+            if button is not None:
+                button.configure(state=state, takefocus=enabled)
+
+    def layout_folders(self, event=None):
+        """Keep rows as large touch targets; a long status band cannot shrink them."""
+        height = self.folder_frame.winfo_height()
+        if height <= 1:
+            return
+        message = getattr(self, "folder_message", None)
+        if message is not None:
+            width = max(140, self.folder_frame.winfo_width() - 12)
+            if int(message.cget("wraplength") or 0) != width:
+                message.configure(wraplength=width)
+        buttons = getattr(self, "folder_buttons", [])
+        if not buttons:
+            return
+        two = len(buttons) > 1
+        floor = MIN_FOLDER_ROW if (not two or height >= 2 * MIN_FOLDER_ROW + 3) else 1
+        row_height = min(height, max(floor, (height - 3) // 2))
+        if not two:
+            buttons[0].place_configure(rely=0, relheight=0, height=row_height)
+        else:
+            top = height - row_height
+            buttons[0].place_configure(rely=0, relheight=0, height=row_height)
+            buttons[1].place_configure(rely=top / height, relheight=0, height=row_height)
 
     def change_page(self, direction):
         if not self.services or self.screen != "home":
             return
         maximum = (len(self.services.library.snapshot()) - 1) // 2
-        self.page = max(0, min(maximum, self.page + direction))
+        page = max(0, min(maximum, self.page + direction))
+        if page == self.page:
+            return  # Already at the boundary: keep the current focus, skip the redraw.
+        self.page = page
         self.draw_folders()
 
     def move_focus(self, direction):
@@ -331,7 +507,8 @@ class App:
                 self.change_page(direction)
                 index = 0 if direction > 0 else len(self.folder_buttons) - 1
         else:
-            index = 0
+            # Predictable: Down enters at the first row, Up at the last row.
+            index = 0 if direction > 0 else len(self.folder_buttons) - 1
         self.folder_buttons[index].focus_set()
         return "break"
 
@@ -339,36 +516,75 @@ class App:
         if not self.services or self.pending is not None or self.closing:
             return
         self.screen = "settings"
+        self.last_error = ""  # A playback error is not a settings status.
         self.clear()
         self.header("Playback settings")
         config = self.services.settings.snapshot()
-        form = tk.Frame(self.frame, bg=BG)
-        form.pack(fill="both", expand=True, padx=12, pady=4)
-        form.columnconfigure(0, weight=1)
+        self.message_font = tkfont.Font(root=self.root, family="DejaVu Sans", size=-12)
+        # The action row is packed before the expanding form, so Save can never
+        # be squeezed out of a short window. The form absorbs the remainder.
+        self.settings_bottom = tk.Frame(self.frame, bg=BG)
+        self.settings_bottom.pack(side="bottom", fill="x", padx=8, pady=(2, 4))
+        self.save_button = self.button(self.settings_bottom, "Save settings", self.save_settings)
+        self.save_button.pack(side="right", fill="y")
+        self.settings_message = self.label(self.settings_bottom, "", font=self.message_font, justify="left")
+        self.settings_message.pack(side="left", fill="both", expand=True)
+        self.form = tk.Frame(self.frame, bg=BG)
+        self.form.pack(fill="both", expand=True, padx=12, pady=(2, 2))
+        self.form.columnconfigure(1, weight=1, minsize=140)
         self.seconds = tk.StringVar(value=str(config["image_seconds"]))
         self.repeats = tk.StringVar(value=str(config["repeats"]))
         self.order = tk.StringVar(value="In Order" if config["order"] == "ordered" else "Shuffle")
         self.loop = tk.StringVar(value="Loop Folder" if config["loop"] else "Return to Main Menu")
         self.convert_gifs = tk.StringVar(value="Convert to WebP" if config["convert_gifs"] else "Keep as GIF")
-        controls = []
+        self.setting_labels = []
+        self.setting_controls = controls = []
         for row, (label, variable, maximum) in enumerate((("Still image seconds", self.seconds, 3600),
                                                         ("Animated/video repeats", self.repeats, 100))):
-            self.label(form, label).grid(row=row, column=0, sticky="w")
-            control = tk.Spinbox(form, from_=1, to=maximum, textvariable=variable,
+            caption = self.label(self.form, label)
+            caption.grid(row=row, column=0, sticky="w", padx=(0, 8))
+            self.setting_labels.append(caption)
+            control = tk.Spinbox(self.form, from_=1, to=maximum, textvariable=variable,
                                  width=8, bg=PANEL, fg=INK, buttonbackground=PANEL, insertbackground=INK)
-            control.grid(row=row, column=1, sticky="ew", ipady=5, pady=2)
+            control.grid(row=row, column=1, sticky="ew", pady=1)
             controls.append(control)
         for row, label, variable, values in ((2, "Playback order", self.order, ("In Order", "Shuffle")),
                                              (3, "End of folder", self.loop, ("Loop Folder", "Return to Main Menu")),
                                              (4, "GIF uploads", self.convert_gifs, ("Convert to WebP", "Keep as GIF"))):
-            self.label(form, label).grid(row=row, column=0, sticky="w")
-            ttk.Combobox(form, textvariable=variable, values=values, state="readonly", width=20).grid(
-                row=row, column=1, sticky="ew", ipady=4, pady=2)
-        self.settings_message = self.label(self.frame, "Applies when you start a collection.", font=("DejaVu Sans", -12))
-        self.settings_message.pack(fill="x", padx=10)
-        self.save_button = self.button(self.frame, "Save settings", self.save_settings)
-        self.save_button.pack(fill="x", padx=8, pady=(2, 6), ipady=3)
+            caption = self.label(self.form, label)
+            caption.grid(row=row, column=0, sticky="w", padx=(0, 8))
+            self.setting_labels.append(caption)
+            combo = ttk.Combobox(self.form, textvariable=variable, values=values, state="readonly", width=20)
+            combo.grid(row=row, column=1, sticky="ew", pady=1)
+            controls.append(combo)
+        self.form.bind("<Configure>", self.layout_settings)
+        self.settings_bottom.bind("<Configure>", self.layout_settings)
+        self.show_settings_message("Applies when you start a collection.")
+        self.layout_settings()
         controls[0].focus_set()
+
+    def layout_settings(self, event=None):
+        """Wrap long captions and keep the inline message inside its slot."""
+        form = getattr(self, "form", None)
+        if form is not None and form.winfo_width() > 1:
+            control_width = max((control.winfo_reqwidth() for control in self.setting_controls),
+                                default=160)
+            left = max(96, form.winfo_width() - control_width - 12)
+            for caption in self.setting_labels:
+                if int(caption.cget("wraplength") or 0) != left:
+                    caption.configure(wraplength=left)
+        self.show_settings_message(self.settings_text)
+
+    def show_settings_message(self, text):
+        self.settings_text = text or ""
+        label = getattr(self, "settings_message", None)
+        if label is None:
+            return
+        width = self.settings_bottom.winfo_width() - self.save_button.winfo_reqwidth() - 14
+        if width < 80:
+            width = max(180, self.root.winfo_width() - 24 - self.save_button.winfo_reqwidth())
+        display = self.clamp_text(self.settings_text, self.message_font, width, 2)
+        label.configure(text=display, wraplength=width)
 
     def save_settings(self):
         if self.pending is not None:
@@ -381,7 +597,7 @@ class App:
             from settings import validate
             validate(data)
         except ValueError as error:
-            self.settings_message.configure(text=str(error)[:70])
+            self.show_settings_message(str(error))
             return
         self.save_button.configure(state="disabled")
         self.pending = self.executor.submit(self.services.settings.save, data)
@@ -404,14 +620,17 @@ class App:
         self.clear()
         self.last_error = ""
         self.playlist = Playlist(items, self.services.settings.snapshot())
-        self.canvas = tk.Canvas(self.frame, bg="black", highlightthickness=0, takefocus=True)
+        # The focus ring makes keyboard focus visible before the first Tab.
+        self.canvas = tk.Canvas(self.frame, bg="black", highlightthickness=2,
+                                highlightbackground="black", highlightcolor=ACCENT, takefocus=True)
         self.canvas.pack(fill="both", expand=True)
         self.image_id = self.canvas.create_image(0, 0, anchor="center")
         self.canvas.bind("<ButtonRelease-1>", lambda event: self.show_controls())
         self.canvas.bind("<Configure>", self.center_frame)
         self.overlay = tk.Frame(self.frame, bg=PANEL)
+        self.conversion_font = tkfont.Font(root=self.root, family="DejaVu Sans", size=-11)
         self.conversion_label = tk.Label(self.overlay, text="", bg=PANEL, fg=INK, anchor="w",
-                                         font=("DejaVu Sans", -11))
+                                         font=self.conversion_font, justify="left")
         self.conversion_label.pack(side="bottom", fill="x", padx=4)
         controls = tk.Frame(self.overlay, bg=PANEL)
         self.button(controls, "‹ Previous", lambda: self.advance(-1)).pack(side="left", fill="both", expand=True)
@@ -520,6 +739,21 @@ class App:
         self.pause_button.configure(text="Pause")
         # Keep the conversion action in step with the newly selected item.
         self.refresh_conversion_ui()
+        self.wake_poll()
+
+    def wake_poll(self):
+        """Present a hand-loaded item without waiting out the previous timer.
+
+        load_item() is normally reached from a click or keypress while a poll is
+        still scheduled (up to the 250 ms pacing cap or 400 ms home heartbeat).
+        Cancel it and re-arm promptly so the decoded frame appears immediately.
+        From inside poll(), poll_id is already None and the schedule() at the end
+        of poll owns pacing; there is nothing to cancel and no second timer.
+        """
+        if self.poll_id is None:
+            return
+        self.root.after_cancel(self.poll_id)
+        self.poll_id = self.root.after(WAKE_MS, self.poll)
 
     def advance(self, direction=1):
         if self.screen == "playback":
@@ -550,14 +784,27 @@ class App:
         if self.screen == "playback":
             self.show_controls()
 
+    def overlay_height(self):
+        """Status line(s) plus a 42 px control row; buttons stay >= 36 px targets."""
+        lines = max(1, getattr(self, "conversion_lines", 1) or 1)
+        return 58 + (lines - 1) * self.conversion_font.metrics("linespace")
+
     def show_controls(self):
         if self.screen == "playback":
             self.refresh_conversion_ui()
-            # Status line plus 42 px control row; buttons stay >= 36 px touch targets.
-            self.overlay.place(relx=0, rely=1, anchor="sw", relwidth=1, height=58)
+            self.overlay.place(relx=0, rely=1, anchor="sw", relwidth=1, height=self.overlay_height())
             self.overlay.lift()
             self.overlay_visible = True
             self.overlay_until = time.monotonic() + 3
+
+    def overlay_has_focus(self):
+        """True while focus is anywhere inside the overlay, however deep."""
+        focused = self.root.focus_get()
+        while focused is not None:
+            if focused is self.overlay:
+                return True
+            focused = getattr(focused, "master", None)
+        return False
 
     def refresh_conversion_ui(self):
         if self.screen != "playback" or self.conversion_label is None:
@@ -576,7 +823,16 @@ class App:
             text = item["kind"].upper() + " is already in its native format"
         else:
             text = ""
-        self.conversion_label.configure(text=text[:70])
+        width = self.conversion_label.winfo_width()
+        if width <= 1:
+            width = max(160, self.root.winfo_width() - 16)
+        # Clamp by measured pixels, not characters: a wrapped pair of lines
+        # keeps long failures readable without overflowing the overlay.
+        display = self.clamp_text(text, self.conversion_font, width, 2)
+        self.conversion_lines = max(1, len(self.wrap_text(display, self.conversion_font, width)))
+        self.conversion_label.configure(text=display, wraplength=width)
+        if self.overlay_visible:
+            self.overlay.place_configure(height=self.overlay_height())
 
     def convert_current(self):
         if self.screen != "playback" or not self.services:
@@ -588,7 +844,7 @@ class App:
         try:
             self.services.conversions.start(self.cid, item["id"])
         except ConversionError as error:
-            self.conversion_message = str(error)[:70]
+            self.conversion_message = str(error)
             self.refresh_conversion_ui()
             return
         self.conversion_running = True
@@ -648,14 +904,18 @@ class App:
         if (job.get("total") or 1) > 1:
             # A batch reports totals; it does not move the slideshow position.
             self.conversion_message = (job.get("message") or snapshot["message"]
-                                       or "Conversion finished")[:70]
+                                       or "Conversion finished")
             return
-        name = (snapshot["name"] or "media")[:33]
-        if snapshot["status"] != "ready":
-            self.conversion_message = (snapshot["message"] or "Conversion failed")[:70]
-            return
-        self.conversion_message = "Converted " + name + " to WebP"
         current = self.playlist.current if self.playlist else None
+        if snapshot["status"] != "ready":
+            self.conversion_message = snapshot["message"] or "Conversion failed"
+            return
+        # The snapshot name is the already-renamed target; name the item the
+        # user still sees when it matches, otherwise stay generic.
+        if current is not None and snapshot["item"] == current["id"]:
+            self.conversion_message = "Converted " + current["name"][:33] + " to WebP"
+        else:
+            self.conversion_message = "Converted to WebP"
         if (current is None or snapshot["item"] != current["id"] or self.cid is None
                 or snapshot["collection"] != self.cid):
             return
@@ -681,7 +941,7 @@ class App:
         now = time.monotonic()
         # Focus queries stay off the hot path until the overlay is actually shown.
         if (self.overlay_visible and now > self.overlay_until and not self.clock.paused
-                and self.root.focus_get() not in self.overlay.winfo_children()):
+                and not self.overlay_has_focus()):
             self.overlay.place_forget()
             self.overlay_visible = False
         if not self.clock.ready():
@@ -766,7 +1026,8 @@ class App:
                         self.home(result.library.warning or result.settings.warning
                                   or "Ready · select a collection to play")
                 elif action == "settings" and not self.closing and self.screen == "settings":
-                    self.settings_message.configure(text=self.services.settings.warning or "Saved. Start a collection to apply.")
+                    self.show_settings_message(self.services.settings.warning
+                                               or "Saved. Start a collection to apply.")
                     self.save_button.configure(state="normal")
                 elif action == "close":
                     self.destroy()
@@ -778,10 +1039,14 @@ class App:
                     return
                 if not self.closing:
                     if self.screen == "settings":
-                        self.settings_message.configure(text=str(error)[:70])
+                        self.show_settings_message(str(error))
                         self.save_button.configure(state="normal")
                     else:
-                        self.home("Cannot start: " + str(error)[:95])
+                        if action == "startup":
+                            # Detail goes to the console; the UI stays friendly.
+                            self.startup_failed = str(error)
+                            print("event=startup status=failed reason=%r" % str(error), file=sys.stderr)
+                        self.home()
         if self.closing:
             if self.pending is None:
                 self.pending_action = "close"
@@ -837,14 +1102,27 @@ class App:
     def finish(self):
         self.close_gpu()
         # Handles an external mainloop quit as well as normal Home/WM close.
+        error = self.close_error
         if not self.finished:
             if self.pending is not None:
-                result = self.pending.result(timeout=100)
-                if self.pending_action == "startup":
-                    self.services = result
-            if self.services:
-                self.services.close()
+                try:
+                    result = self.pending.result(timeout=100)
+                except Exception as failure:
+                    error = error or str(failure)
+                else:
+                    if self.pending_action == "startup":
+                        self.services = result
+            if self.services is not None:
+                try:
+                    self.services.close()
+                except Exception as failure:
+                    # A failed startup or close must still release every other
+                    # resource and let the process exit instead of leaking threads.
+                    error = error or str(failure)
             self.finished = True
-        self.executor.shutdown(wait=True)
-        if self.close_error:
-            raise RuntimeError(self.close_error)
+        try:
+            self.executor.shutdown(wait=True)
+        except Exception as failure:
+            error = error or str(failure)
+        if error:
+            raise RuntimeError(error)

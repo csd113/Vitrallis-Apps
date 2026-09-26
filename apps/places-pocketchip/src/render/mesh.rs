@@ -434,19 +434,27 @@ impl From<f32> for SurfaceShine {
     }
 }
 
-/// A batch group: one surface family, the material index it binds, and any
-/// per-surface shine override.
+/// A batch group: one surface family, the material index it binds, any
+/// per-surface shine override, and whether the surface is deliberately
+/// two-sided.
 ///
-/// Sorting is `(kind, material, shine)`, so every cell of one material stays
-/// adjacent in the drain order and a draw loop binds each texture once per
-/// group. Two surfaces of the same material with different authored shine are
-/// separate groups, which is exactly one material state change.
+/// Sorting is `(kind, material, shine, two_sided)`, so every cell of one
+/// material stays adjacent in the drain order and a draw loop binds each
+/// texture once per group. Two surfaces of the same material with different
+/// authored shine — or different sidedness — are separate groups, which is
+/// exactly one material state change each.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SurfaceKey {
     pub kind: SurfaceKind,
     pub material: MaterialIndex,
     /// Per-surface shine override; `None` keeps the material's default.
     pub shine: Option<SurfaceShine>,
+    /// True when the surface is a thin sheet that must render from both sides:
+    /// a glass pane or grille in an opening, not a face of a solid. A
+    /// two-sided surface draws with back-face culling disabled; every other
+    /// opaque surface is single-sided and culled. Declared by the emitter that
+    /// knows the geometry is a sheet, never inferred from a material name.
+    pub two_sided: bool,
 }
 
 impl SurfaceKey {
@@ -457,6 +465,7 @@ impl SurfaceKey {
             kind,
             material,
             shine: None,
+            two_sided: false,
         }
     }
 
@@ -471,6 +480,7 @@ impl SurfaceKey {
             kind,
             material,
             shine,
+            two_sided: false,
         }
     }
 
@@ -481,7 +491,15 @@ impl SurfaceKey {
             kind,
             material: MATERIAL_NONE,
             shine: None,
+            two_sided: false,
         }
+    }
+
+    /// Marks this surface as a thin sheet visible from both sides.
+    #[must_use]
+    pub const fn with_two_sided(mut self) -> Self {
+        self.two_sided = true;
+        self
     }
 
     /// True when this key binds a level material.

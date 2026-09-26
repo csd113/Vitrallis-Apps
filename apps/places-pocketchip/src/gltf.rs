@@ -100,6 +100,11 @@ pub struct PropSubmesh {
     pub texture: Option<u16>,
     /// Emission of the primitive's material.
     pub emission: MaterialEmission,
+    /// The material's glTF `doubleSided` declaration, defaulting to `false`
+    /// (the glTF default). A double-sided primitive is visible from both sides
+    /// and must therefore draw with back-face culling disabled; a single-sided
+    /// one is wound so its front faces out of the solid.
+    pub double_sided: bool,
     /// First index into [`PropModel::indices`].
     pub first_index: u32,
     /// Number of indices (a multiple of three).
@@ -381,6 +386,8 @@ struct ResolvedMaterial {
     texture: Option<u16>,
     /// Material emission, already sanitised.
     emission: MaterialEmission,
+    /// The material's `doubleSided` declaration; `false` is the glTF default.
+    double_sided: bool,
 }
 
 impl Default for ResolvedMaterial {
@@ -389,6 +396,7 @@ impl Default for ResolvedMaterial {
             color: DEFAULT_BASE_COLOR,
             texture: None,
             emission: MaterialEmission::NONE,
+            double_sided: false,
         }
     }
 }
@@ -599,6 +607,7 @@ impl<'a> Doc<'a> {
                 .map_err(|_| GltfError::new("material index does not fit in 16 bits"))?,
             texture: resolved.texture,
             emission: resolved.emission,
+            double_sided: resolved.double_sided,
             first_index,
             index_count,
         });
@@ -647,10 +656,20 @@ impl<'a> Doc<'a> {
             None => None,
         };
         let emission = self.resolve_emission(material, index)?;
+        // A declared non-boolean is an authoring error, not a value to guess
+        // at: the two sides of the model render differently, so a typo must
+        // not silently become "single-sided".
+        let double_sided = match material.get("doubleSided") {
+            Some(value) => value.as_bool().ok_or_else(|| {
+                GltfError::new(format!("material {index} doubleSided is not a boolean"))
+            })?,
+            None => false,
+        };
         let resolved = ResolvedMaterial {
             color,
             texture,
             emission,
+            double_sided,
         };
         if let Some(slot) = self.material_cache.get_mut(index) {
             *slot = Some(resolved);

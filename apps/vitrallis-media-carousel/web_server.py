@@ -15,6 +15,8 @@ import time
 import zipfile
 from urllib.parse import parse_qs, urlsplit
 
+from zipfile import ZIP64_LIMIT
+
 from convert import BUCKETS, ConversionError, Conversions
 from library import display_name, identifier
 from media import MAX_UPLOAD, Processes, probe, remember_probe
@@ -48,9 +50,15 @@ def archive_member_names(items):
 
 
 def archive_size(items):
-    """Conservative upper bound for the streamed ZIP, including all ZIP overhead."""
-    return 24 + sum(item["size"] + 2 * len(member.encode("utf-8")) + 100
-                    for item, member in zip(items, archive_member_names(items)))
+    """Conservative upper bound for the streamed ZIP, including ZIP64 overhead.
+
+    A non-seekable stream emits ZIP64 end records and per-member extras whenever
+    sizes or offsets cross the classic limit, so allow for those records too.
+    """
+    names = archive_member_names(items)
+    members = sum(item["size"] + 2 * len(member.encode("utf-8")) + 100
+                  for item, member in zip(items, names))
+    return 24 + members + 48 * len(items) + 96
 
 
 class ClientWriter:
@@ -111,7 +119,7 @@ class HTTPError(ValueError):
 
 class BoundedServer(ThreadingMixIn, HTTPServer):
     allow_reuse_address = True
-    daemon_threads = False
+    daemon_threads = True
     block_on_close = False
     request_queue_size = 4
 
@@ -332,7 +340,9 @@ class WebServer:
         for worker in workers:
             worker.join(timeout=max(0, deadline - time.monotonic()))
         if any(worker.is_alive() for worker in workers):
-            raise RuntimeError("HTTP worker did not stop within 4 seconds")
+            # Workers are daemon threads that only own a socket already shut down;
+            # report instead of blocking exit on an unresponsive peer.
+            print("event=server status=stopping", file=sys.stderr)
         self.state = self.STOPPED
         self.detail = "Stopped"
 
@@ -401,8 +411,11 @@ class Handler(BaseHTTPRequestHandler):
                 raise HTTPError(400, "One Host header is required")
             host = urlsplit("http://" + hosts[0])
             try:
+                address = ipaddress.ip_address(host.hostname)
                 valid_host = (host.port == self.owner.port and not host.username and not host.path
-                              and ipaddress.ip_address(host.hostname).is_private)
+                              and address.is_private and not address.is_link_local
+                              and not address.is_unspecified and not address.is_multicast
+                              and not address.is_reserved)
             except (ValueError, TypeError):
                 valid_host = False
             if not valid_host:
@@ -410,7 +423,7 @@ class Handler(BaseHTTPRequestHandler):
             origins = self.headers.get_all("Origin", [])
             if origins and origins != ["http://" + hosts[0]]:
                 raise HTTPError(403, "Cross-origin requests are not allowed")
-            if self.command == "GET" and parsed.path in ASSETS and not parsed.query:
+            if self.command == "GET" and parsed.path in ASSETS:
                 filename, mime = ASSETS[parsed.path]
                 self.reply(200, (WEB / filename).read_bytes(), mime)
                 return
@@ -445,13 +458,20 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get("Transfer-Encoding") or len(lengths) != 1 or not lengths[0].isascii() or not lengths[0].isdigit():
             raise HTTPError(411, "One explicit Content-Length is required")
         length = int(lengths[0])
-        if not 1 <= length <= maximum:
+        if length == 0:
+            raise HTTPError(400, "The request body is empty")
+        if length > maximum:
             raise HTTPError(413, f"Request too large (maximum {maximum} bytes)")
         return length
 
+    @staticmethod
+    def content_type_is(header, expected):
+        """Accept `type/subtype` with optional parameters such as charset."""
+        return isinstance(header, str) and header.split(";", 1)[0].strip().lower() == expected
+
     def json_body(self):
         length = self.content_length(65536)
-        if self.headers.get("Content-Type") != "application/json":
+        if not self.content_type_is(self.headers.get("Content-Type"), "application/json"):
             raise HTTPError(415, "Expected application/json")
         raw = self.rfile.read(length)
         if len(raw) != length:
@@ -575,6 +595,10 @@ class Handler(BaseHTTPRequestHandler):
     def stream_archive(self, pairs, bound):
         # No temp file and no buffering: zipfile streams data descriptors straight
         # to the socket. HTTP/1.0 close-delimited, so no Content-Length is sent.
+        # ZIP64 is allowed because a non-seekable sink cannot rewrite a local
+        # header: any item at or over the classic 2 GiB limit must opt into the
+        # ZIP64 data descriptor up front, and archives over that limit need the
+        # ZIP64 end record.
         self.send_response(200)
         self.send_header("Content-Type", "application/zip")
         self.send_header("Content-Disposition", 'attachment; filename="collection.zip"')
@@ -587,7 +611,7 @@ class Handler(BaseHTTPRequestHandler):
         self.connection.settimeout(20)
         self.refresh_deadline()
         writer = ClientWriter(self.wfile)
-        archive = zipfile.ZipFile(writer, "w", compression=zipfile.ZIP_STORED, allowZip64=False)
+        archive = zipfile.ZipFile(writer, "w", compression=zipfile.ZIP_STORED, allowZip64=True)
         try:
             for item, member in pairs:
                 if self.owner.stopping.is_set():
@@ -595,7 +619,8 @@ class Handler(BaseHTTPRequestHandler):
                 with self.owner.library.open_item(item) as source:
                     if os.fstat(source.fileno()).st_size != item["size"]:
                         raise ValueError("Media size changed; refresh the collection")
-                    with archive.open(member, "w") as target:
+                    with archive.open(member, "w",
+                                      force_zip64=item["size"] >= ZIP64_LIMIT) as target:
                         remaining, staged = item["size"], 0
                         while remaining:
                             chunk = source.read(min(65536, remaining))
@@ -608,12 +633,16 @@ class Handler(BaseHTTPRequestHandler):
                                 staged = 0
                                 self.refresh_deadline()
                 self.refresh_deadline()
-        except BaseException:
+        except BaseException as error:
             # Abandon the archive: a partial central directory must never make the
             # truncated stream look like a finished download.
             writer.abandoned = True
             archive.fp = None
-            raise
+            if isinstance(error, (HTTPError, OSError, ValueError, TimeoutError, ConnectionError)):
+                raise
+            # Anything else (a zipfile size-limit RuntimeError, for example) is an
+            # internal failure; surface a clean result instead of a worker traceback.
+            raise HTTPError(500, "Folder download failed; the archive was not completed") from error
         archive.close()
 
     def refresh_deadline(self):
@@ -623,7 +652,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def upload(self, cid, query):
         length = self.content_length(MAX_UPLOAD)
-        if self.headers.get("Content-Type") != "application/octet-stream":
+        if not self.content_type_is(self.headers.get("Content-Type"), "application/octet-stream"):
             raise HTTPError(415, "Upload a raw file using application/octet-stream")
         if shutil.disk_usage(self.owner.library.paths.uploads).free < length + 16 * 1024 * 1024:
             raise HTTPError(507, "Not enough free space to stage this upload")
@@ -640,7 +669,9 @@ class Handler(BaseHTTPRequestHandler):
             with stream:
                 remaining, deadline = length, time.monotonic() + 120
                 while remaining:
-                    if self.owner.stopping.is_set() or time.monotonic() > deadline:
+                    if self.owner.stopping.is_set():
+                        raise HTTPError(503, "Server stopping")
+                    if time.monotonic() > deadline:
                         raise HTTPError(408, "Upload exceeded the 120-second deadline")
                     chunk = self.rfile.read1(min(65536, remaining))
                     if not chunk:

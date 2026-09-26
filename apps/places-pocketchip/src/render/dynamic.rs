@@ -122,6 +122,9 @@ pub struct DynamicSubmesh {
     pub texture: Option<u16>,
     /// The material's own emission.
     pub emission: MaterialEmission,
+    /// The model material's `doubleSided` declaration: a double-sided
+    /// primitive draws with back-face culling disabled.
+    pub double_sided: bool,
     /// First index into [`DynamicMesh::indices`].
     pub first_index: u32,
     /// Number of indices in this submesh.
@@ -189,6 +192,7 @@ impl DynamicMesh {
             .map(|submesh| DynamicSubmesh {
                 texture: submesh.texture,
                 emission: submesh.emission,
+                double_sided: submesh.double_sided,
                 first_index: submesh.first_index,
                 index_count: submesh.index_count,
             })
@@ -806,6 +810,7 @@ mod tests {
                 material: 0,
                 texture: None,
                 emission,
+                double_sided: false,
                 first_index: 0,
                 index_count: 3,
             }],

@@ -42,7 +42,11 @@ def terminate(process):
     A child that already exited but has not been reaped yet can answer
     ``killpg`` with EPERM on some platforms (macOS) instead of ESRCH, so the
     signal attempt is best-effort and the reaping wait is what always runs.
+    A child that was already reaped must never be signalled: its process-group
+    ID may have been reused by an unrelated process.
     """
+    if process.returncode is not None:
+        return
     try:
         os.killpg(process.pid, signal.SIGTERM)
     except (ProcessLookupError, PermissionError):

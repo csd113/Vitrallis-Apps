@@ -238,6 +238,36 @@ Consequences to internalise:
   fixture `y` is a **world** height. The two conventions differ and are not
   interchangeable.
 
+### Face winding and back-face culling
+
+The renderer culls the back faces of every **single-sided** surface, so the way a
+face is wound decides whether it is visible. The rule is the right-hand rule,
+and the engine's own emitters already follow it:
+
+* A quad's corners are emitted `p0 -> p1 -> p2 -> p3`; the **front side is the
+  side the right-hand normal over `p0 -> p1 -> p2` points to**, and the hardware
+  front face is `GL_CCW` — the OpenGL default.
+* Every face of a solid is wound so that normal points **out of the solid**: a
+  floor faces +Y, a ceiling −Y, a wall face points into the room it looks into,
+  a doorway jamb or window reveal points into the opening, and a wall end cap
+  points out of the wall's own end. Internally, `emit_wall_slice_cap` and
+  `add_wall_cross_quad` build both wall axes with per-axis corner orders
+  precisely so X-axis and Z-axis walls face the same way; do not "fix" one axis
+  by transposing the other's order.
+* The level format has **no per-surface winding switch and needs none**. If a
+  surface you authored from level rectangles is not visible, the bug is in an
+  emitter and belongs in that emitter, not in a one-off reversed quad in the
+  level.
+* Two kinds of geometry are deliberately **two-sided** and draw with culling
+  disabled: **panes** in openings (`glass`, any alpha mode) and **props whose
+  glTF material declares `doubleSided: true`**. A pane is a thin sheet at the
+  wall's centre plane; a `doubleSided` prop is a model that may contain open or
+  double-faced geometry. Everything else is single-sided and culled.
+* A prop whose glTF material omits `doubleSided` (the default, `false`) must be a
+  closed, consistently wound solid seen from outside; the engine will cull its
+  back faces. The `tools/props` exporter writes `doubleSided: true` on every
+  shipped model.
+
 ---
 
 ## 5. Level File Structure
@@ -1499,6 +1529,10 @@ one surface at the wall's centre plane. It is what turns "a hole in a wall" into
   mesh or screen with holes in it (`core:grille_vent_01` is a transfer grille,
   authored on a `vent` opening above Places Demo's office door); `opaque` gives a
   solid panel, which is also how to fill an aperture with a blanking plate.
+* The pane is **two-sided** by construction: the emitter declares it so, and the
+  renderer keeps both faces whichever alpha mode the material uses. A `cutout`
+  grille is never culled away when viewed from the far room, and nothing about
+  the pane depends on which side you approach it from.
 * Author each physical wall once, as everywhere else: two coincident walls each
   emit their own pane.
 

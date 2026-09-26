@@ -47,7 +47,12 @@ use super::{
 /// * `4` — soft shadows: the local pools are gated by an emitter-area
 ///   visibility fraction and the chart density/packing changed, so every texel
 ///   value differs from a version-3 atlas.
-pub const LIGHTMAP_FORMAT_VERSION: u32 = 4;
+/// * `5` — the wall winding fixes: the cross-section corner order is no longer
+///   transposed on one axis, and a wall end that shows through an opening in
+///   the wall it abuts keeps its exposed strip. Both change those patches'
+///   frames or the patch set, so an atlas baked before the fix must not be
+///   reused.
+pub const LIGHTMAP_FORMAT_VERSION: u32 = 5;
 
 /// Root of the runtime-owned on-disk cache, below the state root.
 ///

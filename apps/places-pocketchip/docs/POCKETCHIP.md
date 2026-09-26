@@ -74,12 +74,17 @@ release notes and in `docs/benchmarks.md`.
   offset, so every lightmapped fragment takes one fetch instead of two. The
   baked bytes, the chart layout and the disk cache are untouched, and the texel
   count is identical.
-* **Back-face culling was measured and rejected.** Every wall emits both faces,
-  so culling the back-facing half removes about 13 % of the frame's shaded
-  fragments — but the window reveals are authored as wall surfaces whose
-  visible side is the back face. Culling them opens holes at every window and
-  doorway (caught by the 25-view capture diff, not by the frame rate). The
-  2.5 ms it bought is not worth a missing reveal.
+* **Back-face culling is on, once the winding was fixed.** Every opaque surface
+  is wound so its right-hand normal points out of its solid, so the inward half
+  of the static world can be rejected at rasterisation without changing what is
+  visible. The previous two passes measured that prize and rejected it because
+  X-axis wall reveals were generated back-facing: culling them opened a hole at
+  every X-axis window and doorway. The fourth pass fixed the cross-section
+  winding (plus two more orientation defects of the same class), declared the
+  genuinely two-sided surfaces — panes in openings and glTF `doubleSided` props
+  — as explicit exceptions, and enabled culling for everything else. Measured
+  on the device: 1.4–1.9 ms of serialised renderer work and 1.6–2.3 ms of
+  presented median, with no visible change across the capture set.
 * **The offscreen render target had to go.** Places drew the scene into a
   colour+depth framebuffer and resolved it to the window. On this driver that
   path intermittently faults the pixel-processor MMU
@@ -101,6 +106,24 @@ release notes and in `docs/benchmarks.md`.
 * **Cortex-A8 needs NEON asked for.** Rust's `armv7-unknown-linux-gnueabihf`
   target enables VFPv3 and leaves NEON off. `.cargo/config.toml` selects
   `target-cpu=cortex-a8` for the ARM targets only.
+* **The prop pass is one draw now.** Twenty-seven prop submissions, 27 texture
+  binds and 27 material changes became one of each, by baking every model's
+  albedo into a single 1024-texel sheet and remapping the instance UVs on the
+  CPU at level build time. Measured on the device: serialised renderer work
+  −1.1 to −2.0 ms, CPU submission −2.1 ms, frame p95 −5.7 ms, for a measured
+  185–337 ms of level build and 6.4 MiB of resident memory. It is the last submission-side
+  lever of any size: the prop pass is now about a fifth of the renderer's work
+  and the rest of it is rasterisation.
+* **The static world was the frame, and half of it was invisible.** A temporary
+  attribution probe (skip the props; skip the static passes) put the static
+  world at about two thirds of the renderer's work and the prop pass at about a
+  fifth. Back-facing rasterisation was the largest single renderer lever found,
+  and the fourth pass took it by fixing the geometry rather than by re-authoring
+  anything: 1.4–1.9 ms of serialised renderer work (office 31.4 → 29.5 ms, work
+  30.2 → 28.6 ms, pool 29.2 → 27.8 ms), at the same draw count and vertex count.
+  After the cull the static world's *front* faces, the prop pass (whose
+  materials declare themselves two-sided) and the present path are the frame;
+  see `docs/benchmarks.md` for the post-cull attribution.
 
 ## Graphics configuration
 
@@ -112,20 +135,23 @@ device runs.
 | Scene resolution | the drawable, 480 × 272 | the panel's own mode |
 | Window | full screen | one panel, no window manager |
 | Surface / fixture / decal sheets | 256 texels | see the sweep above |
-| Prop sheets | 128 texels | models are read at 1–2 m |
+| Prop sheets | 128 texels, packed into one 1024-texel atlas | models are read at 1–2 m; one draw instead of 27 |
 | Emissive masks | 128 texels | |
 | Lightmaps | on, 9 texels/m, 512-texel pages, stacked into one texture | the bake is the game's whole lighting model |
 | Material tier | reduced (no surface frame, no sheen, one-fetch atlas, vertex-stage fog, gated emission) | the full tier is an A/B reference |
 | Texture filtering | trilinear | floors and decals are minified 10–30× at room distances; measured within noise |
-| VSync | on | the panel is 59.52 Hz |
+| Back-face culling | on for every single-sided surface; off for declared two-sided panes and `doubleSided` props | the winding audit made it safe; 1.4–1.9 ms of serialised renderer work measured |
+| VSync | requested | the panel is 59.52 Hz; see `docs/presentation.md` for what the request actually does |
 | Bloom, reflections | removed | |
 
 Startup overrides exist for measurement, and none changes the shipped
 behaviour: `LIMINAL_TEXTURE_EDGE=<64..1024>` pins the sheet cap,
+`LIMINAL_PROP_ATLAS=0` falls back to the per-model prop textures,
 `LIMINAL_QUALITY=full` selects the reference tier, `LIMINAL_NO_LIGHTMAPS=1`
-forces the historical vertex-lit build, and `LIMINAL_VSYNC=on|off` overrides
-the swap interval for a benchmark run. All of them are read once at startup,
-and the lightmaps one is literal — a truthy value *disables* lightmaps.
+forces the historical vertex-lit build, `LIMINAL_CULL_FACE=0` disables the new
+back-face culling for an A/B, and `LIMINAL_VSYNC=on|off` overrides the swap
+interval for a benchmark run. All of them are read once at startup, and the
+lightmaps one is literal — a truthy value *disables* lightmaps.
 
 ## Build for the PocketCHIP
 
@@ -236,20 +262,27 @@ marks it when a startup override is pinning it.
   shipping configuration ran 150–200 frame benchmarks at each of the three
   reference viewpoints with zero faults. The mitigation is the memory fix
   above: keep the process's resident set small.
-* **Frame rate.** Raw frame time (VSync off) is 37.4–37.9 ms at every reference
-  viewpoint — roughly 26 FPS — with the three views within half a millisecond of
-  each other because the whole level is submitted as one batch set. The swap
-  interval is requested and accepted, but this X11/modesetting path does not
-  block on vertical refresh, so the presented frame rate is the renderer's own;
-  if it were enforced, a 37.5 ms frame would present on the third refresh at
-  50.4 ms. The frame is now split between driver submission (~10 ms of
-  `render`), the pixel processor (~22 ms of `swap`) and simulation (~3 ms); the
-  fragment stage is no longer the dominant term, and the next single lever is
-  merging the 27 prop textures into one atlas so the prop pass is one draw
-  instead of 27.
-* **Level load** is about 3.2 s warm, dominated by prop model decode and texture
-  upload (~2.1 s), not by the lightmap bake (~0.35 s). The bake is cached by
-  content key under `cache/lightmaps/`.
+* **Frame rate.** Raw frame time (VSync off) is 36.6–39.4 ms at the three
+  reference viewpoints, and 35.7–37.6 ms in the shipping presentation — roughly
+  26–27 FPS. The swap interval is requested and accepted, but this
+  X11/modesetting path does not block on vertical refresh: frames are not
+  quantised to the 16.8 ms refresh, and `docs/presentation.md` shows what the
+  present path actually does, what it costs and why it cannot be fixed from
+  inside the game. The frame is split between the front faces of the static
+  world, the prop pass (about a fifth, deliberately two-sided) and simulation;
+  {{BOTTLENECK}}. Back-face rasterisation is no longer part of it: the fourth
+  pass culls every single-sided surface and leaves only the declared two-sided
+  ones — panes in openings and glTF `doubleSided` props — drawing both faces.
+* **The prop pass is one draw.** Every prop model's albedo is packed into one
+  1024 × 1024 sheet at level build time and the instance UVs are remapped on the
+  CPU, so 27 prop submissions and 27 texture binds became one. Measured:
+  serialised renderer work −1.1 to −2.0 ms a frame, `render` −2.1 ms, frame p95
+  −5.7 ms, at the cost of 185–337 ms of level build and 6.4 MiB of resident set.
+  The presented *median* does not move measurably, because the present path's
+  own ±2 ms wander is larger than the saving; see `docs/benchmarks.md`.
+* **Level load** is about 3.4 s warm, dominated by prop model decode, the atlas
+  build and texture upload (~2.4 s), not by the lightmap bake (~0.33 s). The
+  bake is cached by content key under `cache/lightmaps/`.
 * **No swap.** A level that exhausts memory is killed rather than paged. The
   budget is the point of the texture caps.
 
@@ -261,6 +294,8 @@ marks it when a startup override is pinning it.
 | `src/quality.rs` | one shipping profile, 256/128/128 texture budgets, `LIMINAL_TEXTURE_EDGE` sweep override |
 | `src/materials/image.rs` | `TextureCache::with_sheet_budget` — fit at decode, not at upload |
 | `src/spatial.rs` | one-cell grid: no spatial partition, one batch per surface group |
+| `src/render/prop_atlas.rs` | the 1024-texel prop albedo atlas: cell layout, edge-replicated gutters, mip cap, CPU UV remap, `LIMINAL_PROP_ATLAS` |
 | `src/render/view.rs` | two material tiers behind `LIMINAL_MATERIAL_SIMPLE`; the reduced tier's one-fetch stacked atlas, gated emission, folded light gain and vertex-stage fog |
-| `src/render/renderer.rs` | direct-to-framebuffer rendering, wall-only backface culling, the stacked-atlas upload, GL identity report, tier selection |
+| `src/render/renderer.rs` | direct-to-framebuffer rendering, the stacked lightmap upload, the prop-atlas upload and one-draw prop pass, GL identity report, tier selection, per-pass back-face culling with declared two-sided exceptions |
 | `src/settings.rs` | 480 × 272 full-screen defaults, 200-pixel minimum window edge |
+| `docs/presentation.md` | what the X11/modesetting/Mesa/Lima path actually does with a presented frame, and what may honestly be claimed about it |

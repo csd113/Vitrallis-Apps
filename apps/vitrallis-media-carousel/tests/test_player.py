@@ -63,6 +63,17 @@ class SequencingTests(unittest.TestCase):
             self.assertIsNotNone(playlist.failed())
         self.assertIsNone(playlist.failed())
 
+    def test_previous_is_safe_after_a_finished_or_empty_playlist(self):
+        playlist = self.playlist(loop=False)
+        for _ in range(8):  # next() walks past the end more than once
+            playlist.next()
+        self.assertIsNone(playlist.next())
+        self.assertEqual(playlist.previous()["id"], "4")
+        empty = Playlist([], dict(DEFAULTS, loop=False))
+        self.assertIsNone(empty.next())
+        self.assertIsNone(empty.previous())
+        self.assertIsNone(empty.failed())
+
     def test_failed_item_excluded_from_next_cycles(self):
         playlist = self.playlist()
         playlist.next()
@@ -100,6 +111,20 @@ class SequencingTests(unittest.TestCase):
         now[0] = 51
         self.assertTrue(clock.ready())
         self.assertEqual(clock.delay_ms(), 1)
+
+    def test_long_and_paused_deadlines_do_not_wake_at_frame_rate(self):
+        now = [0.0]
+        clock = PlaybackClock(lambda: now[0])
+        clock.arm(5)
+        # Far deadlines wait in one capped step instead of fifty wakeups.
+        self.assertEqual(clock.delay_ms(), 250)
+        now[0] = 4.9
+        self.assertEqual(clock.delay_ms(), 100)
+        clock.toggle()
+        self.assertEqual(clock.delay_ms(), 250)
+        now[0] = 20
+        clock.toggle()
+        self.assertEqual(clock.deadline, 20.1)
 
     def test_pause_while_preparing_does_not_start_the_animation_clock(self):
         now = [0.0]
@@ -150,6 +175,20 @@ class DecodeTests(StorageCase):
         self.assertEqual([event[1] for event in events], ["frame", "done"])
         self.assertEqual(events[0][2].size, (480, 240))
         self.assertEqual(events[0][3], 5)
+
+    def test_exif_orientation_is_applied_before_scaling(self):
+        image = Image.new("RGB", (100, 50), "red")
+        exif = Image.Exif()
+        exif[0x0112] = 6  # rotate 90 degrees for display
+        stream = io.BytesIO()
+        image.save(stream, "JPEG", exif=exif)
+        item = self.add("portrait.jpg", stream.getvalue(), "jpeg")
+        decoder = self.decoder()
+        decoder.request(item, (480, 272), DEFAULTS)
+        events = self.events(decoder)
+        self.assertEqual(events[0][1], "frame")
+        self.assertEqual(events[0][2].size, (50, 100))
+        self.assertEqual(events[0][2].mode, "RGBA")
 
     def test_gif_exact_complete_replays_and_frame_timing(self):
         item = self.add("animation.gif", gif_bytes(), "gif")

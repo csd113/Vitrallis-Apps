@@ -247,7 +247,32 @@ fn emit_face(
     // repeated corner last: the index pass then drops the zero-area second
     // triangle instead of storing it, and the lightmap chart stays a valid
     // frame over the triangle's own corners.
-    let (points, colors, uv) = fold_triangle_to_quad(face.points, colors, face.uv);
+    let (mut points, mut colors, mut uv, folded) =
+        fold_triangle_to_quad(face.points, colors, face.uv);
+    // Re-assert the face's declared outward normal on the final corners. The
+    // emitters normalise their winding with `orient` before this point, but a
+    // fully degenerate quad has a zero normal there, so `orient` cannot tell
+    // which way it faces; after the fold the surviving corners have a real
+    // normal to compare. Without this, a slope whose side lands flush on the
+    // floor would keep a winding that points into the solid, invisible while
+    // culling is off and a hole the moment it is on.
+    if dot(quad_normal(points), face.normal) < 0.0 {
+        if folded {
+            // A folded triangle `[a, b, c, c]` reverses to `[a, c, b, b]`, so
+            // the repeated corner stays last and the zero-area second triangle
+            // is still the one the index pass drops.
+            points.swap(1, 2);
+            points[3] = points[2];
+            colors.swap(1, 2);
+            colors[3] = colors[2];
+            uv.swap(1, 2);
+            uv[3] = uv[2];
+        } else {
+            points.swap(1, 3);
+            colors.swap(1, 3);
+            uv.swap(1, 3);
+        }
+    }
     add_quad(
         scratch, points[0], colors[0], uv[0], points[1], colors[1], uv[1], points[2], colors[2],
         uv[2], points[3], colors[3], uv[3],
@@ -268,18 +293,23 @@ fn emit_face(
     buckets.add_quads(face.key, scratch);
 }
 
+/// The result of [`fold_triangle_to_quad`]: the three corner attribute arrays
+/// and whether the face was folded from a triangle.
+type FoldedFace<T> = ([[f32; 3]; 4], [T; 4], [[f32; 2]; 4], bool);
+
 /// Reorders one face's per-corner attributes so a coincident adjacent pair
 /// lands on the last two corners.
 ///
-/// A genuine quad is returned unchanged. For a triangle-shaped face the three
-/// distinct corners keep their winding order and the third is repeated;
+/// A genuine quad is returned unchanged, with the returned flag `false`. For a
+/// triangle-shaped face the three distinct corners keep their winding order and
+/// the third is repeated, with the flag `true`;
 /// [`crate::spatial`]'s index pass recognises `corner[2] == corner[3]` and
 /// emits a single triangle.
 fn fold_triangle_to_quad<T: Copy + Default>(
     points: [[f32; 3]; 4],
     colors: [T; 4],
     uv: [[f32; 2]; 4],
-) -> ([[f32; 3]; 4], [T; 4], [[f32; 2]; 4]) {
+) -> FoldedFace<T> {
     for first in 0..4usize {
         let second = if first == 3 {
             0
@@ -303,13 +333,17 @@ fn fold_triangle_to_quad<T: Copy + Default>(
             std::array::from_fn(|slot| points.get(source(slot)).copied().unwrap_or_default()),
             std::array::from_fn(|slot| colors.get(source(slot)).copied().unwrap_or_default()),
             std::array::from_fn(|slot| uv.get(source(slot)).copied().unwrap_or_default()),
+            true,
         );
     }
-    (points, colors, uv)
+    (points, colors, uv, false)
 }
 
 /// The four corners of a horizontal rectangle at world Y `y`, wound so the quad
 /// faces up, with its UVs in the same order.
+///
+/// The two axes need opposite corner walks: mapping the X order straight across
+/// to Z would transpose the corner cycle and leave the Z quad facing down.
 fn horizontal_quad(
     axis: WallAxis,
     span: (f32, f32),
@@ -321,7 +355,7 @@ fn horizontal_quad(
     let (b0, b1) = across;
     let points: [[f32; 3]; 4] = match axis {
         WallAxis::X => [[a0, y, b1], [a1, y, b1], [a1, y, b0], [a0, y, b0]],
-        WallAxis::Z => [[b1, y, a0], [b1, y, a1], [b0, y, a1], [b0, y, a0]],
+        WallAxis::Z => [[b0, y, a0], [b0, y, a1], [b1, y, a1], [b1, y, a0]],
     };
     let uvs = points.map(uv);
     (points, uvs)
@@ -1130,9 +1164,13 @@ fn emit_box_caps(
         );
     }
     if let Some(bottom) = keys.bottom {
-        let (points, uv) = horizontal_quad(WallAxis::X, (x0, x1), (z0, z1), y0, |point| {
+        let (mut points, mut uv) = horizontal_quad(WallAxis::X, (x0, x1), (z0, z1), y0, |point| {
             tiled_uv(point[0], point[2], tile)
         });
+        // `horizontal_quad` faces up; the box's underside faces down, so walk
+        // the same corners in the opposite order.
+        points.reverse();
+        uv.reverse();
         emit_face(
             context,
             buckets,

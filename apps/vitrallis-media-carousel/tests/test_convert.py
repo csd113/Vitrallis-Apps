@@ -299,6 +299,32 @@ class ConversionTests(StorageCase):
         self.assertEqual(self.library.playlist(self.cid), [item])
         self.assertEqual(list(self.paths.uploads.iterdir()), [])
 
+    def test_close_reports_a_pillow_encode_that_ignores_cancellation(self):
+        item = self.add("clip.gif", gif_bytes(), "gif")
+        entered, release = threading.Event(), threading.Event()
+
+        def slow(instance, stream, staged, details):
+            entered.set()
+            release.wait(10)  # like Pillow's C encoder: cannot observe cancellation
+            return Conversions._convert_pillow(instance, stream, staged, details)
+
+        conversions = Conversions(self.library, self.processes)
+        with patch("convert.converter_available", return_value=None), \
+                patch.object(Conversions, "_convert_pillow", slow):
+            conversions.start(self.cid, item["id"])
+            self.assertTrue(entered.wait(3))
+            conversions.close()  # bounded: reports instead of blocking shutdown
+            workers = [t for t in threading.enumerate()
+                       if t.name.startswith("carousel-conversion")]
+            self.assertTrue(workers)
+            self.assertTrue(all(thread.daemon for thread in workers))
+            release.set()
+            for worker in workers:
+                worker.join(timeout=10)
+        # The abandoned encode never commits; its staging file is reclaimed.
+        self.assertEqual(self.library.playlist(self.cid), [item])
+        self.assertEqual(list(self.paths.uploads.iterdir()), [])
+
     def test_verification_rejects_a_wrong_result(self):
         item = self.add("clip.gif", gif_bytes(), "gif")
         def static(instance, stream, staged, details):

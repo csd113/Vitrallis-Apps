@@ -196,6 +196,7 @@ it and allocates nothing per frame.
 | `LIMINAL_CAPTURE=frame.png` | render one frame, write it, exit |
 | `LIMINAL_CAPTURE_FRAME=n` | which frame to capture (default 1), so a moving object can be captured mid-animation |
 | `LIMINAL_NO_LIGHTMAPS=1` | force the vertex-lit path for a lightmap A/B capture |
+| `LIMINAL_CULL_FACE=0` | turn single-sided back-face culling off for one binary's A/B; unset, `1`, `true`, `on` keep the shipped culling |
 | `LIMINAL_DUMP_LIGHTMAPS=1` | write baked atlas pages as PNGs under `target/agent-work/atlases/` (a fresh bake only — delete `cache/lightmaps/` first, since a cache hit writes nothing) |
 | `LIMINAL_QUALITY=full\|low` | draw this run at the named profile without editing `settings.json` |
 | `LIMINAL_PAUSE=1` | open the pause menu on the first frame, so the pause UI can be captured without a keyboard |
@@ -273,3 +274,48 @@ See [docs/POCKETCHIP.md](../../docs/POCKETCHIP.md) for the target, the shipped
 profile and the measured results, and
 [docs/gpu-utilisation.md](../../docs/gpu-utilisation.md) for what the GPU
 number is and how it was validated.
+
+### A/B measurement tools
+
+`matrix.sh` compares configurations of one binary, which is enough when a change
+is behind an environment switch. Comparing two *binaries* needs the same
+treatment, and on a single-core Cortex-A8 that also means controlling for drift:
+`schedutil` swings the core between 432 MHz and 1.008 GHz and moves `render_ms`
+by 30 % on its own.
+
+| tool | what it does |
+| --- | --- |
+| `probe.sh <label> <binary> <spawn> <frames> [ENV=VAL ...]` | one run of any binary in the shared benchmark environment; prints frame timing, GPU load, level-build time and the new GPU fault count |
+| `ab.sh <spawn> <frames> <label>\|<binary>\|<ENV=VAL ...> ...` | runs every spec once per round, interleaving the rounds, so drift hits every condition equally |
+| `csv_stats.py <dir> [labels]` | folds the per-frame CSVs into medians and trimmed means of `loop_ms`, `render+swap`, `render`, `swap` and `update` across all rounds |
+| `present_probe.py <label> [ENV=VAL ...]` | runs one presented configuration and reports its cadence: the `loop_ms` histogram, the fast/slow split, and the cumulative-phase concentration against the 59.52 Hz refresh |
+| `visual_probe.sh <binary> [ENV=VAL ...]` | reports the geometry and **depth** of the running game's X11 window |
+| `atlas_views.sh <dir> [binary]` | captures the prop-atlas visual gate: macro, oblique, far and floor-control prop views, aimed at where an atlas fails if it fails |
+| `capture_diff.py <a-dir> <b-dir> [--tolerance n]` | per-pixel comparison of two capture sets, with the largest connected differing region per shot — the shape that separates a dropped surface from a filtering difference |
+
+Pin the governor before an A/B series and put it back afterwards:
+
+```sh
+ssh chip@chip 'echo chip | sudo -S -p "" sh -c "echo performance > \
+    /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"'
+ROUNDS=3 ~/bin/ab.sh 2,5.6,74 200 \
+    "baseline|./places-pass2|" \
+    "candidate|./places|"
+python3 tools/bench/csv_stats.py /tmp/bench-csvs
+ssh chip@chip 'echo chip | sudo -S -p "" sh -c "echo schedutil > \
+    /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"'
+```
+
+Measurement notes that matter more than the scripts:
+
+* `LIMINAL_BENCH_NOSWAP=1 LIMINAL_BENCH_FINISH=1` is the **low-variance** metric:
+  it is the frame's serialised CPU + GPU work with no present path involved, and
+  repeated runs at one viewpoint agree to about 0.1 ms where presented medians
+  scatter by 2 ms. Use it to decide between candidates, then confirm the winner
+  with presented medians.
+* `render_ms` and `swap_ms` trade time with each other run to run, because a
+  full command queue blocks inside whichever call the CPU is in. Compare their
+  **sum**, or `loop_ms`, never one alone.
+* `LIMINAL_BENCH_NORENDER=1` with `gpuwatch.sh` measures the present path on its
+  own: no scene, no UI, just swaps.
+

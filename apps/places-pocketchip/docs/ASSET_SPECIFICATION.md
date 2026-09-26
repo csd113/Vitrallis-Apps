@@ -628,11 +628,18 @@ normal runtime texture         256x256 native
 ### 8.5 Materials, alpha and emissive maps
 
 * The loader reads `pbrMetallicRoughness.baseColorTexture` and
-  `baseColorFactor`, `emissiveFactor`, `emissiveTexture` and
-  `KHR_materials_emissive_strength`. It ignores `metallicFactor`,
-  `roughnessFactor`, `normalTexture`, `occlusionTexture`,
-  `metallicRoughnessTexture`, `alphaMode`, `alphaCutoff`, `doubleSided` and
-  samplers.
+  `baseColorFactor`, `emissiveFactor`, `emissiveTexture`,
+  `KHR_materials_emissive_strength` and the core `doubleSided` flag. It ignores
+  `metallicFactor`, `roughnessFactor`, `normalTexture`, `occlusionTexture`,
+  `metallicRoughnessTexture`, `alphaMode`, `alphaCutoff` and samplers.
+* **`doubleSided` decides prop back-face culling.** A material that declares it
+  draws with culling disabled — the pool curtains are folded ribbons built from
+  two windings and thin open surfaces must stay visible from behind — while a
+  material that omits it (the glTF default, `false`) draws as a single-sided
+  solid and is back-face culled. Every model exported by `tools/props` writes
+  `"doubleSided": true`, so the shipped props keep their current two-sided
+  appearance; a hand-authored single-sided model must be a closed, consistently
+  wound mesh viewed from outside.
 * **Props always draw opaque.** There is no per-prop cut-out or blend path;
   alpha in a model texture has no effect. The toolkit enforces this by writing
   full opacity into every prop sheet.

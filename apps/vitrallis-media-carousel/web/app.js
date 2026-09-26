@@ -214,7 +214,7 @@ function renderFolder() {
     ? `${convertible} of ${row.items.length} items would convert.`
     : "Nothing in this collection needs converting.";
   for (const node of document.querySelectorAll("#folder-view [data-kinds]")) {
-    node.disabled = convertible === 0 || conversionRunning();
+    node.disabled = convertible === 0 || conversionRunning() || uploading;
   }
   previewURLs.forEach(url => URL.revokeObjectURL(url)); previewURLs = [];
   previewQueue = []; previewObserver.disconnect();
@@ -277,7 +277,12 @@ async function binary(path, timeout = 15000) {
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeout);
   try {
     const response = await fetch(path, {headers: {Authorization: `Bearer ${token}`}, signal: controller.signal});
-    if (!response.ok) { const data = await response.json(); throw new Error(data.error || "Download failed"); }
+    if (response.status === 401) lock();
+    if (!response.ok) {
+      let message = "Download failed";
+      try { message = (await response.json()).error || message; } catch (_) { /* Non-JSON body. */ }
+      throw new Error(message);
+    }
     return await response.blob();
   } finally { clearTimeout(timer); }
 }
@@ -334,10 +339,13 @@ async function upload(files) {
   const cid = selected;
   $("files").disabled = true;
   $("delete-folder").disabled = true;
+  // A conversion started during an upload would compete for CPU with two media
+  // validations, so hold every bulk action until the batch finishes.
+  for (const node of document.querySelectorAll("#convert-view [data-kinds]")) node.disabled = true;
   $("upload-status").hidden = false;
   $("upload-results").replaceChildren();
   renderFolder();
-  let success = 0;
+  let success = 0, expired = false;
   // Retain at most 100 File references/results per batch; library limits stay server enforced.
   const batch = Array.from(files).slice(0, 100);
   try {
@@ -356,6 +364,7 @@ async function upload(files) {
         const index = next++;
         const file = batch[index], result = rows[index];
         try {
+          if (file.size === 0) throw new Error("empty file · not sent");
           if (file.size > state.max_upload) throw new Error("Over the 64 MiB limit");
           result.textContent = `${file.name}: uploading`;
           await sendFile(file, cid, (bytes, total) => {
@@ -375,17 +384,29 @@ async function upload(files) {
     };
     // Two transfers overlap; the server serializes expensive media validation.
     await Promise.all([worker(), worker()]);
-    if (token) await refresh();
-    notice(`${success} of ${batch.length} files saved.` +
-      (files.length > 100 ? " Select remaining files in another batch (100 maximum)." : ""),
-      success === batch.length ? "success" : "error");
+    expired = !token;
+    if (expired) {
+      for (const row of rows) {
+        if (row.textContent.endsWith(": queued")) {
+          row.textContent = `${row.title}: not uploaded · session expired`;
+        }
+      }
+      notice(`Session expired. ${batch.length - success} of ${batch.length} files were not uploaded. ` +
+        "Reconnect with the code shown on the device.", "error");
+    } else {
+      await refresh();
+      notice(`${success} of ${batch.length} files saved.` +
+        (files.length > 100 ? " Select remaining files in another batch (100 maximum)." : ""),
+        success === batch.length ? "success" : "error");
+    }
   } catch (error) { notice(error.message, "error"); }
   finally {
     uploading = false;
     $("files").disabled = false;
     $("delete-folder").disabled = false;
+    for (const node of document.querySelectorAll("#convert-view [data-kinds]")) node.disabled = false;
     $("files").value = "";
-    $("upload-label").textContent = "Batch finished";
+    $("upload-label").textContent = expired ? "Session expired" : "Batch finished";
     if (state && selected) renderFolder();
   }
 }
@@ -527,6 +548,7 @@ $("drop-zone").addEventListener("dragleave", () => $("drop-zone").classList.remo
 $("drop-zone").addEventListener("drop", event => {
   event.preventDefault();
   $("drop-zone").classList.remove("dragover");
+  if (uploading) { notice("Wait for the current upload batch to finish.", "error"); return; }
   upload(event.dataTransfer.files);
 });
 window.addEventListener("beforeunload", event => {

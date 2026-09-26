@@ -60,7 +60,8 @@ pool_win_close:3.1,8.2,0:0,22:
 jamb_left:0.9,9.2,0:20,26:
 jamb_right:5.3,9.2,0:-18,26:
 vent_office:5.0,4.4,0:90,12:
-grille_pool:8.9,6.2,0:0,10:
+grille_west:6.5,3.6,90:90,18
+grille_east:11.5,3.6,270:270,18:
 pool_wide:14.0,13.0,45::
 pool_north:12.0,14.0,0::
 pool_east:22.0,12.0,90::

@@ -320,6 +320,7 @@ fn synthetic_model(triangles: usize, textures: &[(u32, u32)]) -> PropModel {
             material: 0,
             texture: (!textures.is_empty()).then_some(0u16),
             emission: MaterialEmission::NONE,
+            double_sided: false,
             first_index: 0,
             index_count: u32::try_from(triangles.saturating_mul(3))
                 .expect("fixture index count fits"),

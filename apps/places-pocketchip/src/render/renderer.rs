@@ -17,8 +17,8 @@ use super::{
     BatchRange, DECAL_ALPHA_CUTOFF, DECAL_EXTERNAL_BASE, DECAL_FRAGMENT_SHADER_SRC,
     DECAL_POLYGON_OFFSET, DrawableSize, EMISSION_MASK_TEXTURE_UNIT, HasContext,
     LIGHTMAP_PAGE_SLOTS, LIGHTMAP_TEXTURE_UNIT, LevelMesh, MaterialIndex, MaterialTable, MeshChunk,
-    MeshPacker, NORMAL_MAP_TEXTURE_UNIT, PackedVertex, PropMeshBatch, SCENE_ATTRIB_COLOR,
-    SCENE_ATTRIB_COUNT, SCENE_ATTRIB_HANDEDNESS, SCENE_ATTRIB_LIGHTMAP_PAGE,
+    MeshPacker, NORMAL_MAP_TEXTURE_UNIT, PackedVertex, PropAtlas, PropMeshBatch,
+    SCENE_ATTRIB_COLOR, SCENE_ATTRIB_COUNT, SCENE_ATTRIB_HANDEDNESS, SCENE_ATTRIB_LIGHTMAP_PAGE,
     SCENE_ATTRIB_LIGHTMAP_UV, SCENE_ATTRIB_NORMAL, SCENE_ATTRIB_POS, SCENE_ATTRIB_TANGENT,
     SCENE_ATTRIB_UV, SCENE_FAR_M, SCENE_NEAR_M, SCENE_TEXTURE_UNIT, StaticBatch, SurfaceKey,
     SurfaceKind, UI_REFERENCE_HEIGHT, UI_REFERENCE_WIDTH, VERTEX_SHADER_SRC, Vertex, VertexLayout,
@@ -213,6 +213,19 @@ pub(super) struct PropDraw {
     /// Distinct vertices the range reads, for the debug counters.
     vertex_count: i32,
     bounds: crate::spatial::Aabb,
+    /// True when this range draws through the level's shared prop atlas.
+    ///
+    /// Only used to decide which ranges may merge into one submission; the
+    /// atlas texture itself is already in `texture`.
+    atlas: bool,
+    /// Whether this range's triangles may be back-face culled.
+    ///
+    /// Taken from the model material's glTF `doubleSided` declaration: a
+    /// single-sided range is wound so its front faces out of the solid and is
+    /// culled; a declared double-sided one is drawn with both sides. Merged
+    /// ranges must agree on this, so one chunk can never apply the first
+    /// range's sidedness to another's geometry.
+    cull: bool,
 }
 
 /// The emission term one surface batch draws with: a colour premultiplied by
@@ -898,6 +911,14 @@ impl StartupResources {
         unsafe {
             gl.enable(glow::DEPTH_TEST);
             gl.depth_func(glow::LEQUAL);
+            // The project's front-face convention is the GL default: a triangle
+            // is front facing when the right-hand normal over `p0 -> p1 -> p2`
+            // points at the viewer, and every solid face is wound so that
+            // normal points out of the solid. Culling is bracketed per scene
+            // pass by the renderer; the convention itself is fixed here once.
+            gl.front_face(glow::CCW);
+            gl.cull_face(glow::BACK);
+            gl.disable(glow::CULL_FACE);
             gl.clear_color(0.08, 0.08, 0.09, 1.0);
 
             let tiers = create_scene_programs(gl)?;
@@ -1203,6 +1224,13 @@ pub struct Renderer {
     /// Whether frustum culling is applied. Only the benchmark harness turns it
     /// off, to measure what culling is worth on real hardware.
     culling_enabled: bool,
+    /// Whether single-sided scene geometry culls its back faces. On in normal
+    /// play; `LIMINAL_CULL_FACE=0` turns it off so one binary can measure the
+    /// same geometry with and without culling.
+    backface_culling: bool,
+    /// Whether `GL_CULL_FACE` is currently enabled, so the pass brackets only
+    /// touch GL when the state actually changes.
+    backface_culling_active: bool,
     /// Scratch buffer for packing UI vertices each frame (never grows per frame
     /// beyond the UI's own vertex count).
     ui_scratch: Vec<PackedVertex>,
@@ -1235,8 +1263,15 @@ pub struct Renderer {
     dynamic_lighting: Option<LevelLighting>,
     /// Per-model prop GPU textures for the current level, indexed by model path
     /// and then by the model's own texture slot. Kept across level changes so a
-    /// level switch never re-uploads a model that is already resident.
+    /// level switch never re-uploads a model that is already resident. Atlased
+    /// models deliberately never appear here: their albedo lives in
+    /// [`Self::prop_atlas_texture`] instead.
     prop_textures: std::collections::HashMap<String, Vec<glow::Texture>>,
+    /// The current level's shared prop albedo atlas, when its props atlased.
+    /// Deleted and replaced at every level build (the atlas is level-specific
+    /// and its CPU pixels are dropped once uploaded), never cached across
+    /// levels like [`Self::prop_textures`].
+    prop_atlas_texture: Option<glow::Texture>,
     /// GPU textures for catalog/missing surface textures, keyed by logical
     /// texture key. Decoded images are already cached per session; this cache
     /// keeps their GPU copies across level changes, so a level switch never
@@ -1481,6 +1516,8 @@ impl Renderer {
             static_batches: Vec::new(),
             spatial_grid: crate::spatial::CellGrid::default(),
             culling_enabled: true,
+            backface_culling: backface_culling_from_env(),
+            backface_culling_active: false,
             prop_catalog,
             prop_assets: crate::props::PropAssets::load_default(),
             prop_draws: Vec::new(),
@@ -1489,6 +1526,7 @@ impl Renderer {
             dynamic_revision: 0,
             dynamic_lighting: None,
             prop_textures: std::collections::HashMap::new(),
+            prop_atlas_texture: None,
             surface_textures: std::collections::HashMap::new(),
             fixture_sheet_textures: std::collections::HashMap::new(),
             fixture_sheets: Vec::new(),
@@ -1666,6 +1704,13 @@ impl Renderer {
                     self.gl.bind_texture(glow::TEXTURE_2D, Some(*texture));
                     set_repeat_filter(&self.gl, linear);
                 }
+            }
+            // The shared prop atlas follows the same setting; its
+            // `TEXTURE_MAX_LEVEL` cap is a separate parameter and survives the
+            // filter change.
+            if let Some(texture) = self.prop_atlas_texture {
+                self.gl.bind_texture(glow::TEXTURE_2D, Some(texture));
+                set_repeat_filter(&self.gl, linear);
             }
             // Lightmap pages follow the same setting but keep mipmaps off.
             for texture in &self.lightmap_textures {
@@ -1852,6 +1897,10 @@ impl Renderer {
         self.static_batches = static_batches;
         // Props go through the same packer, one range per (model, cell).
         let (prop_packer, draws) = self.pack_prop_batches(&batches, index_ranges);
+        // The packer holds its own copies and the atlas has been uploaded, so
+        // the batches' pre-transformed vertices and the atlas' CPU pixels can
+        // go now instead of lingering for the rest of the level build.
+        drop(batches);
 
         if let Err(error) = upload_chunks(
             &self.gl,
@@ -1943,9 +1992,17 @@ impl Renderer {
         }
     }
 
-    /// Packs every prop batch and uploads one texture per distinct model.
+    /// Packs every prop batch, uploads the level's shared atlas and uploads one
+    /// texture per distinct non-atlased model.
     ///
-    /// A model whose texture cannot be uploaded is reported and skipped.
+    /// An atlased model never uploads its own sheet: its vertices already
+    /// address the atlas cell, and one texture bind for the whole pass is the
+    /// point of the change. A model whose own texture cannot be uploaded is
+    /// reported and skipped, as before. If the atlas itself cannot be uploaded,
+    /// its ranges are skipped after a warning: their UVs were already remapped
+    /// into the atlas at level build time, so drawing them through their own
+    /// sheet would sample the wrong texels, and the historical path is no
+    /// longer available for them.
     // The upload failure is a chatty one-line diagnostic and this renderer has
     // no logger (the game prints its own diagnostics directly), so the stderr
     // report is the intended behaviour and stays scoped to this method.
@@ -1958,13 +2015,39 @@ impl Renderer {
         let mut packer = MeshPacker::default();
         let mut draws: Vec<PropDraw> = Vec::with_capacity(batches.len());
 
-        // Upload each model's textures once, at the active quality profile, and
-        // keep them resident across level changes. `gpu_textures` is indexed
-        // exactly like `batch.textures`, so a submesh's `texture`/mask index
-        // means the same thing on the CPU and on the GPU.
+        // The previous level's atlas is level-specific: its CPU pixels are
+        // already dropped, so its texture is never reused.
+        if let Some(previous) = self.prop_atlas_texture.take() {
+            unsafe { self.gl.delete_texture(previous) };
+        }
+        // Upload the level's atlas once, before any per-model texture. Every
+        // atlased batch of a level shares one `Rc`, so the first is the sheet.
+        let atlas_source = batches.iter().find_map(|batch| batch.atlas.as_deref());
+        let atlas_texture = atlas_source.and_then(|atlas| match self.upload_prop_atlas(atlas) {
+            Ok(texture) => Some(texture),
+            Err(error) => {
+                crate::logging::warn_once(
+                    "prop-atlas-upload",
+                    format!(
+                        "[props] cannot upload the prop atlas: {error}; \
+                             atlas-backed props are not drawn this level"
+                    ),
+                );
+                None
+            }
+        });
+        self.prop_atlas_texture = atlas_texture;
+
+        // Upload each non-atlased model's textures once, at the active quality
+        // profile, and keep them resident across level changes. `gpu_textures`
+        // is indexed exactly like `batch.textures`, so a submesh's
+        // `texture`/mask index means the same thing on the CPU and on the GPU.
         let mut gpu_textures: std::collections::HashMap<String, Vec<glow::Texture>> =
             std::collections::HashMap::new();
         for batch in batches {
+            if batch.atlas.is_some() && atlas_texture.is_some() {
+                continue;
+            }
             if gpu_textures.contains_key(&batch.model) {
                 continue;
             }
@@ -1978,9 +2061,17 @@ impl Renderer {
         }
 
         for batch in batches {
-            let Some(textures) = gpu_textures.get(&batch.model) else {
-                continue;
+            let atlased = atlas_texture.is_some() && batch.atlas.is_some();
+            // An atlased batch without an uploaded atlas has no correct sheet to
+            // draw with, so its ranges are skipped above before this point.
+            let textures = if atlased {
+                None
+            } else {
+                gpu_textures.get(&batch.model)
             };
+            if !atlased && textures.is_none() {
+                continue;
+            }
             // Each submesh is packed on its own so every returned placement is
             // exactly one material's index range: a chunk split never cuts a
             // draw across two materials, and instance order never affects what
@@ -1996,14 +2087,22 @@ impl Renderer {
                 } else {
                     packer.push_unindexed(&batch.vertices, indices)
                 };
-                let texture = submesh
-                    .texture
-                    .and_then(|slot| textures.get(usize::from(slot)).copied())
-                    .unwrap_or(self.white_texture);
-                let mask = submesh
-                    .emission
-                    .mask
-                    .and_then(|slot| textures.get(usize::from(slot)).copied());
+                let (texture, mask) = match textures {
+                    Some(textures) => (
+                        submesh
+                            .texture
+                            .and_then(|slot| textures.get(usize::from(slot)).copied())
+                            .unwrap_or(self.white_texture),
+                        submesh
+                            .emission
+                            .mask
+                            .and_then(|slot| textures.get(usize::from(slot)).copied()),
+                    ),
+                    // A model is only atlased when every one of its submeshes
+                    // samples the same albedo with no emissive mask, so the
+                    // atlas bind is the submesh's whole material.
+                    None => (atlas_texture.unwrap_or(self.white_texture), None),
+                };
                 for packed in placements {
                     draws.push(PropDraw {
                         texture,
@@ -2013,11 +2112,113 @@ impl Renderer {
                         index_count: packed.index_count,
                         vertex_count: packed.vertex_count,
                         bounds: batch.bounds,
+                        atlas: atlased,
+                        cull: !submesh.double_sided,
                     });
                 }
             }
         }
+
+        let draws = merge_atlas_prop_draws(&draws, packer.chunks.len());
+        if let Some(atlas) = atlas_source
+            && atlas_texture.is_some()
+        {
+            Self::log_prop_atlas(atlas, batches, draws.len());
+        } else if atlas_source.is_none() && super::prop_atlas::enabled() && !batches.is_empty() {
+            // The atlas was asked for but nothing fitted; say so, because the
+            // draw count that follows is the per-model one.
+            crate::logging::info(format!(
+                "[props] atlas: no model fitted, {} prop batch(es) draw per-model textures, \
+                 {} prop draw call(s)",
+                batches.len(),
+                draws.len(),
+            ));
+        }
         (packer, draws)
+    }
+
+    /// Reports what the level's atlas did, in the tone of the `[props]` startup
+    /// telemetry: size, cells, models, the resulting draw count and its build
+    /// cost.
+    fn log_prop_atlas(atlas: &PropAtlas, batches: &[PropMeshBatch], prop_draws: usize) {
+        use std::collections::HashSet;
+
+        let mut atlased: HashSet<&str> = HashSet::new();
+        let mut fell_back: HashSet<&str> = HashSet::new();
+        for batch in batches {
+            let set = if batch.atlas.is_some() {
+                &mut atlased
+            } else {
+                &mut fell_back
+            };
+            set.insert(batch.model.as_str());
+        }
+        let edge = usize::try_from(super::prop_atlas::ATLAS_EDGE).unwrap_or(0);
+        crate::logging::info(format!(
+            "[props] atlas {}x{} RGBA8, mips 0..={}, {} texel(s), {}/{} cell(s), \
+             {} model(s) atlased, {} fell back, {} prop draw call(s), built in {:.1} ms",
+            edge,
+            edge,
+            super::prop_atlas::MAX_MIP_LEVEL,
+            edge.saturating_mul(edge),
+            atlas.cells_used(),
+            super::prop_atlas::CELL_COUNT,
+            atlased.len(),
+            fell_back.len(),
+            prop_draws,
+            atlas.build_millis(),
+        ));
+    }
+
+    /// Uploads one level's shared prop atlas as a mipmapped RGBA8 sheet.
+    ///
+    /// The wrap mode is `CLAMP_TO_EDGE` (a cell must never repeat into its
+    /// neighbour) and the profile's filtering mode is kept, mipmaps included.
+    /// The chain is generated in full and then capped at
+    /// [`super::prop_atlas::MAX_MIP_LEVEL`]: a cell's 8-texel gutter is
+    /// `8 / 2^L` texels at level `L`, so level 3 (1 texel) is the deepest level
+    /// at which a bilinear footprint can never reach a neighbouring cell.
+    fn upload_prop_atlas(&self, atlas: &PropAtlas) -> Result<glow::Texture, String> {
+        let edge = i32::try_from(super::prop_atlas::ATLAS_EDGE).unwrap_or(i32::MAX);
+        let expected = usize::try_from(super::prop_atlas::ATLAS_EDGE)
+            .unwrap_or(0)
+            .saturating_mul(usize::try_from(super::prop_atlas::ATLAS_EDGE).unwrap_or(0))
+            .saturating_mul(4);
+        if atlas.pixels().len() != expected {
+            return Err("the atlas pixel buffer does not match its declared size".to_string());
+        }
+        let max_level = i32::try_from(super::prop_atlas::MAX_MIP_LEVEL).unwrap_or(i32::MAX);
+        unsafe {
+            let texture = self.gl.create_texture()?;
+            self.gl.bind_texture(glow::TEXTURE_2D, Some(texture));
+            self.gl.tex_image_2d(
+                glow::TEXTURE_2D,
+                0,
+                glow::RGBA.cast_signed(),
+                edge,
+                edge,
+                0,
+                glow::RGBA,
+                glow::UNSIGNED_BYTE,
+                glow::PixelUnpackData::Slice(Some(atlas.pixels())),
+            );
+            self.gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_WRAP_S,
+                glow::CLAMP_TO_EDGE.cast_signed(),
+            );
+            self.gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_WRAP_T,
+                glow::CLAMP_TO_EDGE.cast_signed(),
+            );
+            set_repeat_filter(&self.gl, self.linear_filtering);
+            self.gl.generate_mipmap(glow::TEXTURE_2D);
+            self.gl
+                .tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_MAX_LEVEL, max_level);
+            self.gl.bind_texture(glow::TEXTURE_2D, None);
+            Ok(texture)
+        }
     }
 
     /// Returns the image a texture class uploads at the active quality profile.
@@ -2450,7 +2651,6 @@ impl Renderer {
         }
     }
 
-    /// Creates, recreates or discards the offscreen scene target so it matches
     /// Draws the whole 3D scene body with one view-projection.
     ///
     /// This is the one place the frame's draw order is written down; the main
@@ -2465,12 +2665,25 @@ impl Renderer {
         self.frame_state_valid = false;
         // Every world draw needs both lightmap units defined.
         self.bind_lightmap_units();
-        self.draw_static_pass(frustum, cull, BatchPass::Opaque)
-            .plus(self.draw_prop_batches(frustum, cull))
-            .plus(self.draw_dynamic_objects(frustum, cull, mvp))
-            .plus(self.draw_static_pass(frustum, cull, BatchPass::Cutout))
-            .plus(self.draw_translucent_pass(frustum, cull, mvp))
-            .plus(self.draw_decal_batches(frustum, cull, mvp))
+        // Structural geometry (floors, ceilings, walls, fixtures, decals) is
+        // single-sided: each face is wound so its right-hand normal points out
+        // of the solid, so the back faces are safe to reject. The passes that
+        // draw explicitly two-sided geometry — props and dynamic objects
+        // per their glTF material, translucent surfaces by nature — select
+        // their own state per range and end with it off, so the HUD that
+        // follows the scene never inherits culling.
+        self.set_scene_culling(true);
+        let mut totals = self.draw_static_pass(frustum, cull, BatchPass::Opaque);
+        totals = totals.plus(self.draw_prop_batches(frustum, cull));
+        totals = totals.plus(self.draw_dynamic_objects(frustum, cull, mvp));
+        self.set_scene_culling(true);
+        totals = totals.plus(self.draw_static_pass(frustum, cull, BatchPass::Cutout));
+        self.set_scene_culling(false);
+        totals = totals.plus(self.draw_translucent_pass(frustum, cull, mvp));
+        self.set_scene_culling(true);
+        totals = totals.plus(self.draw_decal_batches(frustum, cull, mvp));
+        self.set_scene_culling(false);
+        totals
     }
 
     /// The linked program of one scene pass, when it exists.
@@ -2672,6 +2885,10 @@ impl Renderer {
                 self.begin_pass(pass.program());
                 begun = true;
             }
+            // A declared two-sided sheet (a pane or grille) keeps both faces;
+            // every other structural batch is single-sided and culled. The
+            // tracker makes a run of same-sided batches cost nothing.
+            self.set_scene_culling(!batch.key.two_sided);
             if bound_chunk != Some(batch.chunk) {
                 if self.bind_chunk(&self.level_buffers, batch.chunk) {
                     bound_chunk = Some(batch.chunk);
@@ -3021,6 +3238,9 @@ impl Renderer {
                 self.begin_pass(ScenePass::World);
                 begun = true;
             }
+            // A prop's own material decides its sidedness; the state tracker
+            // makes a run of same-sided ranges cost nothing.
+            self.set_scene_culling(draw.cull);
             if bound_chunk != Some(draw.chunk) {
                 if self.bind_chunk(&self.prop_buffers, draw.chunk) {
                     bound_chunk = Some(draw.chunk);
@@ -3252,6 +3472,29 @@ impl Renderer {
     /// off so the same build can measure what it is worth on real hardware.
     pub const fn set_culling(&mut self, enabled: bool) {
         self.culling_enabled = enabled;
+    }
+
+    /// Turns back-face culling on or off for the scene, without redundant GL
+    /// calls.
+    ///
+    /// Single-sided opaque batches draw with culling on; a range whose material
+    /// declares itself two-sided draws with it off. Only a real change reaches
+    /// GL, so a level whose props are all one class pays one toggle per pass,
+    /// not one per range. The scene body leaves the state off, so the HUD pass
+    /// that follows never inherits it.
+    fn set_scene_culling(&mut self, enabled: bool) {
+        let enabled = enabled && self.backface_culling;
+        if self.backface_culling_active == enabled {
+            return;
+        }
+        unsafe {
+            if enabled {
+                self.gl.enable(glow::CULL_FACE);
+            } else {
+                self.gl.disable(glow::CULL_FACE);
+            }
+        }
+        self.backface_culling_active = enabled;
     }
 
     /// Requests lightmaps for the *next* level build.
@@ -3726,6 +3969,9 @@ struct DynamicSubmeshGpu {
     /// The model material's own emission, routed exactly like a static prop
     /// primitive's. A per-object override replaces it at draw time.
     emission: EmissionState,
+    /// Whether this primitive culls its back faces: the inverse of the model
+    /// material's glTF `doubleSided` declaration.
+    cull: bool,
     first_index: i32,
     index_count: i32,
     /// Distinct vertices this primitive reads, for the frame counters.
@@ -3882,6 +4128,7 @@ impl Renderer {
             submeshes.push(DynamicSubmeshGpu {
                 texture,
                 emission,
+                cull: !submesh.double_sided,
                 first_index: i32::try_from(start).unwrap_or(i32::MAX),
                 index_count: i32::try_from(count).unwrap_or(i32::MAX),
                 vertex_count: i32::try_from(vertex_count).unwrap_or(i32::MAX),
@@ -4016,6 +4263,9 @@ impl Renderer {
                 })
             });
             for submesh in &gpu.submeshes {
+                // Dynamic props obey the same glTF `doubleSided` semantics as
+                // placed ones.
+                self.set_scene_culling(submesh.cull);
                 let emission = override_emission.map_or(submesh.emission, |emission| {
                     EmissionState::material(emission, override_mask)
                 });
@@ -4058,6 +4308,105 @@ impl Renderer {
             self.gl.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(ibo));
         }
     }
+}
+
+/// Whether the renderer rejects back faces of single-sided geometry at startup.
+///
+/// `LIMINAL_CULL_FACE=0` (`false`, `off`, `no`) turns it off so one binary can
+/// measure the same level with and without culling; unset or any other value
+/// keeps the shipped behaviour. Read once, like the other startup overrides.
+fn backface_culling_from_env() -> bool {
+    std::env::var("LIMINAL_CULL_FACE").ok().is_none_or(|value| {
+        !matches!(
+            value.trim().to_ascii_lowercase().as_str(),
+            "0" | "false" | "off" | "no"
+        )
+    })
+}
+
+/// Collapses every atlas-backed range of one buffer chunk into one submission.
+///
+/// `MeshPacker` appends successive ranges contiguously to the current chunk's
+/// index buffer, so all of a chunk's prop ranges cover one contiguous span and
+/// one `draw_elements` can submit them all. A chunk merges only when every
+/// range in it is atlas-backed and they all share one emission state and one
+/// culling state: an atlas-backed run that spanned a non-atlased range would
+/// draw that range with the wrong texture, merging two different emission
+/// colours would drop one, and a merged draw has exactly one back-face culling
+/// state, so a single-sided range can never ride along with a double-sided
+/// one. The merged draw carries the union of the merged bounds, so frustum
+/// culling keeps working (it may keep the union alive a little more often than
+/// the individual ranges would — the accepted trade for the single draw).
+fn merge_atlas_prop_draws(draws: &[PropDraw], chunk_count: usize) -> Vec<PropDraw> {
+    // A chunk is disqualified when any range in it is not atlas-backed, or
+    // when its atlas-backed ranges disagree on emission or culling. Every
+    // agreement slot stays `None` for an empty chunk.
+    let mut emission: Vec<Option<EmissionState>> = vec![None; chunk_count];
+    let mut cull: Vec<Option<bool>> = vec![None; chunk_count];
+    let mut disqualified: Vec<bool> = vec![false; chunk_count];
+    for draw in draws {
+        let Some(slot) = emission.get_mut(draw.chunk) else {
+            continue;
+        };
+        let Some(cull_slot) = cull.get_mut(draw.chunk) else {
+            continue;
+        };
+        let Some(flag) = disqualified.get_mut(draw.chunk) else {
+            continue;
+        };
+        if !draw.atlas {
+            *flag = true;
+            continue;
+        }
+        if *flag {
+            continue;
+        }
+        match slot {
+            None => *slot = Some(draw.emission),
+            Some(existing) if *existing == draw.emission => {}
+            Some(_) => *flag = true,
+        }
+        match cull_slot {
+            None => *cull_slot = Some(draw.cull),
+            Some(existing) if *existing == draw.cull => {}
+            Some(_) => *flag = true,
+        }
+    }
+
+    let mut merged: Vec<PropDraw> = Vec::with_capacity(draws.len());
+    let mut emitted: Vec<bool> = vec![false; chunk_count];
+    for draw in draws {
+        let mergeable = !disqualified.get(draw.chunk).copied().unwrap_or(true)
+            && emission.get(draw.chunk).is_some_and(Option::is_some);
+        if !mergeable {
+            merged.push(*draw);
+            continue;
+        }
+        if emitted.get(draw.chunk).copied().unwrap_or(true) {
+            continue;
+        }
+        if let Some(flag) = emitted.get_mut(draw.chunk) {
+            *flag = true;
+        }
+        let mut start = i32::MAX;
+        let mut end = i32::MIN;
+        let mut vertices = 0i32;
+        let mut bounds = crate::spatial::Aabb::EMPTY;
+        for range in draws.iter().filter(|range| range.chunk == draw.chunk) {
+            start = start.min(range.index_start);
+            end = end.max(range.index_start.saturating_add(range.index_count));
+            vertices = vertices.saturating_add(range.vertex_count);
+            bounds = bounds.union(&range.bounds);
+        }
+        merged.push(PropDraw {
+            index_start: start,
+            index_count: end.saturating_sub(start),
+            vertex_count: vertices,
+            bounds,
+            ..*draw
+        });
+    }
+    merged
 }
 
 /// What one draw loop submitted, so the frame counters can be summed.
@@ -4242,4 +4591,54 @@ fn scene_view_projection(
     let mvp = proj * view;
     let frustum = Frustum::from_view_projection(&mvp, crate::spatial::DepthRange::NegativeOneToOne);
     (mvp, frustum)
+}
+
+#[cfg(test)]
+mod tests {
+    // Test code: unwrap/expect and indexing are idiomatic in tests; the
+    // production lints stay enforced everywhere else in the file.
+    #![allow(clippy::expect_used, clippy::indexing_slicing)]
+
+    use super::*;
+
+    /// A distinct texture handle for the merge tests; nothing binds it.
+    fn texture(id: u32) -> glow::Texture {
+        glow::NativeTexture(std::num::NonZeroU32::new(id).expect("test ids are non-zero"))
+    }
+
+    fn draw(chunk: usize, start: i32, count: i32, cull: bool) -> PropDraw {
+        PropDraw {
+            texture: texture(1),
+            emission: EmissionState::NONE,
+            chunk,
+            index_start: start,
+            index_count: count,
+            vertex_count: count,
+            bounds: crate::spatial::Aabb::EMPTY,
+            atlas: true,
+            cull,
+        }
+    }
+
+    #[test]
+    fn atlas_merging_never_mixes_culling_states() {
+        // One merged draw has one GL culling state, so a single-sided prop
+        // range must never ride along in a double-sided chunk (or the reverse).
+        let draws = vec![draw(0, 0, 6, true), draw(0, 6, 6, false)];
+        let merged = merge_atlas_prop_draws(&draws, 1);
+        assert_eq!(
+            merged.len(),
+            2,
+            "disagreeing culling states must stay separate draws"
+        );
+        assert!(merged[0].cull && !merged[1].cull);
+
+        // Ranges that agree still merge into the one submission the atlas
+        // exists to produce.
+        let draws = vec![draw(0, 0, 6, true), draw(0, 6, 6, true)];
+        let merged = merge_atlas_prop_draws(&draws, 1);
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].index_count, 12);
+        assert!(merged[0].cull);
+    }
 }

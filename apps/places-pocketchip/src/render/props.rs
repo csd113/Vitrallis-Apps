@@ -13,9 +13,22 @@
 //! model with three primitives costs three draws per cell no matter how many
 //! times it is placed — a field of vending machines still batches. A single
 //! primitive model behaves exactly as it always has: one range, one draw.
+//!
+//! The prop albedo atlas
+//! ---------------------
+//! One model per level still costs one texture upload and one material change
+//! per draw, which is the dominant CPU cost on the target device. When
+//! [`super::prop_atlas`] is enabled (the default; see
+//! `LIMINAL_PROP_ATLAS`), every model that samples exactly one unmasked albedo
+//! is instead baked into one shared 1024-texel atlas and its instance UVs are
+//! remapped into that model's cell *here*, as the instance vertices are
+//! appended. Models that cannot be atlased (an emissive mask, several albedos,
+//! no albedo at all, an unusable image, or a full atlas) keep the historical
+//! per-model texture path, and their UVs are left exactly as authored.
 
 use std::rc::Rc;
 
+use super::prop_atlas::{AtlasPlacement, PropAtlas};
 use super::{LevelDef, LevelLighting, LevelSurfaces, PropDef, Vertex, spatial_cell_grid};
 use crate::materials::MaterialEmission;
 
@@ -31,6 +44,10 @@ pub struct PropSubmeshBatch {
     /// only glows, and any environmental illumination it contributes comes from
     /// the generic lights its level entry attaches to it.
     pub emission: MaterialEmission,
+    /// The model material's `doubleSided` declaration. A double-sided primitive
+    /// draws with back-face culling disabled; a single-sided one is wound so
+    /// its front faces out of the solid.
+    pub double_sided: bool,
     /// First index into [`PropMeshBatch::indices`].
     pub first_index: u32,
     /// Number of indices in this submesh (a multiple of three).
@@ -72,6 +89,14 @@ pub struct PropMeshBatch {
     /// field spread over a level becomes several cullable ranges of the same
     /// model instead of one range spanning the whole level.
     pub bounds: crate::spatial::Aabb,
+    /// The level's shared albedo atlas, when this model was baked into it.
+    ///
+    /// When `Some`, every UV in `vertices` already addresses this model's
+    /// atlas cell and the renderer must neither upload `textures` for the model
+    /// nor draw its ranges with any other texture. `None` keeps the historical
+    /// per-model path untouched. Every atlased batch of one level shares the
+    /// same [`Rc`], so the renderer can upload the sheet exactly once.
+    pub atlas: Option<Rc<PropAtlas>>,
 }
 
 /// Index lists accumulated per primitive while instances are appended.
@@ -88,11 +113,15 @@ struct BatchBuilder {
     /// Total indices accumulated, so a new instance can be rejected before it
     /// writes anything it cannot finish.
     index_count: usize,
+    /// This model's atlas cell, when it was atlased. Every appended vertex's UV
+    /// is remapped through it.
+    atlas: Option<AtlasPlacement>,
 }
 
 struct PrimitiveBuilder {
     texture: Option<u16>,
     emission: MaterialEmission,
+    double_sided: bool,
     indices: Vec<u16>,
 }
 
@@ -111,12 +140,14 @@ impl BatchBuilder {
                 .map(|submesh| PrimitiveBuilder {
                     texture: submesh.texture,
                     emission: submesh.emission,
+                    double_sided: submesh.double_sided,
                     indices: Vec::new(),
                 })
                 .collect(),
             vertices: Vec::with_capacity(model.vertices.len()),
             bounds: crate::spatial::Aabb::EMPTY,
             index_count: 0,
+            atlas: None,
         }
     }
 
@@ -135,7 +166,13 @@ impl BatchBuilder {
         lighting: &LevelLighting,
     ) {
         let model = &asset.model;
-        append_instance_vertices(&mut self.vertices, transform, &model.vertices, lighting);
+        append_instance_vertices(
+            &mut self.vertices,
+            transform,
+            &model.vertices,
+            lighting,
+            self.atlas,
+        );
         let base =
             u16::try_from(self.vertices.len().saturating_sub(model.vertices.len())).unwrap_or(0);
         for (slot, submesh) in model.submeshes.iter().enumerate() {
@@ -154,7 +191,7 @@ impl BatchBuilder {
         }
     }
 
-    fn finish(self) -> PropMeshBatch {
+    fn finish(self, atlas: Option<&Rc<PropAtlas>>) -> PropMeshBatch {
         let mut indices: Vec<u16> = Vec::with_capacity(self.index_count);
         let mut submeshes: Vec<PropSubmeshBatch> = Vec::with_capacity(self.primitives.len());
         for primitive in self.primitives {
@@ -167,6 +204,7 @@ impl BatchBuilder {
             submeshes.push(PropSubmeshBatch {
                 texture: primitive.texture,
                 emission: primitive.emission,
+                double_sided: primitive.double_sided,
                 first_index,
                 index_count,
             });
@@ -178,6 +216,10 @@ impl BatchBuilder {
             vertices: self.vertices,
             indices,
             bounds: self.bounds,
+            // A model only carries a placement when the level's atlas exists,
+            // so the shared handle is present exactly when the UVs were
+            // remapped: the two can never disagree.
+            atlas: self.atlas.and_then(|_| atlas.map(Rc::clone)),
         }
     }
 }
@@ -189,6 +231,10 @@ impl BatchBuilder {
 /// standing on a crate or lying on a bed is lit at its real height and still
 /// contributes to the same shared per-model batch (one draw call per primitive
 /// per model and cell).
+///
+/// The level's albedo atlas is planned and filled in the same pass: each model
+/// that can share one cell gets one, and the instance UVs appended for it are
+/// remapped into that cell. See [`super::prop_atlas`].
 pub(super) fn resolve_prop_instances<'a>(
     level: &'a LevelDef,
     catalog: &crate::loader::PropCatalog,
@@ -204,8 +250,21 @@ pub(super) fn resolve_prop_instances<'a>(
     let mut index_by_batch: HashMap<(String, crate::spatial::CellKey), usize> = HashMap::new();
     let mut models_seen: HashSet<String> = HashSet::new();
     let mut textures_by_model: HashMap<String, Vec<Rc<crate::loader::RawImage>>> = HashMap::new();
+    // Model path -> its atlas cell, or `None` once it has been tried and
+    // rejected: a model is never retried, so a full atlas or a bad image
+    // degrades to the per-model path exactly once per model.
+    let mut atlas_cells: HashMap<String, Option<AtlasPlacement>> = HashMap::new();
     let mut fallbacks: Vec<&'a PropDef> = Vec::new();
     let mut busy_vertices = 0usize;
+
+    // Read the startup override once for the whole build, as the other
+    // `LIMINAL_*` switches are. The atlas is built here, not in the renderer,
+    // because the UV remap has to be baked as instances are appended.
+    let atlas_enabled = super::prop_atlas::enabled();
+    // Only the fits and copies are timed, not the whole prop pass: the reported
+    // figure has to be what the atlas itself costs the level build.
+    let mut atlas_millis = 0.0f64;
+    let mut atlas = PropAtlas::new();
 
     for prop in &level.props {
         let entry = catalog.get(&prop.model);
@@ -271,7 +330,17 @@ pub(super) fn resolve_prop_instances<'a>(
                     .entry(model_path.clone())
                     .or_insert_with(|| asset.model.textures.iter().cloned().map(Rc::new).collect())
                     .clone();
-                let builder = BatchBuilder::new(&model_path, &asset.model, textures);
+                let placement = *atlas_cells.entry(model_path.clone()).or_insert_with(|| {
+                    plan_atlas_cell(
+                        &mut atlas,
+                        atlas_enabled,
+                        &asset.model,
+                        &textures,
+                        &mut atlas_millis,
+                    )
+                });
+                let mut builder = BatchBuilder::new(&model_path, &asset.model, textures);
+                builder.atlas = placement;
                 if !builder.has_room_for(&asset.model) {
                     fallbacks.push(prop);
                     continue;
@@ -291,8 +360,41 @@ pub(super) fn resolve_prop_instances<'a>(
         busy_vertices = busy_vertices.saturating_add(asset.model.vertices.len());
     }
 
-    let batches = builders.into_iter().map(BatchBuilder::finish).collect();
+    atlas.record_build_millis(atlas_millis);
+    // The atlas is shared by every atlased batch of this level; it is dropped
+    // with them once the renderer has uploaded its pixels.
+    let shared = (atlas_enabled && atlas.cells_used() > 0).then(|| Rc::new(atlas));
+    let batches = builders
+        .into_iter()
+        .map(|builder| builder.finish(shared.as_ref()))
+        .collect();
     (batches, fallbacks)
+}
+
+/// Plans one model's atlas cell, timing the fit and copy that fills it.
+///
+/// Returns `None` — leaving the model on its own texture — when the atlas is
+/// disabled, when the model cannot share a single cell, or when the sheet is
+/// full. The timing accumulates into `millis` so the developer line reports what
+/// the atlas itself costs the level build, not the whole prop pass.
+fn plan_atlas_cell(
+    atlas: &mut PropAtlas,
+    enabled: bool,
+    model: &crate::gltf::PropModel,
+    textures: &[Rc<crate::loader::RawImage>],
+    millis: &mut f64,
+) -> Option<AtlasPlacement> {
+    if !enabled {
+        return None;
+    }
+    // `place` checks the cell budget and the image itself; any refusal leaves
+    // the model on its own texture.
+    let slot = super::prop_atlas::albedo_slot(model)?;
+    let image = textures.get(usize::from(slot))?;
+    let started = std::time::Instant::now();
+    let placement = atlas.place(image);
+    *millis = started.elapsed().as_secs_f64().mul_add(1000.0, *millis);
+    placement
 }
 
 /// Transforms and lights one instance's model vertices.
@@ -301,11 +403,16 @@ pub(super) fn resolve_prop_instances<'a>(
 /// placement, and the environment is baked into the instance's colour: the same
 /// model in a dark corner and under a fixture still shares one batch, but is no
 /// longer uniformly lit.
+///
+/// `atlas` remaps the source UVs into the model's atlas cell at append time, so
+/// the fragment shader still samples `v_uv` directly and never does atlas
+/// arithmetic. A model without a placement keeps its authored UVs exactly.
 fn append_instance_vertices(
     batch: &mut Vec<Vertex>,
     model: &glam::Mat4,
     source: &[crate::gltf::PropVertex],
     lighting: &LevelLighting,
+    atlas: Option<AtlasPlacement>,
 ) {
     for vertex in source {
         let position =
@@ -319,7 +426,7 @@ fn append_instance_vertices(
                 vertex.color[2] * light.b,
                 vertex.color[3],
             ],
-            uv: vertex.uv,
+            uv: atlas.map_or(vertex.uv, |placement| placement.remap_uv(vertex.uv)),
             ..Vertex::UNLIT
         });
     }

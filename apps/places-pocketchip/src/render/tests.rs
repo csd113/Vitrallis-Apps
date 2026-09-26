@@ -1856,6 +1856,240 @@ fn wall_faces_vary_with_the_baked_lighting() {
     assert!(edge[edge.len() - 1] - edge[0] > 0.1);
 }
 
+/// A triangle's unit geometric normal from its draw-order corners.
+///
+/// This is the renderer's front-face rule: the front side is the side the
+/// right-hand normal over `p0 -> p1 -> p2` points to.
+fn triangle_normal(a: &Vertex, b: &Vertex, c: &Vertex) -> [f32; 3] {
+    let edge_a = [
+        b.pos[0] - a.pos[0],
+        b.pos[1] - a.pos[1],
+        b.pos[2] - a.pos[2],
+    ];
+    let edge_b = [
+        c.pos[0] - a.pos[0],
+        c.pos[1] - a.pos[1],
+        c.pos[2] - a.pos[2],
+    ];
+    let normal = [
+        edge_a[1].mul_add(edge_b[2], -(edge_a[2] * edge_b[1])),
+        edge_a[2].mul_add(edge_b[0], -(edge_a[0] * edge_b[2])),
+        edge_a[0].mul_add(edge_b[1], -(edge_a[1] * edge_b[0])),
+    ];
+    let length = normal[2]
+        .mul_add(
+            normal[2],
+            normal[1].mul_add(normal[1], normal[0] * normal[0]),
+        )
+        .sqrt();
+    [normal[0] / length, normal[1] / length, normal[2] / length]
+}
+
+/// Every triangle of one surface family as `(normal, corners)`.
+fn triangle_normals(mesh: &LevelMesh, kind: SurfaceKind) -> Vec<([f32; 3], [[f32; 3]; 3])> {
+    mesh.triangles_for(kind)
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|triangle| {
+            let positions = [triangle[0].pos, triangle[1].pos, triangle[2].pos];
+            (
+                triangle_normal(&triangle[0], &triangle[1], &triangle[2]),
+                positions,
+            )
+        })
+        .collect()
+}
+
+/// True when some triangle lies flat on `axis = plane` and points along
+/// `sign * axis`. Every corner must sit on the plane: a triangle that merely
+/// crosses it would not prove which side that face belongs to.
+fn has_triangle_facing(
+    triangles: &[([f32; 3], [[f32; 3]; 3])],
+    axis: usize,
+    plane: f32,
+    sign: f32,
+) -> bool {
+    triangles.iter().any(|(normal, positions)| {
+        positions
+            .iter()
+            .all(|point| (point[axis] - plane).abs() < 1e-3)
+            && normal[axis] * sign > 0.99
+    })
+}
+
+#[test]
+fn wall_reveals_and_ends_face_out_of_the_solid_on_both_axes() {
+    // A wall with a door in it: the two jambs must face into the opening, the
+    // two end caps must face out of the wall, and the header must face the
+    // room below it. The expectation must hold whichever axis the wall's
+    // length runs along, because the level format supports both and a sign
+    // case that only suits one axis leaves the other axis' reveals
+    // back-facing: invisible while culling is off, a hole the moment it is on.
+    for axis in [crate::level::WallAxis::X, crate::level::WallAxis::Z] {
+        let (width, depth) = match axis {
+            crate::level::WallAxis::X => (10.0, 0.4),
+            crate::level::WallAxis::Z => (0.4, 10.0),
+        };
+        let json = format!(
+            r#"{{
+                "format_version": 1,
+                "id": "winding_test",
+                "name": "Winding Test",
+                "spawn": {{ "x": 0.0, "z": 0.0 }},
+                "room": {{ "x": -5.0, "z": -5.0, "width": 10.0, "depth": 10.0, "height": 3.5 }},
+                "walls": [{{
+                    "x": -5.0, "z": -5.0, "width": {width}, "depth": {depth}, "height": 3.5,
+                    "openings": [{{ "kind": "door", "offset": 4.0, "width": 1.0, "height": 2.1 }}]
+                }}]
+            }}"#
+        );
+        let level = LevelDef::from_json(&json).expect("valid json");
+        let mesh = build_level_geometry(&level);
+        let triangles = triangle_normals(&mesh, SurfaceKind::Wall);
+        // The wall runs from `low` to `high` along its length axis; the door
+        // cuts `near` to `far`.
+        let (axis_index, low, high, near, far) = match axis {
+            crate::level::WallAxis::X => (0usize, -5.0f32, 5.0f32, -1.0f32, 0.0f32),
+            crate::level::WallAxis::Z => (2usize, -5.0f32, 5.0f32, -1.0f32, 0.0f32),
+        };
+        let axis_name = match axis {
+            crate::level::WallAxis::X => "X",
+            crate::level::WallAxis::Z => "Z",
+        };
+        assert!(
+            has_triangle_facing(&triangles, axis_index, low, -1.0),
+            "the {axis_name}-axis wall's start cap must face out along -{axis_name}"
+        );
+        assert!(
+            has_triangle_facing(&triangles, axis_index, high, 1.0),
+            "the {axis_name}-axis wall's end cap must face out along +{axis_name}"
+        );
+        assert!(
+            has_triangle_facing(&triangles, axis_index, near, 1.0),
+            "the {axis_name}-axis wall's first jamb must face into the opening"
+        );
+        assert!(
+            has_triangle_facing(&triangles, axis_index, far, -1.0),
+            "the {axis_name}-axis wall's second jamb must face into the opening"
+        );
+        assert!(
+            has_triangle_facing(&triangles, 1, 2.1, -1.0),
+            "the {axis_name}-axis wall's header must face down into the room"
+        );
+    }
+}
+
+#[test]
+fn a_wall_end_abutting_an_opening_keeps_its_exposed_reveal() {
+    // Wall A runs north-south and ends where wall B (east-west) begins. Wall B
+    // has a doorway that cuts past A's thickness, so a strip of A's end face
+    // shows *through* B's doorway. The end must be emitted there: suppressing
+    // it because B's footprint merely touches the plane leaves a void in the
+    // doorway, visible only once back faces are culled.
+    let json = r#"{
+        "format_version": 1,
+        "id": "abutting_opening",
+        "name": "Abutting Opening",
+        "spawn": { "x": 1.0, "z": 1.0 },
+        "room": { "x": -2.0, "z": -2.0, "width": 12.0, "depth": 14.0, "height": 3.0 },
+        "walls": [
+            { "x": 0.0, "z": 0.0, "width": 0.3, "depth": 4.0, "height": 2.7 },
+            { "x": 0.0, "z": 4.0, "width": 6.0, "depth": 0.3, "height": 2.7,
+              "openings": [ { "kind": "door", "offset": 0.15, "width": 2.0, "height": 2.1 } ] }
+        ]
+    }"#;
+    let level = LevelDef::from_json(json).expect("valid json");
+    let mesh = build_level_geometry(&level);
+    let triangles = triangle_normals(&mesh, SurfaceKind::Wall);
+    // Wall A's end cap faces +Z on the plane z = 4.0. Its exposed strip is the
+    // part of A's thickness east of B's doorway edge at x = 0.15.
+    let exposed = triangles.iter().any(|(normal, positions)| {
+        normal[2] > 0.99
+            && positions
+                .iter()
+                .all(|point| (point[2] - 4.0).abs() < 1.0e-3)
+            && positions.iter().any(|point| point[0] > 0.15 + 1.0e-3)
+    });
+    assert!(
+        exposed,
+        "the end face must show through the doorway, not be suppressed"
+    );
+    // The covered strip (x < 0.15) must stay suppressed: wall B's own face
+    // already draws that plane.
+    let covered = triangles.iter().any(|(normal, positions)| {
+        normal[2] > 0.99
+            && positions
+                .iter()
+                .all(|point| (point[2] - 4.0).abs() < 1.0e-3 && point[0] < 0.15 + 1.0e-3)
+    });
+    assert!(
+        !covered,
+        "the part of the end behind wall B's solid must remain suppressed"
+    );
+}
+
+#[test]
+fn floors_face_up_and_ceilings_face_down() {
+    let level = lit_room_level(10.0, 10.0, 3.0, "[]");
+    let mesh = build_level_geometry(&level);
+    for (normal, corners) in triangle_normals(&mesh, SurfaceKind::Floor) {
+        assert!(
+            normal[1] > 0.99,
+            "a floor triangle must face up, got {normal:?} at {corners:?}"
+        );
+    }
+    for (normal, corners) in triangle_normals(&mesh, SurfaceKind::Ceiling) {
+        assert!(
+            normal[1] < -0.99,
+            "a ceiling triangle must face down, got {normal:?} at {corners:?}"
+        );
+    }
+}
+
+#[test]
+fn placeholder_prop_box_faces_point_out_of_the_box() {
+    let level = lit_room_level(10.0, 10.0, 3.0, "[]");
+    let mut level = level;
+    level.props = vec![PropDef {
+        model: "core:crate".into(),
+        x: 2.0,
+        y: 0.25,
+        z: 3.0,
+        rotation_degrees: 30.0,
+        scale: 1.0,
+        size: Some([1.0, 1.5, 2.0]),
+        solid: false,
+        lights: Vec::new(),
+    }];
+    let mesh = build_level_geometry(&level);
+    // The box centre: the authored position plus half the resolved size along
+    // Y (the fallback's own placement rule).
+    let centre = [2.0f32, 0.25 + 0.75, 3.0];
+    let triangles = triangle_normals(&mesh, SurfaceKind::PropFallback);
+    assert!(!triangles.is_empty(), "the placeholder box must be emitted");
+    for (normal, corners) in triangles {
+        let centroid = [
+            (corners[0][0] + corners[1][0] + corners[2][0]) / 3.0,
+            (corners[0][1] + corners[1][1] + corners[2][1]) / 3.0,
+            (corners[0][2] + corners[1][2] + corners[2][2]) / 3.0,
+        ];
+        let outward = [
+            centroid[0] - centre[0],
+            centroid[1] - centre[1],
+            centroid[2] - centre[2],
+        ];
+        let dot = normal[2].mul_add(
+            outward[2],
+            normal[1].mul_add(outward[1], normal[0].mul_add(outward[0], 0.0)),
+        );
+        assert!(
+            dot > 0.0,
+            "a placeholder box face must point out of the box, normal {normal:?} at {centroid:?}"
+        );
+    }
+}
+
 #[test]
 fn placeholder_prop_boxes_receive_the_environment_lighting() {
     let level = lit_room_level(
@@ -5544,7 +5778,10 @@ fn the_demo_glazes_every_window_and_classifies_the_panes_translucent() {
         .filter_map(|id| {
             let index = materials.index_of(id)?;
             let alpha = materials.entry(index)?.alpha;
-            Some((SurfaceKey::new(SurfaceKind::Wall, index), alpha))
+            Some((
+                SurfaceKey::new(SurfaceKind::Wall, index).with_two_sided(),
+                alpha,
+            ))
         })
         .collect();
     assert_eq!(
@@ -5598,6 +5835,14 @@ fn the_demo_glazes_every_window_and_classifies_the_panes_translucent() {
     let mut keys: Vec<SurfaceKey> = panes.iter().map(|(key, _)| *key).collect();
     keys.sort_unstable();
     keys.dedup();
+    // A pane is a thin sheet: its key declares it two-sided, so every pass
+    // draws it culled-off while the walls around it stay single-sided.
+    for key in &keys {
+        assert!(
+            key.two_sided,
+            "every glass pane must be declared a two-sided surface"
+        );
+    }
     let mut pane_area = 0.0f32;
     for key in &keys {
         let count = mesh.index_count_for_key(*key);
@@ -5632,6 +5877,29 @@ fn the_demo_glazes_every_window_and_classifies_the_panes_translucent() {
         pane_vertices.len(),
         "a pane samples the same atlas the wall around it does"
     );
+}
+
+#[test]
+fn the_grille_pane_is_declared_two_sided_in_its_own_batch() {
+    // The cutout grille is a pane like the glass windows: a thin sheet seen
+    // from both sides. If its key lost the declaration, the cut-out pass would
+    // cull it from one side of the wall.
+    let level = shipped_demo();
+    let materials = logical_materials(&level);
+    let mesh = build_level_geometry_with_materials(&level, &materials);
+    let (_, batches) = pack_static_batches(&mesh, true);
+    let grille = materials
+        .index_of("core:grille_vent_01")
+        .expect("grille material");
+    let keys: Vec<SurfaceKey> = batches
+        .iter()
+        .filter(|batch| batch.key.kind == SurfaceKind::Wall && batch.key.material == grille)
+        .map(|batch| batch.key)
+        .collect();
+    assert!(!keys.is_empty(), "the grille pane has a wall batch");
+    for key in keys {
+        assert!(key.two_sided, "every grille pane batch must be two-sided");
+    }
 }
 
 #[test]

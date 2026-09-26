@@ -24,7 +24,7 @@ from animation_cache import AnimationCache, WINDOW
 from media import (FORMATS, MAX_FRAMES, MAX_GIF_PIXELS, MAX_PIXELS,
                    MAX_ANIMATION_PIXELS, MAX_VIDEO_SECONDS, MAX_VIDEO_FPS,
                    MediaError, Processes, playback_fps, video_command, video_details)
-from multimedia import video_backend
+from multimedia import DetectionCancelled, video_backend
 
 MAX_ANIMATION_BYTES = 8 * 1024 * 1024
 MAX_STILL_BYTES = 8 * 1024 * 1024
@@ -92,11 +92,6 @@ def freeze(source, size=None, mode="RGBA"):
     return GpuFrame(image.size, image.tobytes(), image.mode)
 
 
-def display_copy(source, size):
-    """Backwards-compatible helper: an RGBA frame scaled for the screen."""
-    return freeze(source, size=size, mode="RGBA").image()
-
-
 class Playlist:
     def __init__(self, items, settings, rng=None):
         self.items = [dict(item) for item in items]
@@ -132,7 +127,11 @@ class Playlist:
         return self.current
 
     def previous(self):
-        self.index = max(0, self.index - 1)
+        # next() can leave the index past the end of a finished non-looping
+        # playlist; clamp before indexing so backward navigation never crashes.
+        if not self.cycle:
+            return None
+        self.index = min(max(0, self.index - 1), len(self.cycle) - 1)
         while self.index > 0 and self.cycle[self.index]["id"] in self.bad:
             self.index -= 1
         if self.current and self.current["id"] in self.bad:
@@ -195,9 +194,15 @@ class PlaybackClock:
         return not self.paused and (self.deadline is None or self.now() >= self.deadline)
 
     def delay_ms(self):
-        if self.paused or self.deadline is None:
+        # Paused playback and an unarmed clock only need a coarse heartbeat; a
+        # running clock waits exactly for its deadline, capped so a long still
+        # image or video frame does not keep the Tk event loop awake at frame
+        # rate for the whole duration.
+        if self.paused:
+            return 250
+        if self.deadline is None:
             return 10
-        return max(1, min(20, math.ceil((self.deadline - self.now()) * 1000)))
+        return max(1, min(250, math.ceil((self.deadline - self.now()) * 1000)))
 
     def lag(self):
         """Seconds late against the media timeline; zero when on time."""
@@ -231,11 +236,6 @@ def drain(channel):
             channel.get_nowait()
         except queue.Empty:
             return
-
-
-def video_decoder_codec(item, backend=None):
-    """Which decoder will run, for logging and diagnostics."""
-    return backend or video_backend(item.get("codec") or "vp9")
 
 
 class VideoStream:
@@ -472,10 +472,18 @@ class Decoder:
                     else:
                         self._image(stream, size, settings, cancel, generation, item)
                 self._emit(cancel, generation, "done")
+            except DetectionCancelled:
+                # Navigation or shutdown withdrew the probe; nothing to report.
+                continue
             except (OSError, ValueError, EOFError, SyntaxError, subprocess.SubprocessError,
                     Image.DecompressionBombError) as error:
                 message = str(error) if isinstance(error, MediaError) else "File missing, corrupt or no longer readable"
                 self._emit(cancel, generation, "error", message)
+            except Exception as error:
+                # The worker must never die silently: an unexpected failure still
+                # terminates this generation so playback can skip the item.
+                self._emit(cancel, generation, "error",
+                           "Media could not be decoded (" + type(error).__name__ + ")")
 
     # ---- still images ---------------------------------------------------
 
@@ -618,7 +626,7 @@ class Decoder:
         repeats = max(1, int(settings["repeats"]))
         budget = max(1, int(round(float(details.get("duration", 0)) * fps))) * repeats
         budget = min(budget, int(MAX_VIDEO_SECONDS * MAX_VIDEO_FPS) + 1)
-        backend = video_backend(details.get("codec"))
+        backend = video_backend(details.get("codec"), cancel=cancel)
         self._report_decoder(details.get("codec"), backend)
         candidates = [backend['method']] if backend['verified'] else [None]
         if backend['verified']:

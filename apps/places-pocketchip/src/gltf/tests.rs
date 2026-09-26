@@ -470,6 +470,29 @@ fn a_primitive_without_a_material_uses_the_default_slot() {
 }
 
 #[test]
+fn double_sided_materials_are_read_and_default_to_single_sided() {
+    // The glTF default is `false`: a model that omits the flag is a closed
+    // solid whose back faces may be culled.
+    let model = parse_glb(&triangle_document("{}", 0)).expect("default material parses");
+    assert!(!model.submeshes[0].double_sided);
+
+    let model = parse_glb(&triangle_document(r#"{"doubleSided": true}"#, 0))
+        .expect("double-sided material parses");
+    assert!(
+        model.submeshes[0].double_sided,
+        "an explicit double-sided material must keep both faces"
+    );
+    let model = parse_glb(&triangle_document(r#"{"doubleSided": false}"#, 0))
+        .expect("single-sided material parses");
+    assert!(!model.submeshes[0].double_sided);
+
+    // A non-boolean is an authoring error, not a sidedness guess.
+    let error = parse_glb(&triangle_document(r#"{"doubleSided": 1}"#, 0))
+        .expect_err("non-boolean doubleSided must fail");
+    assert!(error.0.contains("doubleSided"), "{error}");
+}
+
+#[test]
 fn emissive_materials_carry_factor_strength_and_mask() {
     let masked = r#"{
         "emissiveFactor": [0.5, 0.25, 0.0],

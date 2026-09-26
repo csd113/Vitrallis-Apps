@@ -151,6 +151,7 @@ footer{font-size:12px;color:var(--muted);display:flex;justify-content:space-betw
   .media li{display:grid;grid-template-columns:22px 64px minmax(0,1fr);gap:10px}
   .media .details{width:auto}
   .media .actions{grid-column:2/-1}
+  .media .actions button,.media .actions .file-label{min-height:44px}
   .thumbnail{width:64px;height:48px}
   .settings-form{grid-template-columns:1fr;gap:8px}
   .settings-form input,.settings-form select{width:100%}

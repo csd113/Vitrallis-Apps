@@ -1,3 +1,205 @@
+## 0.11.0 — 2026-09-25
+
+A fourth PocketCHIP pass fixes the level geometry's face winding and then turns
+on back-face culling for every single-sided surface. Five generators were
+building faces the wrong way round or deleting faces the abutting geometry had
+already opened — invisible while nothing was culled, a hole the moment anything
+was — and the sixth decided what may not be culled at all. With the geometry
+corrected, the device measures **1.4–1.9 ms less serialised renderer work**
+(office 31.43 → 29.54 ms, work 30.19 → 28.58 ms, pool 29.17 → 27.75 ms) and
+**1.6–2.3 ms less presented median** (office 38.75 → 36.46 ms, work 38.20 →
+36.59 ms, pool 36.32 → 34.66 ms) at unchanged content, the same draw calls and
+the same 71.7 MiB resident set, with zero GPU faults. The 38-view capture set
+renders essentially identically with culling on and off: no missing wall,
+reveal, prop or pane anywhere.
+
+### Fixed
+
+- **X-axis wall cross-sections were wound backwards.** Every X-axis wall end cap
+  and every reveal on an X-axis wall — door jamb, window jamb, header end — had
+  its triangle winding pointing *into* the wall solid, while the Z-axis
+  equivalents were correct. The bug was invisible while nothing was culled and a
+  hole at every X-axis opening the moment culling was switched on. The corner
+  walk in `add_wall_cross_quad` now makes `facing_positive` mean "faces the
+  positive length direction" on both axes, and a regression test asserts the
+  start cap, end cap, both jambs and the header on both axes.
+- **Z-axis horizontal quads were transposed.** `horizontal_quad`'s Z mapping was
+  the pure X/Z transpose of the X order, which flips handedness: every Z-axis
+  stair tread and archway top cap was wound facing down while the X-axis
+  equivalent faced up. It now walks the Z corners the other way round, and a
+  floating box's underside is reversed too; a regression test covers both axes.
+- **A folded degenerate face could keep its reversed winding.** `orient`
+  normalises a face against the quad normal, but a quad with a coincident corner
+  pair has a zero normal, so a ramp side that lands flush on the floor kept
+  whatever winding it was built with. `emit_face` now re-asserts the face's
+  declared outward normal on the corners that survive the fold, and a sweep test
+  drives rising and falling ramps on both axes plus a staircase face census.
+- **A wall end showing through an opening in the wall it abuts was deleted.**
+  The cross-section coverage test treated an abutting perpendicular wall as
+  covering its whole length, so a doorway or window cut through that wall did
+  not reduce the cover. A wall end (or reveal) whose exposed strip lay inside
+  the abutting wall's opening was suppressed entirely, and the void only became
+  visible once back faces were culled. Coverage now counts each solid slice of
+  the abutting wall, so exactly the strip that shows through the opening is
+  emitted; a regression test builds an L of two walls with a doorway cutting
+  past the corner and asserts the exposed strip survives while the covered part
+  stays suppressed.
+- **The cached lightmap atlas is invalidated by the winding fixes.**
+  `LIGHTMAP_FORMAT_VERSION` is 5: correcting the X-axis cross-section corner
+  order changes those patches' `u` frames and the abutting-opening fix adds end
+  patches, so an atlas baked before the fixes would sample stale texels. The
+  first load after the update bakes once and caches the new atlas under the
+  usual content key.
+
+### Changed
+
+- **Single-sided geometry is back-face culled.** `GL_CULL_FACE` is enabled for
+  the static opaque and cut-out passes and for decals; `glFrontFace(GL_CCW)` and
+  `glCullFace(GL_BACK)` are fixed once at startup and the scene body restores
+  culling-off before the HUD. Nothing about the level, the lightmaps or the
+  draw order changed. Measured on the device: 1.4–1.9 ms of serialised renderer
+  work, 1.6–2.3 ms of presented median, with identical draw calls, texture binds
+  and material changes.
+- **Two-sided surfaces declare themselves.** A glass, grille or screen pane
+  carries a `two_sided` surface key, so the cut-out grille keeps rendering from
+  the far room and an opaque pane is never culled from one side; a pane is a
+  thin sheet at the wall's centre plane, and culling it was never correct.
+  Decals, floors, ceilings, wall faces, reveals, fixtures, stairs, ramps and
+  trim are single-sided and culled.
+- **Prop materials read the glTF `doubleSided` flag.** A model material that
+  declares it draws with culling disabled; the flag defaults to `false` (the
+  glTF default), so a single-sided model is culled. Every shipped prop declares
+  it — the pool curtains are folded ribbons built from two windings — so props
+  render exactly as before. The atlas merge now refuses to mix culling states,
+  so a future single-sided model can never ride along in a double-sided merged
+  draw and vice versa.
+- `LIMINAL_CULL_FACE=0` (`false`, `off`, `no`) turns culling off at startup for
+  one binary's A/B, documented with the other startup overrides.
+
+### Added
+
+- Regression tests for the canonical winding rule: wall start/end caps, jambs
+  and headers on both axes; floors up and ceilings down; placeholder boxes
+  outward; both-axis ramp faces outward for rising and falling slopes; both-axis
+  stair treads, risers, side panels and head landings; the floating box
+  underside; Z-axis horizontal quads; the grille pane's two-sided batch; glTF
+  `doubleSided` parsing (true/false/default/malformed); and the atlas merge's
+  culling-state guard.
+- `docs/MAP_AUTHORING_GUIDE.md` gains a permanent **Face winding and back-face
+  culling** rule: the right-hand convention, the outward-from-solid rule for
+  every geometry class, the declared two-sided exceptions, and the warning that
+  the level format has no winding switch.
+- `docs/ASSET_SPECIFICATION.md` documents `doubleSided` as the prop culling
+  contract.
+
+### Notes
+
+- **The presented median is still above 33.6 ms**: office 36.86 ms, work
+  37.06 ms, pool 35.58 ms (Pass 3 vs Pass 4, interleaved). The renderer's own
+  work is 27.8–29.5 ms, so the gap is the present path, not the renderer, and
+  `docs/presentation.md` explains why that cannot be closed from inside the
+  game. The best single presented run in the series is pool at 33.84 ms; no
+  content, resolution or field-of-view was changed to force a number.
+- **The visual gate is the capture diff, not the frame rate.** The 38-view set
+  with culling on and off: 22 views pixel-identical at 2/255 tolerance, 13 with
+  under 0.1 % of pixels differing on a lit silhouette edge, two views whose
+  large difference was the coverage bug fixed in this pass (one of them now
+  pixel-identical, the other 19 edge pixels), and the unstable `grille_pool`
+  spawn replaced by two stable grille views that differ by 2 pixels each. No
+  clear-colour void was introduced by culling. `check_holes.py` passes on both
+  sets.
+- **Peak resident set is 71.7 MiB** (73 368 kB), 0.2 MiB below the 0.10.0
+  figure and inside the 80 MiB soft ceiling; zero new
+  `gpmmu`/`ppmmu`/`timedout` kernel messages in any run.
+
+## 0.10.0 — 2026-09-25
+
+A third PocketCHIP pass measured where the frame actually goes and then removed
+the last submission-side lever of size. Every prop model's albedo is packed into
+one 1024-texel sheet at level build time, so **the prop pass is one draw, one
+texture bind and one material change instead of 27 of each**: on the device the
+renderer's serialised work falls 1.1–2.0 ms a frame, CPU submission falls
+2.1 ms and the frame-time p95 falls 5.7 ms, for a measured 185–337 ms of level
+build and 6.4 MiB of resident memory. The same measurements also settled what the
+remaining frame is — and the answer is not draw calls.
+
+### Added
+
+- **The prop albedo atlas** (`src/render/prop_atlas.rs`). One 1024 × 1024 RGBA8
+  sheet; cell stride 144 texels with 7 × 7 = 49 cells; a 128 × 128 content area
+  inset by an 8-texel gutter that is filled with the cell's own nearest edge
+  texel, so nothing a filter or a mip level can reach shows a neighbour's
+  artwork. Mipmaps stay on and are capped at level 3 — the deepest level at
+  which the 8-texel gutter is still at least one texel — so trilinear filtering
+  is unchanged and bleeding is impossible rather than merely unlikely.
+- **CPU UV remapping.** Each instance's UVs are baked into the atlas cell as its
+  vertices are appended at level build time, so the fragment stage gains no
+  arithmetic at all. A model is atlased only when all of its submeshes sample
+  one albedo and none carries an emissive mask; anything else — a masked model,
+  several albedos, an untextured submesh, an unusable image, a full sheet —
+  keeps the per-model texture path with its authored UVs untouched.
+- `LIMINAL_PROP_ATLAS=0` (`false`, `off`) for the A/B, read once per level build
+  like the other startup overrides. A `[props]` developer line reports the sheet
+  size, cells used, models atlased, models that fell back, the atlas build cost
+  and the resulting prop draw count.
+- `tools/bench/probe.sh`, `ab.sh`, `csv_stats.py` and `present_probe.py`: an
+  interleaved A/B and presented-cadence suite for two *binaries* rather than two
+  configurations of one, which is what a change that is not behind a switch
+  needs. `tools/bench/atlas_views.sh` and `capture_diff.py` are the prop-atlas
+  visual gate: macro, oblique and far prop views plus a per-pixel comparison.
+- `docs/presentation.md`: what the X11 / modesetting / Mesa / Lima path actually
+  does between the end of a frame and the panel. Evidence, not inference:
+  extension inventory, the window's own visual, `drm` debugfs on the CRTC's
+  plane, the phase lock of frame times against the 59.52 Hz refresh, and the
+  measured cost of presenting with nothing being rendered.
+
+### Changed
+
+- **`docs/benchmarks.md` records the pass-3 measurements**, including the
+  attribution that reordered the remaining work: the static world is about two
+  thirds of the renderer's work and the prop pass about a fifth, so the prop
+  atlas is the right last submission fix rather than the biggest one.
+- **The prop draw is merged per buffer chunk** when every range in it is
+  atlas-backed and non-emissive: one `draw_elements` with one union bound. The
+  merged bound means props frustum culling used to reject are now always
+  submitted (1 576–4 832 vertices a view); the atlas wins that trade on measured
+  work, and the number is recorded rather than hidden.
+- `docs/POCKETCHIP.md` carries the new numbers, the new configuration row and
+  the corrected frame-rate split.
+
+### Fixed
+
+- `configure_gl_attributes` documents why the window visual is *not* requested:
+  GLX returns a 32-bit ARGB config on this driver whatever the game asks for, so
+  every presented frame is converted by the X server for scanout.
+- A stale doc line about the removed offscreen scene target no longer sits above
+  `draw_scene_body`.
+
+### Notes
+
+- **Not crossed: 33.6 ms.** The best representative presented median on the
+  shipping build is 35.7 ms (pool). The renderer work behind it is 28.7–30.8 ms,
+  so the gap is the present path, not the renderer, and `docs/presentation.md`
+  explains why it cannot be closed from inside the game.
+- **The presented median does not move measurably** even though the renderer's
+  work demonstrably falls. The present path alternates between a ~30 ms and a
+  ~43 ms frame with a period of two and wanders ±2 ms between runs, which is
+  larger than a 2 ms saving; the CPU term and the p95 tail both show the
+  improvement, and `docs/benchmarks.md` gives all four numbers rather than the
+  flattering one.
+- **Rejected this pass, with measurements**: back-face culling (−2.9 ms on
+  serialised work, but 22 of 25 reference views change and wall surface beside a
+  doorway disappears — and the whole prize is in walls and props, whose winding
+  the renderer cannot vouch for; floors and ceilings are worth 0.08 ms), per-kind
+  culling, front-to-back submission ordering (+2.7 ms, worse), and coarse spatial
+  partitioning (+5.5 ms, worse, and it culled 20 of 29 491 vertices). All four
+  are recorded with their numbers in `docs/benchmarks.md`.
+- **Static batching was not changed.** The audit found two of the 39 static
+  batches mergeable under the reduced tier, together worth under 0.1 ms, which
+  does not justify touching a path that is not the bottleneck.
+- Peak resident set is **71.9 MiB**, up from 65.4 MiB and inside the 80 MiB soft
+  ceiling; zero new `gpmmu`/`ppmmu`/`timedout` kernel messages in any run.
+
 ## 0.9.0 — 2026-09-25
 
 A second PocketCHIP pass measured what the Mali-400 was actually executing and

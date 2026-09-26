@@ -89,6 +89,11 @@ class ConnectionTests(StorageCase):
         self.assertIsNone(qr_image('http://127.0.0.1:8765'))
         self.assertIsNone(qr_image('http://example.com:8765'))
         self.assertIsNone(qr_image('http://10.0.0.1:8765/?token=secret'))
+        # Addresses that cannot be reached by another device must never be encoded.
+        for unusable in ('http://169.254.10.4:8765', 'http://0.0.0.0:8765',
+                         'http://255.255.255.255:8765', 'http://224.0.0.1:8765',
+                         'https://10.0.0.1:8765', 'http://10.0.0.1'):
+            self.assertIsNone(qr_image(unusable), unusable)
         first = qr_image('http://10.0.0.1:8765')
         second = qr_image('http://10.0.0.2:8765')
         self.assertLessEqual(first.width, 120)
