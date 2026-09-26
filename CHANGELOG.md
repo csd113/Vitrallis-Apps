@@ -13,6 +13,12 @@ and place new records in the newest date section. See the
 - Updated `io.vitrallis.liminalrust` `0.11.1`: Replace the older Liminal package with the PocketCHIP edition of Places, including its ARMv7 build, baked lighting and catalog-sized artwork with repaired texture seams. Installation remains disabled pending App Manager lifecycle verification. [App changelog](apps/places-pocketchip/CHANGELOG.md).
 - Updated `io.vitrallis.mediacarousel` `0.4.1`: Add bulk WebP conversion and improve playback, settings, upload handling, streaming downloads and service shutdown. [App changelog](apps/vitrallis-media-carousel/CHANGELOG.md).
 
+Places 0.11.1 installation was enabled after PocketCHIP App Manager installation,
+0.3.1-to-0.11.1 update, repair, installed-launcher and visual checks. Its package
+was mirrored byte-for-byte to the original `csd113/Places` source so existing
+installations can update without changing their trusted source. [Device
+verification](docs/verification/places-pocketchip-2026-09-26/README.md).
+
 ## 2026-09-21
 
 - Updated `io.vitrallis.liminalrust` `0.3.1`: Move the Places package to its standalone repository while preserving App Center's stable application ID and native ARMv7 package contract. [App changelog](https://github.com/csd113/Places/blob/main/apps/liminal-rust/CHANGELOG.md).
