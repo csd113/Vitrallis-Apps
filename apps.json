@@ -458,9 +458,9 @@
     },
     {
       "id": "io.vitrallis.liminalrust",
-      "installable": true,
+      "installable": false,
       "name": "Places",
-      "version": "0.3.1",
+      "version": "0.11.1",
       "runtime": "rust",
       "binaries": {
         "armv7-unknown-linux-gnueabihf": "bin/armv7-unknown-linux-gnueabihf/app"
@@ -470,33 +470,33 @@
         "audio": false,
         "storage": true
       },
-      "description": "A native first-person walking game through three quiet, decaying residential interiors.",
-      "compatibility_notes": "Requires ARMv7 hard-float Linux, glibc 2.36+, SDL2 2.26.5+, Mali/Lima OpenGL ES 2.0 and an X11 session.",
+      "description": "A native first-person exploration game through an office, empty pool and unfinished interior on PocketCHIP.",
+      "compatibility_notes": "Requires PocketCHIP ARMv7 hard-float Linux, glibc 2.36+, SDL2 2.32+, Mali/Lima OpenGL ES 2.0 and X11. App Manager install, update and repair of this edition still need device verification.",
       "source": {
-        "repository": "csd113/Places",
-        "commit": "1932dbb559029dc33069b1d02e89d65e2b4fd38c",
-        "path": "apps/liminal-rust"
+        "repository": "csd113/Vitrallis-Apps",
+        "commit": "86c1fe4b908a34ef99cdc0fe1054d2711a8260ec",
+        "path": "apps/places-pocketchip"
       },
       "files": [
         {
-          "path": ".gitignore",
-          "size": 92,
-          "sha256": "0abde06380ebb0e841bd695d24ab3ae1e43da409baa0ec4cea784bdb7861779c"
+          "path": ".cargo/config.toml",
+          "size": 850,
+          "sha256": "83bbe352d1e67aeb489e29aeee643ec35f22c2a2fa392114122a97def98d3972"
         },
         {
           "path": "CHANGELOG.md",
-          "size": 37948,
-          "sha256": "07cfee26b57f78f8e6e66e34ff64a7d484180a35bee9413b5638683da08007bf"
+          "size": 159209,
+          "sha256": "92f24c55efff7980c536363bc20adc6472466305d28665daa29fa21bd66e68a6"
         },
         {
           "path": "Cargo.lock",
-          "size": 12337,
-          "sha256": "8f607d76e06ea712a2b19eaec3109ef3830d5632b5dfb4a01d76aab37b2aacec"
+          "size": 12338,
+          "sha256": "f574970981c8cd1bdca25935caaabca1e14eebe87d2d41fd905af4871f561227"
         },
         {
           "path": "Cargo.toml",
-          "size": 582,
-          "sha256": "48e7453eb26aa9aa1ed1ccc1435f23aaac774db8e2300b4e172c450f504a67ec"
+          "size": 1590,
+          "sha256": "faa285db30eada4b843e7ba5e4994e82ed175c49d85c4bc8984ed0929d0fc0f8"
         },
         {
           "path": "LICENSE",
@@ -504,14 +504,9 @@
           "sha256": "2dd5ab27f2b99034fd0f8e464f095f431f5c90ade71df3c660fb575c2ae154cd"
         },
         {
-          "path": "Places-resolved-design-decisions.md",
-          "size": 13530,
-          "sha256": "c4420dd0d87667184aeee0e1b256b5a667b2dd0519999b85c19ad50347ab178a"
-        },
-        {
           "path": "README.md",
-          "size": 4115,
-          "sha256": "0743148684f2f692b8fd78fbd43e38a58ca06ac736193d86aeda7cf748e3f40d"
+          "size": 2211,
+          "sha256": "2b3e0f0b4958bbbfd485e7e64ec5d54b29ee6465b6032801cc94238a206112a4"
         },
         {
           "path": "THIRD_PARTY_LICENSES.txt",
@@ -520,178 +515,503 @@
         },
         {
           "path": "app.toml",
-          "size": 248,
-          "sha256": "013fd5423bcd2d52ea0d63d2e932c020a2ff48d083c277e72ad17a1c87150c13"
+          "size": 249,
+          "sha256": "1727cc04e1926467854ec4622e45937c853698a5051b9c206c59ca85da246007"
         },
         {
-          "path": "assets/levels/after_the_leak.json",
-          "size": 48012,
-          "sha256": "7a0be94ffa5b2be176c2da3e559030396bf1027bf09848e49609a0a9ed5b99b3"
+          "path": "assets/README.md",
+          "size": 34050,
+          "sha256": "1bb724e109bec5e95d3fc0398e0767809604c8ddeacb9f81ff14f67b306f420f"
         },
         {
-          "path": "assets/levels/level1.json",
-          "size": 53756,
-          "sha256": "ea782b73a694f137cc4f15f2467efc94e19101c9c94c161d37a24476666f4605"
+          "path": "assets/catalog.json",
+          "size": 51557,
+          "sha256": "2d0605c45507f2380fb09fce3879514aead55d138d67c15a6b98700f8d40ca65"
         },
         {
-          "path": "assets/levels/lighting_diagnostic.json",
-          "size": 10581,
-          "sha256": "c96a033186a02fd2503c58c00b893b3aa1cd03378e706f484e00380c7744f63b"
+          "path": "assets/core/README.md",
+          "size": 790,
+          "sha256": "8b85156c21ddd40d47eff35cf58dc786b638a366088de92351c24336031030d8"
         },
         {
-          "path": "assets/levels/prop_showcase.json",
-          "size": 4310,
-          "sha256": "aa6c795304d6474a9bc1e4e51dbcac2afb17a645c9eb9544077999a43a080864"
+          "path": "assets/core/decals/arrow_01.png",
+          "size": 390,
+          "sha256": "966ead1c325345b36aeb048bf73467e2702d23fba6a67d94fdee1cbd7e4c47ca"
         },
         {
-          "path": "assets/levels/prop_stress.json",
-          "size": 22392,
-          "sha256": "06f2d1bd03af3c143029a86a89569f1c13e9d111e751fea783c265077a6abe13"
+          "path": "assets/core/decals/stripes_01.png",
+          "size": 537,
+          "sha256": "4b217c0154e14b49fcde6b86140fb2d74b719579c2edfcae1536542fb2f00820"
         },
         {
-          "path": "assets/levels/quiet_apartments.json",
-          "size": 45134,
-          "sha256": "649cc7808f1d7618f1deca7be2f7127c84151da70d1a23ca2d20f03565238e33"
+          "path": "assets/core/props/models/armchair.glb",
+          "size": 168268,
+          "sha256": "47347bf753816c2dbeffefdfbe96e9df29cd1768d13f0f5d7b0580c57ca9e56c"
         },
         {
-          "path": "assets/levels/rendering_diagnostic.json",
-          "size": 3424,
-          "sha256": "13edfd04f7a8e709003afeb12d33e202772f09d0e29808e42fe7fad05a0b1d5a"
+          "path": "assets/core/props/models/armchair.png",
+          "size": 140788,
+          "sha256": "00e575073d3c0012a92a53656baebde352efa25757e635695afeb031a145d9f7"
         },
         {
-          "path": "assets/levels/test_room.json",
-          "size": 1595,
-          "sha256": "7a42bb820bd87f668d6cf51404a0bf753f435401b5a521d5762537545a54c892"
-        },
-        {
-          "path": "assets/levels/the_residence.json",
-          "size": 45668,
-          "sha256": "c93990bd5607ad83bd3ebfa1ae3ca0738d20e7340fe3f8e73470cd29fd83638f"
-        },
-        {
-          "path": "assets/props/README.md",
-          "size": 6367,
-          "sha256": "289603266530190585fa54ec7ca99cf7a9b5a6dff3e5164f903c834696f1a2cb"
-        },
-        {
-          "path": "assets/props/models/armchair.glb",
-          "size": 34304,
-          "sha256": "bebdf59f64d037b371e8ed8485572544c6a404d013bf520e2239e6733e992aa1"
-        },
-        {
-          "path": "assets/props/models/bed.glb",
+          "path": "assets/core/props/models/bed.glb",
           "size": 35092,
           "sha256": "eee9dfdcbbd1772225b56baf6240d37bff1557e59bdf58e4eb30334baa5b2a56"
         },
         {
-          "path": "assets/props/models/bookshelf.glb",
-          "size": 35336,
-          "sha256": "82323981d983cf7e270e19e3477c345e8748c6260a595fe9219284123b0fee75"
+          "path": "assets/core/props/models/bookshelf.glb",
+          "size": 135376,
+          "sha256": "1de96900250dbbb82cd6c559be751dc850aef8071f3d0b01608f01c1e0c17f86"
         },
         {
-          "path": "assets/props/models/cabinet.glb",
-          "size": 17604,
-          "sha256": "612856de47809eed49458f1aff298496235841f4cefd7013d86733e24684b38f"
+          "path": "assets/core/props/models/bookshelf.png",
+          "size": 96394,
+          "sha256": "09fcaf827b0f37c608f8b4bd4f57825c6d8f31930b7e38a223230fb3efc236f1"
         },
         {
-          "path": "assets/props/models/cardboard_box.glb",
+          "path": "assets/core/props/models/cardboard_box.glb",
           "size": 6616,
           "sha256": "5a6b6033c88c7b060155d67c168db5f9d6f6b4d9f283552e19386bf97bd17fd9"
         },
         {
-          "path": "assets/props/models/chair.glb",
-          "size": 18712,
-          "sha256": "c6d57a0d2c1a0ce3a49775620815706d254fddd532c8ab2ad1cc69064388857d"
+          "path": "assets/core/props/models/couch.glb",
+          "size": 181096,
+          "sha256": "e630843a20c7b5642e0e2d87c766706e41e9da60b95c9a04e29e4bc40d5e901a"
         },
         {
-          "path": "assets/props/models/couch.glb",
-          "size": 39196,
-          "sha256": "b82a0d3da6da55daacbb602ada73e22728923c444a96ca75a556ea8cd8ea2c9e"
+          "path": "assets/core/props/models/couch.png",
+          "size": 140788,
+          "sha256": "00e575073d3c0012a92a53656baebde352efa25757e635695afeb031a145d9f7"
         },
         {
-          "path": "assets/props/models/crate.glb",
+          "path": "assets/core/props/models/crate.glb",
           "size": 9580,
           "sha256": "f663f9ac0164632903121472ba58187ce986a115e598527f87f7b89e054235e8"
         },
         {
-          "path": "assets/props/models/desk.glb",
-          "size": 18360,
-          "sha256": "85ee01671531f912e644cbabecd6adeda7dbd0a069bc62220129653e41f77f24"
+          "path": "assets/core/props/models/fridge.glb",
+          "size": 86684,
+          "sha256": "541680fd0ab67fe9db686ec042c9b61106d5ff615621a636462216b13903884e"
         },
         {
-          "path": "assets/props/models/fridge.glb",
-          "size": 12112,
-          "sha256": "6d60e5c3ead450d89f096d02d212853669ef9f58f036a6e4d5520924bb633d62"
+          "path": "assets/core/props/models/fridge.png",
+          "size": 72232,
+          "sha256": "4d18817939f7b4e7fda1ae7cc08268b0b239e979830943a0be74e3bb8dd331cf"
         },
         {
-          "path": "assets/props/models/lamp.glb",
-          "size": 17328,
-          "sha256": "a1e4c76c610184fb3687a32db58524fe7ccfac9a591ae9d30cd87e396d342213"
+          "path": "assets/core/props/models/lamp.glb",
+          "size": 153820,
+          "sha256": "8c0773beda79f4b5707ae67fae4f262d3a9e4f1d78e91df6a2eac42ab8a1f90e"
         },
         {
-          "path": "assets/props/models/plant.glb",
-          "size": 33180,
-          "sha256": "e70904d4149d9e2bbfe7824a06beef6884be253185e381bd040c5a6081dfd894"
+          "path": "assets/core/props/models/lamp.png",
+          "size": 114102,
+          "sha256": "e8e7389d99477545559d77602794334682e63a629821c8c8da1f686dfbe4c011"
         },
         {
-          "path": "assets/props/models/rug.glb",
-          "size": 6844,
-          "sha256": "e00605c932f3aa56bd8f278dc1cd7e2de65144d7b78d03b85bd65c60fabd1432"
+          "path": "assets/core/props/models/plant.glb",
+          "size": 197044,
+          "sha256": "99cd07c4333cee628158e32c52ba264c6c6b37d650dc4279a12118090571f51a"
         },
         {
-          "path": "assets/props/models/sink.glb",
-          "size": 14244,
-          "sha256": "8bd822ff03322fc95ed4d9d92a160424eacb423b7bc3bf3ab36535c6e0b5ea62"
+          "path": "assets/core/props/models/plant.png",
+          "size": 143975,
+          "sha256": "bdc760e6c6bfae8a73c09665b3a7773f9953c50cfca4fd3fde52095a83cde289"
         },
         {
-          "path": "assets/props/models/spooner-man.glb",
-          "size": 80448,
-          "sha256": "ecad54c9c2126cd914ffa9982ad823cf9b0b271088b7feeb948dafc65fbe34af"
+          "path": "assets/core/props/models/rug.glb",
+          "size": 141720,
+          "sha256": "f09ab2586509ad59b58b630a577535050377a5a1063be148493ad726189eca45"
         },
         {
-          "path": "assets/props/models/stove.glb",
+          "path": "assets/core/props/models/rug.png",
+          "size": 130478,
+          "sha256": "72ac3b85ec93bff1aa7fa2b5c3bec27a16a7e229fd705707563c7715f4752d20"
+        },
+        {
+          "path": "assets/core/props/models/sink.glb",
+          "size": 29388,
+          "sha256": "04c539302e011f5a8898221e4e53b6a6202dac270db109f18bce1d602cf0f085"
+        },
+        {
+          "path": "assets/core/props/models/stove.glb",
           "size": 13412,
           "sha256": "476def79c7dc4956948e15ce138e082725396d52d1e619177f0bd28e0cc6ddb3"
         },
         {
-          "path": "assets/props/models/table.glb",
-          "size": 15188,
-          "sha256": "d5fad84c72a60e822f079ef96742c94ef81f6c8565ad1e6a287586bae3b7a8b4"
+          "path": "assets/core/props/models/table.glb",
+          "size": 136992,
+          "sha256": "f97cdf4bb15a21985830657401658f2135222b255776d9d562fe9feef0f48a49"
         },
         {
-          "path": "assets/props/models/tv.glb",
+          "path": "assets/core/props/models/table.png",
+          "size": 93181,
+          "sha256": "bb0742aea19890a47308eaa55b89ed70e5c972cbb1b87e06e07c6bbfe78da97c"
+        },
+        {
+          "path": "assets/core/props/models/tv.glb",
           "size": 9048,
           "sha256": "00735b87532c29b5076923d0ad89dab644ab34d16b8ef349577bf2d726b4e0e2"
         },
         {
-          "path": "assets/props/models/vending_machine.glb",
-          "size": 25336,
-          "sha256": "39c89c8316f213fa91fe5ef3990e7299a38f1e3a2e2c2bb094d13d4b77c7f5e8"
+          "path": "assets/core/props/models/washer_drum.glb",
+          "size": 14832,
+          "sha256": "87d53b7159ca3319e1e78295d5fd2dd39d6db6fc20a12b3726f449d98428993f"
         },
         {
-          "path": "assets/props/models/washing_machine.glb",
+          "path": "assets/core/props/models/washing_machine.glb",
           "size": 22500,
           "sha256": "fc1a2cbc3d807b8cec47ad497c4fee2ddcd30724d04efc6d214f1a2b9b604c5a"
         },
         {
-          "path": "assets/props/models/water_cooler.glb",
+          "path": "assets/core/textures/floors/linoleum_01.png",
+          "size": 298451,
+          "sha256": "80a4545d04ac6208f5ffff2649f0e698160b7fa50c881ce792c22c874c1b6670"
+        },
+        {
+          "path": "assets/core/textures/glass/glass_clear_01.png",
+          "size": 70938,
+          "sha256": "454de6366047e853fe58f7806bbcf5a15f52b3eefa7c477eefa18c71a6429b47"
+        },
+        {
+          "path": "assets/core/textures/glass/glass_dirty_01.png",
+          "size": 329104,
+          "sha256": "374edf282b5096c25c6483690db111021cebad18db5ebff1ab07cfbb1eb2f846"
+        },
+        {
+          "path": "assets/core/textures/glass/glass_tinted_01.png",
+          "size": 136119,
+          "sha256": "e707f1df4cd1600835baca66c556393661bdc2c25c671b6d0737cf48508a1906"
+        },
+        {
+          "path": "assets/core/textures/normals/normal_brushed_01.png",
+          "size": 127217,
+          "sha256": "f5824f5b5c8882ce40484648ef5d48e9ed4fd8c8aff6c9bf7e8d5f4c6815711c"
+        },
+        {
+          "path": "assets/core/textures/normals/normal_panel_01.png",
+          "size": 215622,
+          "sha256": "e52238a71dd42263ef89a55d7999bb090ad988e8723b56ede7232d47bc015763"
+        },
+        {
+          "path": "assets/core/textures/walls/grille_01.png",
+          "size": 104773,
+          "sha256": "2a40e3adf3c2368dbf3bec707be345377059ea8d205d1b547536d431368599de"
+        },
+        {
+          "path": "assets/core/textures/walls/metal_panel_01.png",
+          "size": 199610,
+          "sha256": "cf3dbea4ab3bc2266f7310833f3f6359867597dd8f7f458424b9e4c772ae55e2"
+        },
+        {
+          "path": "assets/core/textures/walls/plastic_panel_01.png",
+          "size": 249209,
+          "sha256": "66e8bfade415a5e809e64486ae70d3898537fbc3608c7bcad368989c02f2a62a"
+        },
+        {
+          "path": "assets/core/textures/white_01.png",
+          "size": 78,
+          "sha256": "8573341c79fa72fc8ae638efe7f2be5f5b1c59b0af3e679d3f812126a21c76ca"
+        },
+        {
+          "path": "assets/diagnostic/README.md",
+          "size": 2690,
+          "sha256": "7f39290df5e06f9aab08077665882014a1986cb105413dbfdfae1f8193da4b27"
+        },
+        {
+          "path": "assets/diagnostic/textures/diagnostic_alpha_01.png",
+          "size": 1031,
+          "sha256": "b0b5f75287cdbc4345a0ab294e04e2c6e1482cc9b5f01a0dcf101406db07a909"
+        },
+        {
+          "path": "assets/diagnostic/textures/diagnostic_alt_01.png",
+          "size": 408,
+          "sha256": "149dde516fbd0a5ae3b7c159720cf8695b7ae9a54967b0b37c3e81fa785ed4ff"
+        },
+        {
+          "path": "assets/diagnostic/textures/diagnostic_ceiling_01.png",
+          "size": 420,
+          "sha256": "ad59fc55f15390c42e20a0438580287c9e41abf9b39d2a9c465e0c06e803a2b6"
+        },
+        {
+          "path": "assets/diagnostic/textures/diagnostic_floor_01.png",
+          "size": 575,
+          "sha256": "737205d15f2c7a0c74270c4792b8ff0ef84b4d36b5147a24efc5203fae2d5df2"
+        },
+        {
+          "path": "assets/diagnostic/textures/diagnostic_wall_01.png",
+          "size": 1033,
+          "sha256": "bf9c24c0976a04c9b6b1f8e863810837743c1167a64162c5ff4d9704a09b01cb"
+        },
+        {
+          "path": "assets/entities/README.md",
+          "size": 943,
+          "sha256": "0acd1f50978e97dc60d06ed732131aef3b982d0da122026b7a8cbd40c3351087"
+        },
+        {
+          "path": "assets/entities/spooner-man/README.md",
+          "size": 1105,
+          "sha256": "ed3b4d5920787bf7ec6d3ddaf99701937e39e493f430c4e7d4c79c6d8b11a2e6"
+        },
+        {
+          "path": "assets/entities/spooner-man/model/spooner-man.glb",
+          "size": 80448,
+          "sha256": "ecad54c9c2126cd914ffa9982ad823cf9b0b271088b7feeb948dafc65fbe34af"
+        },
+        {
+          "path": "assets/environment/README.md",
+          "size": 1516,
+          "sha256": "9f26e71ea3a9c48a36ba2ed3fcb94ff5e0679fac59507653e0cbd142103c1a00"
+        },
+        {
+          "path": "assets/environment/home/props/models/cabinet_base.glb",
+          "size": 21148,
+          "sha256": "d08951d43d1a80b9cd0f4cdaf43179b74f28336d8e6bded52d23b56fe9855b00"
+        },
+        {
+          "path": "assets/environment/home/props/models/cabinet_wall.glb",
+          "size": 18784,
+          "sha256": "b1d505547eae856eb1e9c2364c79ae2be7c2e39aff01750aa274cbf4b434c805"
+        },
+        {
+          "path": "assets/environment/home/textures/ceilings/ceiling_plaster_01.png",
+          "size": 65951,
+          "sha256": "004bcd4361d62a73cfb5a003b6b4592277fa408a3b4b97ac28fa074c813fbdfb"
+        },
+        {
+          "path": "assets/environment/home/textures/ceilings/ceiling_white_01.png",
+          "size": 1360,
+          "sha256": "46a7976841adc03c779c4b23d96a0bae0c8f3f72eed3cd22c7f3874498738340"
+        },
+        {
+          "path": "assets/environment/home/textures/floors/carpet_cream_01.png",
+          "size": 176639,
+          "sha256": "1d073acb5921fd0e7caac256ddc4a091cb624cfcf45a912994b67ffd9b4d5c45"
+        },
+        {
+          "path": "assets/environment/home/textures/floors/hardwood_oak_01.png",
+          "size": 135588,
+          "sha256": "ea180deeca9462ab7c1241685b5d5f25ab44c12f9f13136589d3ebf128068133"
+        },
+        {
+          "path": "assets/environment/home/textures/floors/hardwood_walnut_02.png",
+          "size": 118211,
+          "sha256": "123bcc5a8be002c66f466b5065e684f810a2de16e49f4e588e8b7a10744d2891"
+        },
+        {
+          "path": "assets/environment/home/textures/floors/threshold_wood_01.png",
+          "size": 129267,
+          "sha256": "61e4ffef92aa06adb18cbdbcbd7de6a5f4395b43499bc6034aac61a65498ebe6"
+        },
+        {
+          "path": "assets/environment/home/textures/floors/tile_home_01.png",
+          "size": 89556,
+          "sha256": "5fadc7282a291dcaf339798e5dfecff85c9bfe34505c766926ca0e464bc05b20"
+        },
+        {
+          "path": "assets/environment/home/textures/lights/ceiling_light_round_01.png",
+          "size": 39080,
+          "sha256": "5b8d3a03bfcc3abd7b9c007e488ff509913a6e7923307670091050f5e94cb3de"
+        },
+        {
+          "path": "assets/environment/home/textures/walls/baseboard_white_01.png",
+          "size": 56152,
+          "sha256": "362bd32ab3591a4c85e9ff97d588ad24cbe101c529fdfaf79ba610ffda06c37a"
+        },
+        {
+          "path": "assets/environment/home/textures/walls/baseboard_wood_01.png",
+          "size": 131437,
+          "sha256": "baab8aea2502514bb9a26ba74d4259cf4f13f3a87024a62ed01b775edb217225"
+        },
+        {
+          "path": "assets/environment/home/textures/walls/handrail_wood_01.png",
+          "size": 117468,
+          "sha256": "acf43048bd19088c87ecaad9b7398ad093b2b8e62af9909e6849c71a34bace1f"
+        },
+        {
+          "path": "assets/environment/home/textures/walls/wall_paint_offwhite_01.png",
+          "size": 86299,
+          "sha256": "d81d66b751bbc4091fb663bda0e4bcb16facf0eb66ebeb92bd56e2a2fdb027fc"
+        },
+        {
+          "path": "assets/environment/home/textures/walls/wallpaper_offwhite_01.png",
+          "size": 115316,
+          "sha256": "b506568a921886d6ba9b144e2840a21f3754af79e050c409be12f5502fe12532"
+        },
+        {
+          "path": "assets/environment/home/textures/walls/wallpaper_pattern_01.png",
+          "size": 126653,
+          "sha256": "0dec520c1cd561b514daf896a8183dc8c99725a6fd810158b5579b89780f31a9"
+        },
+        {
+          "path": "assets/environment/office/README.md",
+          "size": 5358,
+          "sha256": "36dd936238c19cce08cd28bcfaa663e792a8dfcd3c48c60c1923a750276a3c16"
+        },
+        {
+          "path": "assets/environment/office/props/models/cabinet.glb",
+          "size": 17604,
+          "sha256": "612856de47809eed49458f1aff298496235841f4cefd7013d86733e24684b38f"
+        },
+        {
+          "path": "assets/environment/office/props/models/chair.glb",
+          "size": 34252,
+          "sha256": "369f823db47e418a3a20ddffd1298d7bdeba282f23774f24b1ec787fd6d5c208"
+        },
+        {
+          "path": "assets/environment/office/props/models/desk.glb",
+          "size": 17840,
+          "sha256": "914f81053b24f4cd77af07461a43d42057864c240163ae46684ed2db27a6c79e"
+        },
+        {
+          "path": "assets/environment/office/props/models/vending_machine.glb",
+          "size": 25336,
+          "sha256": "39c89c8316f213fa91fe5ef3990e7299a38f1e3a2e2c2bb094d13d4b77c7f5e8"
+        },
+        {
+          "path": "assets/environment/office/props/models/water_cooler.glb",
           "size": 16440,
           "sha256": "9b90ca86f5cf8a9fba689e3cf79138b74a2a3f1707a71aca7179cdd994e5af09"
         },
         {
-          "path": "assets/props/prop_proxies.json",
-          "size": 70269,
-          "sha256": "5a154481f18ffc006fd843e87ef86980221693535b11bad08402f257450c1ec4"
+          "path": "assets/environment/office/textures/ceilings/ceiling_panel_01.png",
+          "size": 265189,
+          "sha256": "9baf0346b631a66f7912f02eb33aa189aebd0ffcdbe274f4773b6aedf5a0bf56"
         },
         {
-          "path": "assets/props/props.json",
-          "size": 5180,
-          "sha256": "f2c2340e14fa27ef5bd4a3e60a0523de0d0d1688cefe6d2b6d6c5842e28de058"
+          "path": "assets/environment/office/textures/ceilings/ceiling_stained_01.png",
+          "size": 267883,
+          "sha256": "1cb27e4fe6fb683586d95411039f8b3e5c8720a1ababb0d33ab630c8f4d0d75d"
+        },
+        {
+          "path": "assets/environment/office/textures/floors/carpet_beige_01.png",
+          "size": 332536,
+          "sha256": "9912495105df9473be2afd31ddb829cb64e6f14215898aa27f35e12342511a94"
+        },
+        {
+          "path": "assets/environment/office/textures/floors/carpet_damp_01.png",
+          "size": 322986,
+          "sha256": "5b651da787c14a58fbd380a1114a4ff92773e952c8e9dbd66e6b8a3b011423d2"
+        },
+        {
+          "path": "assets/environment/office/textures/lights/fluorescent_panel_01.png",
+          "size": 34232,
+          "sha256": "ee748684ea850bc006a723eb3e044f9976742843bc46205aefa3faddd3cf933b"
+        },
+        {
+          "path": "assets/environment/office/textures/walls/wallpaper_stained_01.png",
+          "size": 181105,
+          "sha256": "7f61373f14f0d048ec7034bf7b795b0245b8c9231924fe5755b841cfe9ffb894"
+        },
+        {
+          "path": "assets/environment/office/textures/walls/wallpaper_yellow_01.png",
+          "size": 187482,
+          "sha256": "1e6ed241dc6403d1b749c7a4541bbf49b1519317301a5f15237431fbe76c0cd2"
+        },
+        {
+          "path": "assets/environment/pool/README.md",
+          "size": 7491,
+          "sha256": "77e240747874243bdb51be279d23a19f1499f656371c1a824c4ed7269f55d993"
+        },
+        {
+          "path": "assets/environment/pool/decals/no_diving_01.png",
+          "size": 60835,
+          "sha256": "e563a69ca590fbf33cd70e7ea11e2f261ae89f84da467ee2cb52796049ba1e36"
+        },
+        {
+          "path": "assets/environment/pool/props/models/pool_chair.glb",
+          "size": 29744,
+          "sha256": "5486cb4fe2ee2dd1ca1a4cc830c70856e36a080bd94f8449918422d27cb3ac5f"
+        },
+        {
+          "path": "assets/environment/pool/props/models/pool_curtain_corner.glb",
+          "size": 26876,
+          "sha256": "feb99f5e889855ff2e5e1bdff1516781cbfcdd4d7031ef01082b5cf07ba224fa"
+        },
+        {
+          "path": "assets/environment/pool/props/models/pool_curtain_end.glb",
+          "size": 22976,
+          "sha256": "9e6470a7e52e62f98b17c8c1cd02ff0741dd3af627e2e2b0c1b1a91de37a202b"
+        },
+        {
+          "path": "assets/environment/pool/props/models/pool_curtain_straight.glb",
+          "size": 30300,
+          "sha256": "03ca0c5d94617d7b58ad1619d10756be5f45dddf180cb24cd93c6d4be7afeeba"
+        },
+        {
+          "path": "assets/environment/pool/props/models/pool_guardrail_corner.glb",
+          "size": 29860,
+          "sha256": "2f70fc44207c32c766825883b1719ed9fe6461e8ef35dd6ae1a538c6f82e6dd9"
+        },
+        {
+          "path": "assets/environment/pool/props/models/pool_guardrail_end.glb",
+          "size": 24216,
+          "sha256": "f1bdd93a3c0a4a26608e0d8f11ccc15e35a6b46609eaed24e0ec54f1289178c4"
+        },
+        {
+          "path": "assets/environment/pool/props/models/pool_guardrail_straight.glb",
+          "size": 27760,
+          "sha256": "cd9ac16edf29f6394d1b1e366cc6c555d9687eadf934f2247c28a329c5758150"
+        },
+        {
+          "path": "assets/environment/pool/props/models/pool_ladder.glb",
+          "size": 39800,
+          "sha256": "6a53d83ab0ed4c838a9088bc0894068f741ff5ab19a75fc152b9e32e51ec82e8"
+        },
+        {
+          "path": "assets/environment/pool/props/models/pool_table.glb",
+          "size": 26212,
+          "sha256": "69d22512443027f39001fb6cfa4399dd6f3d4a38d1482e18a44e5c9d2786c5ce"
+        },
+        {
+          "path": "assets/environment/pool/textures/ceilings/pool_ceiling_01.png",
+          "size": 155025,
+          "sha256": "17cf29de7fb44ed25a1a47bd96b8ca2436d0b6b490245196920ce0a2bab31d93"
+        },
+        {
+          "path": "assets/environment/pool/textures/floors/pool_tile_basin_01.png",
+          "size": 180679,
+          "sha256": "7c332e556ead3a7038b350dc6d835b4efdb20b8bb53c2ddc3adc86d323312fe9"
+        },
+        {
+          "path": "assets/environment/pool/textures/floors/pool_tile_deck_01.png",
+          "size": 172066,
+          "sha256": "d5529d4a5ac27b221917e4c5b4185e0396c0d8e099f4231438c0c0eb7c0aa773"
+        },
+        {
+          "path": "assets/environment/pool/textures/lights/pool_light_round_01.png",
+          "size": 17556,
+          "sha256": "59ead59adb51f583af07700e040432ff45e47c0f43019106bc98b078424caa1b"
+        },
+        {
+          "path": "assets/environment/pool/textures/lights/pool_light_wall_01.png",
+          "size": 8727,
+          "sha256": "0e5abd5c7f74c399b83a5e0056f2aeff068e3d26cc7224af00c3b0419fc777ea"
+        },
+        {
+          "path": "assets/environment/pool/textures/walls/pool_tile_wall_01.png",
+          "size": 162221,
+          "sha256": "d948958975ca685d973142df6b5dc26ca86837084ebced633f991ada1b25201a"
+        },
+        {
+          "path": "assets/levels/README.md",
+          "size": 4663,
+          "sha256": "b9760a4eb4327b775e82101b270e979d47d75baca839987b1eeab1f7b6e9fcf8"
+        },
+        {
+          "path": "assets/levels/places_demo.json",
+          "size": 53005,
+          "sha256": "9ec0e2c6004f29cd46057bc2e6978e24a9ec9b98b62656ed3a34ea06b5855b9f"
+        },
+        {
+          "path": "assets/prop_proxies.json",
+          "size": 113494,
+          "sha256": "61bbe41d18c393e3d81f443250b094f3d5940d3308f8041345c7d82d818b62cf"
         },
         {
           "path": "bin/armv7-unknown-linux-gnueabihf/app",
-          "size": 1271400,
-          "sha256": "66d3b35fecb0fbafabe229335f39470343793fdcd949abc2af9757e1a8c35d74"
+          "size": 2077792,
+          "sha256": "788ef0745f803c6f80aec0c81c6a00a64a100079acdf4cb16078b298cc7e8fde"
         },
         {
           "path": "icon.png",
@@ -699,484 +1019,454 @@
           "sha256": "51794e50cf915792bb5763547c5a0309c5a4854e3ebdfba471f50347feb5919f"
         },
         {
-          "path": "level-editor/README.md",
-          "size": 13495,
-          "sha256": "a6c4adcf8f56a1e7dda10f3e8315adc0c648c6c65949e8d5abcd766b6928604d"
+          "path": "levels/README.md",
+          "size": 644,
+          "sha256": "dadb1e54d2157c53a0df7e302ad6e8346b63dc0d4125b9961498b012df58b7a3"
         },
         {
-          "path": "level-editor/assets/thumbs/armchair.png",
-          "size": 2411,
-          "sha256": "977d116199839e520068fba1285ad44d6c02f08aaffbdc25831568cdbb89c0fb"
+          "path": "src/architecture_audit.rs",
+          "size": 111682,
+          "sha256": "076e40580c6ff1f3390d683dc9b0bb2a24189f3232eef04b7232df394f937c31"
         },
         {
-          "path": "level-editor/assets/thumbs/bed.png",
-          "size": 1852,
-          "sha256": "8d59d270f3c1eb4f465e92fbb00ec36c617c99712f50d286d7252f9cf8d85e07"
+          "path": "src/assets.rs",
+          "size": 69452,
+          "sha256": "69691a17692cdf243c4a36e630c00fc09f00890ee9d46db2c9fe3b5a8ae45956"
         },
         {
-          "path": "level-editor/assets/thumbs/bookshelf.png",
-          "size": 2081,
-          "sha256": "407980b12399837a5135a9088de5070808e6882032545d6c5846805704382513"
-        },
-        {
-          "path": "level-editor/assets/thumbs/cabinet.png",
-          "size": 2266,
-          "sha256": "8d3d4d0325f06452889e28ae6079e77366cddd69c80320b938f5f2cccf858416"
-        },
-        {
-          "path": "level-editor/assets/thumbs/cardboard_box.png",
-          "size": 2329,
-          "sha256": "5754848ef560919afdb3636fbe854b04e47e6d8e667721606fedfa983a03e415"
-        },
-        {
-          "path": "level-editor/assets/thumbs/chair.png",
-          "size": 1592,
-          "sha256": "085dbbab878cc0188c12c4822bb95be140745d391295a936051c57a02af80eb7"
-        },
-        {
-          "path": "level-editor/assets/thumbs/couch.png",
-          "size": 2195,
-          "sha256": "562ebf13bd92a2d0c1b3024a11f29ae7f0aa8d48933f7605950b5d90e3ab6cce"
-        },
-        {
-          "path": "level-editor/assets/thumbs/crate.png",
-          "size": 1933,
-          "sha256": "e32f5b32b00a0dca44203b3f280f58f50ec7b726bcd20d46b4c1ed725ae487e9"
-        },
-        {
-          "path": "level-editor/assets/thumbs/desk.png",
-          "size": 2032,
-          "sha256": "39d67e73d6a1b57c9bc7d9c8d664990cf7bfe8d8eeeba23827a9506ae2da6ee5"
-        },
-        {
-          "path": "level-editor/assets/thumbs/fridge.png",
-          "size": 2061,
-          "sha256": "9eecfcbc904a4865fc9d9160516b1ed21232dd10de7aaeab06e44e36bb00deb4"
-        },
-        {
-          "path": "level-editor/assets/thumbs/lamp.png",
-          "size": 692,
-          "sha256": "eaded13856e5fd5facd8de67adf69a51621b289249de8478ce6720ab1f7a52ff"
-        },
-        {
-          "path": "level-editor/assets/thumbs/plant.png",
-          "size": 1345,
-          "sha256": "eb2317cfada7e9fd89271ad99e663ab4230f6afd99fd39ffeb8fb4076a05b3d6"
-        },
-        {
-          "path": "level-editor/assets/thumbs/rug.png",
-          "size": 1002,
-          "sha256": "7800fb121b4349fe359e3b3577a35928fc909d8a1a2883049323d24557ac306f"
-        },
-        {
-          "path": "level-editor/assets/thumbs/sink.png",
-          "size": 2027,
-          "sha256": "1c9c55aa78e05add7e3969f41624cd5e19578f8fd25a15700af7585089e892f0"
-        },
-        {
-          "path": "level-editor/assets/thumbs/spooner-man.png",
-          "size": 883,
-          "sha256": "38a26780652d659985bc1481c02ef4813e11130a4388bc6d6cec6382c3a7b3d8"
-        },
-        {
-          "path": "level-editor/assets/thumbs/stove.png",
-          "size": 2252,
-          "sha256": "381d4bf483c5d6a9a69696c53021b89a7f275630c4bf30f82c764f2fbe56bbbf"
-        },
-        {
-          "path": "level-editor/assets/thumbs/table.png",
-          "size": 1521,
-          "sha256": "d916c73257b050707e4b7f0becfbac4680debcd2412c454b3ca73dbe595e7cc1"
-        },
-        {
-          "path": "level-editor/assets/thumbs/tv.png",
-          "size": 1479,
-          "sha256": "c078077b9ff260d43ee39f9c7bbf9cb9a96249229bef45ad55420301df3ce838"
-        },
-        {
-          "path": "level-editor/assets/thumbs/vending_machine.png",
-          "size": 1842,
-          "sha256": "31d8be903749f58e59e1f2f36ab373632de5e81103379fa98c84c35f5c1b7dfd"
-        },
-        {
-          "path": "level-editor/assets/thumbs/washing_machine.png",
-          "size": 2079,
-          "sha256": "ebcd8bfd9b94e96bc2b94da81437746c8089d50d1e6456474e6e2dbf1fe441ef"
-        },
-        {
-          "path": "level-editor/assets/thumbs/water_cooler.png",
-          "size": 1598,
-          "sha256": "49e20964b9b3244543486d1cddd0922c8a6f7001da08e1d96b340f7568c78fa3"
-        },
-        {
-          "path": "level-editor/css/editor.css",
-          "size": 16757,
-          "sha256": "5e59abad900ef4bbbd07cdbcd0f61ccc2641e9c8d87687f38454e87f9245fcad"
-        },
-        {
-          "path": "level-editor/index.html",
-          "size": 12777,
-          "sha256": "d7acbc5229f23afae683a29e7d2268a0a0844dddb9b28245e32c61bad4acecec"
-        },
-        {
-          "path": "level-editor/js/app.js",
-          "size": 45670,
-          "sha256": "10819a66dbfb05ab4e91c746b460278fb8663c57030fd2372e55d3cade5ec500"
-        },
-        {
-          "path": "level-editor/js/camera3d.js",
-          "size": 17285,
-          "sha256": "9b814c7685755cbb65d7d4b2d700669528657bbe3a4e412e78b2b76c64be5cc9"
-        },
-        {
-          "path": "level-editor/js/editor.js",
-          "size": 25234,
-          "sha256": "2b94456c567cef6afaab7b0be43b4e282447be4dd2ee06ffa6e1174f8fc6d47f"
-        },
-        {
-          "path": "level-editor/js/geometry.js",
-          "size": 43311,
-          "sha256": "9e3d61f07a060840b280b612c1c66ae5542d414f1ed8493ed03e1ad9dfe72378"
-        },
-        {
-          "path": "level-editor/js/history.js",
-          "size": 2473,
-          "sha256": "4e337ad8833d698a029fca0a7a1d7ec5cbb7ef7926c0cb799f076c13ed8a713b"
-        },
-        {
-          "path": "level-editor/js/io.js",
-          "size": 9272,
-          "sha256": "58bda9c8180864070885d1f53a8ca8e6e4d96eec7c4f7efc328f2ce7fec246b9"
-        },
-        {
-          "path": "level-editor/js/jszip.min.js",
-          "size": 97630,
-          "sha256": "acc7e41455a80765b5fd9c7ee1b8078a6d160bbbca455aeae854de65c947d59e"
-        },
-        {
-          "path": "level-editor/js/lighting.js",
-          "size": 18105,
-          "sha256": "f05b512c636a6116ae208bc7296347b7be1d6f3652be7ae9436739abb64bd33f"
-        },
-        {
-          "path": "level-editor/js/model.js",
-          "size": 32834,
-          "sha256": "493b1904287e2eceaf5f9e1a16d531bf5cd1ef9e52b21baaa7ecf2836f8345e2"
-        },
-        {
-          "path": "level-editor/js/ops.js",
-          "size": 23509,
-          "sha256": "8466155362f3d01c65b2a82497a720090f44715faaaab37f27627606affdb257"
-        },
-        {
-          "path": "level-editor/js/properties.js",
-          "size": 41240,
-          "sha256": "b42c716b9eaa2185e2553d7c30a67fa6c12daa5a5f7e1193cb9fd96bb216531a"
-        },
-        {
-          "path": "level-editor/js/props.js",
-          "size": 16445,
-          "sha256": "275314e0d4957e43b22d1f27e31a0223a450c8f9af445320f52650e9114c07d1"
-        },
-        {
-          "path": "level-editor/js/renderer.js",
-          "size": 21752,
-          "sha256": "4a5ac83cd46def40dbbb2099b5665ec5264274e239e46335ff16324839b8f9fe"
-        },
-        {
-          "path": "level-editor/js/viewport3d.js",
-          "size": 46960,
-          "sha256": "d9394c1de3f46befe0a7642cb53a0b443b03c10732745c229cf61ba37842100b"
-        },
-        {
-          "path": "level-editor/package.json",
-          "size": 274,
-          "sha256": "e136c3bcb508264f37d01c21b0873201fb58a1046927798e50a2330ffb8d1d05"
-        },
-        {
-          "path": "level-editor/tests/app-smoke.test.mjs",
-          "size": 23122,
-          "sha256": "b063d8669ce4d47c769307ef65eab20ec02828c5953553733a655bbf9b68da05"
-        },
-        {
-          "path": "level-editor/tests/camera3d.test.mjs",
-          "size": 10165,
-          "sha256": "422191c5b3915ad7f25e6b4e8065565e7152260ba4261e8e3f91f09dbbfd28d9"
-        },
-        {
-          "path": "level-editor/tests/geometry.test.mjs",
-          "size": 18488,
-          "sha256": "358bc4d9bf666a9ce5bb24d9581fb7b598de8c66c77266621e8baf76446df032"
-        },
-        {
-          "path": "level-editor/tests/lighting-parity.test.mjs",
-          "size": 3902,
-          "sha256": "aaeeb3c0b513d8f0c2321cf0fa1e9f4c2691e1ec5c01de22ce570b05cac7cab5"
-        },
-        {
-          "path": "level-editor/tests/lighting.test.mjs",
-          "size": 14921,
-          "sha256": "257eb8662062f63662b2294104d2dcb77fee1617ea460fb0796bc9000609a819"
-        },
-        {
-          "path": "level-editor/tests/model.test.mjs",
-          "size": 15433,
-          "sha256": "eb81870d2c1d5f3c04864c8b4e6942ae8d442fe3a32f58793d8e218085c10a70"
-        },
-        {
-          "path": "level-editor/tests/ops.test.mjs",
-          "size": 13819,
-          "sha256": "9a31456cd77343849893a2d2ed8f3b497c9fc33c03619b0e4e4db38acf565682"
-        },
-        {
-          "path": "level-editor/tests/prop-assets.test.mjs",
-          "size": 6866,
-          "sha256": "23bf3c97ef762f1ec47bf2c51d9d48081d8825844ad8113215a2f7ca43ea3d78"
-        },
-        {
-          "path": "level-editor/tests/props.test.mjs",
-          "size": 8426,
-          "sha256": "9b5710269784687a39a29e7ed2ed07c3803050ebc4a9785b08d7a07835dfe1ad"
-        },
-        {
-          "path": "level-editor/tests/support/dom.mjs",
-          "size": 13497,
-          "sha256": "a6c2506ca295a032d86a718853e37341ba4279d473a87c5227f507921ede9d1e"
-        },
-        {
-          "path": "level-editor/tests/support/lighting_vectors.json",
-          "size": 26380,
-          "sha256": "7aea3b0094b469139b985c30fa3ac7109175aa0a8147ac39046ee9ed6fe2ce5c"
-        },
-        {
-          "path": "level-editor/tests/viewport3d.test.mjs",
-          "size": 13564,
-          "sha256": "4b392defbe60718923647143e938cefde769fdfe49d5896883558324b0a9bbe5"
-        },
-        {
-          "path": "levels/asset_demo.json",
-          "size": 18479,
-          "sha256": "8186be8738ea2c947b18f5ca466fce71b3b72e5bf92462c0c21a9d1858526a74"
-        },
-        {
-          "path": "levels/asset_maintained.json",
-          "size": 18481,
-          "sha256": "6d5c3b36a3b695f9c2ea4e77f9549fcfff36c18a77c1eaedd12613f9ea3528aa"
+          "path": "src/assets/tests.rs",
+          "size": 37300,
+          "sha256": "a087540767f84c8a380d9230c2408898cec05894bc4bae403a285a151c3a3f69"
         },
         {
           "path": "src/bench.rs",
-          "size": 23713,
-          "sha256": "35b01d408407688ddb7f9589aa96b28a8672e6dbc0b4e2ceb906cb08c5ec622f"
+          "size": 21513,
+          "sha256": "45ae0ec2e39baf6927ecc20787dc4d1bd5757f6bcfaed5bd98ec365a3b967e2d"
+        },
+        {
+          "path": "src/bench/tests.rs",
+          "size": 3645,
+          "sha256": "839ef665b4196675c7cfe7c486d5473e35f893ef38055d2242fb935617d8ca36"
         },
         {
           "path": "src/collision.rs",
-          "size": 13180,
-          "sha256": "498cbef54bef1664e68d7d895bf4f1c771684abf438d781a96bd6052bd23f310"
+          "size": 6835,
+          "sha256": "c508955d89cecb5f01e5f6623d08c3e2f6a516a2e09109557ddf4c257bd77f8c"
+        },
+        {
+          "path": "src/collision/tests.rs",
+          "size": 17889,
+          "sha256": "7e9cb819accf540159a1af45cc049ded1e908c25c99619ef125cee7897cfa01c"
+        },
+        {
+          "path": "src/display.rs",
+          "size": 11293,
+          "sha256": "455ea03d267a7fc3c62e5a3c6bc94d4d56218d37b63ebac373463fcc516f28d5"
         },
         {
           "path": "src/font.rs",
-          "size": 10426,
-          "sha256": "59137bf59170d25bf48d4d3d7c37704790a2c446ca67e566520562977aed666a"
+          "size": 10802,
+          "sha256": "464e001131294508afdecb37deb61c2ab96f463b12409e4afc74a012a9c17eb5"
+        },
+        {
+          "path": "src/font/tests.rs",
+          "size": 918,
+          "sha256": "4e2dcd4aa2c5de59b614a8ba6ea5128d2cfdaed0264f8c0ccc3f0e4a7dd84261"
         },
         {
           "path": "src/game.rs",
-          "size": 11018,
-          "sha256": "d7c77ef5c45df122b3b79a2cfa558671a5fdad04225f51a2921d85e9ed6bf8d9"
+          "size": 14676,
+          "sha256": "777063448d9cf15d88b5454159d0af2f3b621269e9e2e61da703064f5ff4d967"
+        },
+        {
+          "path": "src/game/tests.rs",
+          "size": 34800,
+          "sha256": "c525fe3c7216a85aac31d81690d127893f98cfb9154d0381185d3d430ad0446f"
         },
         {
           "path": "src/gltf.rs",
-          "size": 34020,
-          "sha256": "cadb72b5fc8819ab8f98ce176f8382285ed25b7fd17f2d7d65b71fe029312aff"
+          "size": 57471,
+          "sha256": "825814ca812a10a24bb87d9f2e5ccbd2ea3256eef09134458bea58721f43ec72"
+        },
+        {
+          "path": "src/gltf/tests.rs",
+          "size": 39746,
+          "sha256": "af04bc48d7878086be77afcdb41afbd2cbde8ce4d7e43759d11488ffb5e6de23"
         },
         {
           "path": "src/input.rs",
-          "size": 12767,
-          "sha256": "196a967274432ed022f56e344d0ebb65d9dc9ee3e3abadf4efb08a4078ec8bd2"
+          "size": 7298,
+          "sha256": "27f119fa592dbfcf7aa243671249ed6a1c4bf5aded68d25cab1a713d1792f795"
+        },
+        {
+          "path": "src/input/tests.rs",
+          "size": 9002,
+          "sha256": "08ba3466fe313c850832c1d8410dca40103939de68542e3e4ee52b43bf7c7f24"
         },
         {
           "path": "src/level.rs",
-          "size": 49844,
-          "sha256": "11d9a5d91849887042b92b223e24dc53e8ce5a2e9cfed281cb9cb1e0ea8a1217"
+          "size": 173716,
+          "sha256": "cc9937be444f4c7c99b7a359c353f25c4c103dc984816a0ebd3f940b7504f54c"
+        },
+        {
+          "path": "src/level/tests.rs",
+          "size": 42249,
+          "sha256": "8fdb57af6c0cff38e4cec6a9166e500aa568d63142202723af6006adc001866d"
         },
         {
           "path": "src/lighting.rs",
-          "size": 83811,
-          "sha256": "e79153e1e68d0caa7979772d3bb7a6b960381293b1410c6d26b5e566c5e8681d"
+          "size": 9798,
+          "sha256": "29e10198a3917c6e4626bba903a63106c5df9f48f4c65fec2e5b7492c1310757"
+        },
+        {
+          "path": "src/lighting/bake.rs",
+          "size": 83269,
+          "sha256": "01aafff470eccddd1eeaa412ea30a7db0b6c642004aeb903f25751c7f9835c64"
+        },
+        {
+          "path": "src/lighting/bake/range_audit.rs",
+          "size": 23021,
+          "sha256": "c983c4fc9139abbc00fa76e0a168ce85253abfe83355ac57c827b1b549089eb6"
+        },
+        {
+          "path": "src/lighting/color.rs",
+          "size": 5614,
+          "sha256": "5abf4178eedc33124b1a11022fe6c3c95a6d4db5382013c600a74ab5f70fc529"
+        },
+        {
+          "path": "src/lighting/light.rs",
+          "size": 14211,
+          "sha256": "9b3def006b9b8875d3e3ec048b9d9327ca9bd54c45e946c116e6da56bfcdd565"
+        },
+        {
+          "path": "src/lighting/light/tests.rs",
+          "size": 7000,
+          "sha256": "1a8d6f71dfa58d827149d670e20e83f429d824fca2f44619c0ef499c2949db79"
+        },
+        {
+          "path": "src/lighting/lightmap/atlas.rs",
+          "size": 20470,
+          "sha256": "159d008bc8c287da7fc03e5ff087e82229b5e30086f205a1426b4f653babfde0"
+        },
+        {
+          "path": "src/lighting/lightmap/cache.rs",
+          "size": 12094,
+          "sha256": "9520956b8c815ad744db46bff2f78946f1216134df94f325678902bffbb1ad80"
+        },
+        {
+          "path": "src/lighting/lightmap/continuity.rs",
+          "size": 21939,
+          "sha256": "16d10b5a403dbb87c270b36ecea20589dfdf8ad336159779a1b276ecadfb08bd"
+        },
+        {
+          "path": "src/lighting/lightmap/fill.rs",
+          "size": 21824,
+          "sha256": "257fbf755c5ea6fd0d6ac6476609b4301ad45137f738a3771fc85e1af720f5a5"
+        },
+        {
+          "path": "src/lighting/lightmap/mod.rs",
+          "size": 20798,
+          "sha256": "801de45fcb131483af833aa98cf2ac593dd39409c4568d4bcabe7774813ab2bd"
+        },
+        {
+          "path": "src/lighting/lightmap/plan.rs",
+          "size": 9442,
+          "sha256": "96c6075e803d6d1fbd213ed2c8af6490e27bb05b94d8fdf52d3c022c4464257d"
+        },
+        {
+          "path": "src/lighting/lightmap/tests.rs",
+          "size": 29040,
+          "sha256": "4326532e5eec695f936141aa9f5b3ccd50d15ead8a8f1f1284d4665e5c3fc31d"
+        },
+        {
+          "path": "src/lighting/math.rs",
+          "size": 8599,
+          "sha256": "6f3812458f3f5019c9cec4b50bbe172125f2c0937a3b50a7bbce823fa36ce6f9"
+        },
+        {
+          "path": "src/lighting/occlusion.rs",
+          "size": 73799,
+          "sha256": "43390f7c0ec3cc4a69acebf8f1fc03c3da5234eabfa9041eaa5a9cbd7be8bbe5"
+        },
+        {
+          "path": "src/lighting/tests.rs",
+          "size": 93444,
+          "sha256": "ed694676e13d2b25a721e1be67813ce6774f6701d5f35085c4546139fd2a2818"
+        },
+        {
+          "path": "src/lighting/tuning.rs",
+          "size": 17607,
+          "sha256": "f7eef7cec76d02c82811bd009b0ebc295ccb93fb7fb739bc93967d5d5354036e"
+        },
+        {
+          "path": "src/lighting/visibility.rs",
+          "size": 111105,
+          "sha256": "43f52cc1a725a711d37925e56d3345615a308f616547c9286bf188e4468afdcd"
         },
         {
           "path": "src/lighting_audit.rs",
-          "size": 56984,
-          "sha256": "b909d0d381dbbba6f8bf884e2506eb144c801bb7edd592c013fa354ac36b9525"
+          "size": 58225,
+          "sha256": "968e296e4a75fb6090c1e189bd6ceb4e12686a26d8efe27a0c7281ec2b67e24d"
         },
         {
           "path": "src/lighting_audit_cases.rs",
-          "size": 72458,
-          "sha256": "8bc53986c2eea2975f6250ab284e862ce77c1e462abb287f9f8b0aeebc680ef5"
+          "size": 76364,
+          "sha256": "b36d4256455c82a56acee6409285c652c9502c14761171a557faed36c3eeb2fa"
+        },
+        {
+          "path": "src/lighting_isolation.rs",
+          "size": 19262,
+          "sha256": "f4aa6970160e940cac418868674b9afce79f1dac8cddba73f7acda48a9d4f80a"
+        },
+        {
+          "path": "src/lighting_leak_audit.rs",
+          "size": 18196,
+          "sha256": "424b947037de1f25cddbbcb79389222ab97dfd33835f9a2cc95c39c20f316bfb"
         },
         {
           "path": "src/lighting_parity.rs",
-          "size": 15747,
-          "sha256": "07805cd4b7a719fa602fda0f47c2d85bb069d6af1f92a14700e12736711d459f"
+          "size": 16097,
+          "sha256": "652c992ecd6c4f65148b91b4853cc1117b92fb980efaa8ab42801b98649031e1"
+        },
+        {
+          "path": "src/lighting_partition_audit.rs",
+          "size": 25493,
+          "sha256": "c7cfc32e08c666d0e82fcf31e4629ea76731d667524da65dc095c1e936d8e25e"
+        },
+        {
+          "path": "src/lighting_vertical_audit.rs",
+          "size": 23565,
+          "sha256": "e4e799094ef314c014f65281ac490d301d0881626546089127e18bf455cc80a9"
         },
         {
           "path": "src/loader.rs",
-          "size": 111808,
-          "sha256": "a081566cd20a8523ebd90c8d82829441dd6123d9a21dfff1d5164c3e380f0ae8"
+          "size": 91891,
+          "sha256": "53657243892e4a4a32e3b972799ed9c5df75d01944486ab77a7a348b57a1a002"
+        },
+        {
+          "path": "src/loader/tests.rs",
+          "size": 80168,
+          "sha256": "0ce801a1a722d00d463bfe04b8dc78bc5294e67662638e5c237668537acca61b"
+        },
+        {
+          "path": "src/logging.rs",
+          "size": 3090,
+          "sha256": "79ec9a6826471a998d81b5f591815b29bce5867795c3d44e8e939074b71b7dfd"
         },
         {
           "path": "src/main.rs",
-          "size": 32657,
-          "sha256": "d5f74b68497683262431f0e6f1ceae43857a4ab1cc33a9b5535d8b154f740e95"
+          "size": 61798,
+          "sha256": "3f9a9b2062c1c47ae83aa238c5d81e14357d6bea76bdeacc44cd59b6e77d6d2f"
+        },
+        {
+          "path": "src/materials.rs",
+          "size": 3797,
+          "sha256": "eb74effa17fc90f0173dcbe3572a88549f0be79f2e3d525cbb1062fce442266a"
+        },
+        {
+          "path": "src/materials/decal.rs",
+          "size": 2955,
+          "sha256": "79be93abf04ffd5934ca08eeac30b135d77b30b4597e23c300abb0805563a19d"
+        },
+        {
+          "path": "src/materials/emission.rs",
+          "size": 5021,
+          "sha256": "044a77dee615c01747cfcc5b7e85ec35ef364c6088f377ff02b247155e1afe4b"
+        },
+        {
+          "path": "src/materials/emission/tests.rs",
+          "size": 1748,
+          "sha256": "4be64186ae06462292735359db0a1e64f90b08516e91ee378010aa60d0544cae"
+        },
+        {
+          "path": "src/materials/image.rs",
+          "size": 14564,
+          "sha256": "6babe390b4e8909765b702fa170842e3303e8e19fdf04d351b33cbeb22649aaf"
+        },
+        {
+          "path": "src/materials/image/tests.rs",
+          "size": 4661,
+          "sha256": "a75b3f66e8afd6bf4b6b25868a6dc1e098d2b3ba5d0968555220e54c14ca1870"
+        },
+        {
+          "path": "src/materials/pack.rs",
+          "size": 17204,
+          "sha256": "2144bb75ef98ff54d3f36057a2ba6a362b66c542411c7790bd2045d318eb2ad2"
+        },
+        {
+          "path": "src/materials/reflection.rs",
+          "size": 7346,
+          "sha256": "8fa0209ae8fad2b034fe280e22e52f68c0f9c8929eb67048b49a9e474060d05c"
+        },
+        {
+          "path": "src/materials/resolve.rs",
+          "size": 33084,
+          "sha256": "6b4b92bea1f4f7d58ac0bf259adf4fa59d6481cb56d2f38e96c57b7d1ff6103a"
+        },
+        {
+          "path": "src/materials/response.rs",
+          "size": 13927,
+          "sha256": "0c700f1680b5dfceb6f6f961a956ba7faf48ab1599c43b413f4f57b56d6f8657"
+        },
+        {
+          "path": "src/materials/response/tests.rs",
+          "size": 4489,
+          "sha256": "0f10f71951ede14b8a3fb1ed77d95753261f0d5da05b0d001939e59ee117c5bf"
+        },
+        {
+          "path": "src/materials/tests.rs",
+          "size": 57344,
+          "sha256": "02e1378fef7f0caed892cd3508a8abab3b4fba618027efb5faef505997257616"
         },
         {
           "path": "src/perf.rs",
-          "size": 20039,
-          "sha256": "4770d7c5afa1b21d025816939f0fd7c9cb1c366a183540265cf434023650747f"
+          "size": 15471,
+          "sha256": "76268bbdb545414af3dc5277ab0bfbbf0dffe30394652d1fbd0a9d284c480050"
+        },
+        {
+          "path": "src/perf/tests.rs",
+          "size": 5835,
+          "sha256": "4697e396ffaeef052380a4c5e84ff558b0f523ec605d326f12f9b717bbe1ee0d"
         },
         {
           "path": "src/props.rs",
-          "size": 13499,
-          "sha256": "d903efb6082fb2f68e48b32f66484e82c734ecf439696743d1b94f8ffa4f4047"
+          "size": 9037,
+          "sha256": "3978bf78034c01920e88f0c3b2062cf61c22a14f43a91b26d3b4ff4cd52c5bc6"
+        },
+        {
+          "path": "src/props/tests.rs",
+          "size": 16095,
+          "sha256": "259b9f3a7ef63a78e34e75ac1df4300c3dfca24446ca1172177013fb33adeb30"
+        },
+        {
+          "path": "src/quality.rs",
+          "size": 14653,
+          "sha256": "ec05ac22288fd7bf9826a891f583345c5677168132c588814fafb0234763c6a4"
+        },
+        {
+          "path": "src/quality/tests.rs",
+          "size": 11916,
+          "sha256": "899dd2156eab15611d305aba21311480d4eca55be7a4aad450fb3b35dbd1a012"
         },
         {
           "path": "src/render.rs",
-          "size": 315392,
-          "sha256": "aae52169f3e8988e709d1a2b7aa31b3c1fe596660f5d0b76ea9bb51582420348"
+          "size": 103203,
+          "sha256": "128349706f3b131fb136d9cc2266b5793613b84662599b44531b68b65670f8d0"
+        },
+        {
+          "path": "src/render/animation.rs",
+          "size": 11997,
+          "sha256": "c0bf23a8a0fa3ca0f6c363b541553e0b96add4759f13bbe8ed8838d7d503d0f7"
+        },
+        {
+          "path": "src/render/api.rs",
+          "size": 17395,
+          "sha256": "946627e901dd7732ca3ea5e9a92fdb58d73a453935fa04233f19ed9a5e951dda"
+        },
+        {
+          "path": "src/render/architecture.rs",
+          "size": 85651,
+          "sha256": "2ab96eb01780b9a7bf7cbfe0bdf828017ce25e3b2fa70868a52a5be6ee8b420d"
+        },
+        {
+          "path": "src/render/atmosphere.rs",
+          "size": 4852,
+          "sha256": "574e1b2ebdce4a24c678d3e0b329238daa0b5760702688e1b50a533569e962cc"
+        },
+        {
+          "path": "src/render/decals.rs",
+          "size": 13478,
+          "sha256": "923b540a50d46b9cc903c268c7bc3b68e02e4183dc79b0fc91febd3d9a26ff46"
+        },
+        {
+          "path": "src/render/dynamic.rs",
+          "size": 48788,
+          "sha256": "697f987193a74c351c3247b67ec4baacd19026a4d13aa9d9ba909be422a296e7"
+        },
+        {
+          "path": "src/render/fixtures.rs",
+          "size": 14477,
+          "sha256": "8e829ab6685d33790fc35e8b560b0d5796ebfe553416309d3938f88bc122b887"
+        },
+        {
+          "path": "src/render/geometry.rs",
+          "size": 58688,
+          "sha256": "00b21e3b049a83655e2e0f7df5a5e5d57044f9533212f1e53339938f70c84991"
+        },
+        {
+          "path": "src/render/mesh.rs",
+          "size": 44938,
+          "sha256": "42a66ddb1ed1db02c23c13c2567003bc351460bb5f77ef4087593663af9b0491"
+        },
+        {
+          "path": "src/render/prop_atlas.rs",
+          "size": 14107,
+          "sha256": "502c8923556ff7ca7b45b434da2327826be1bbacbf4eeb3878c70e29ce3cbbf4"
+        },
+        {
+          "path": "src/render/prop_atlas/tests.rs",
+          "size": 16161,
+          "sha256": "5d77f9f5d7fdfa1e075e17a5752207f48f3596d3b326681b6895e69a9189d5c3"
+        },
+        {
+          "path": "src/render/props.rs",
+          "size": 20862,
+          "sha256": "49041681d0bdad7ba762a627ce8fb14feb8759a3a7697f4b304d6e137057a445"
+        },
+        {
+          "path": "src/render/renderer.rs",
+          "size": 200083,
+          "sha256": "187572fbee32eab0d48e5e6a3fdc8f9b56f42895fdcd2195e66982c1dc204810"
+        },
+        {
+          "path": "src/render/tests.rs",
+          "size": 249498,
+          "sha256": "f972e5f725e3609f869a50e22dec52341f3dbbcd44257d9e58abe27aad1b00de"
+        },
+        {
+          "path": "src/render/view.rs",
+          "size": 24517,
+          "sha256": "af1434beff95dfd3a8d3137b6d7a631efc57dd198cdacd5c83efbb566c41d6a4"
         },
         {
           "path": "src/settings.rs",
-          "size": 10209,
-          "sha256": "2b931004f5650cc911255548757b3ccd64571a08f652bc5bfe4792ed1aead13f"
+          "size": 32646,
+          "sha256": "5902bf9efe4972e6689047d0458b87f72d3d98f779e75cb0ff63a480f2740308"
+        },
+        {
+          "path": "src/settings/tests.rs",
+          "size": 20404,
+          "sha256": "cf530e4b6a71c909a32d74f21a0e44f42b5ef9dd45925cccaba392693ea7c815"
         },
         {
           "path": "src/spatial.rs",
-          "size": 43899,
-          "sha256": "a00b35b0050c2147d8ac0fcfdf37086c615bb957646f4eacc6d6e43d493d8cac"
+          "size": 23276,
+          "sha256": "b81003c5dcdf6f0588e2110bf25201ca6232fc5ce850c0d766b8f33e8074cf68"
+        },
+        {
+          "path": "src/spatial/tests.rs",
+          "size": 21932,
+          "sha256": "7b28c4b945f94b10f2fa7b438e5425a5a8a448b8b80472af20564be055355f68"
+        },
+        {
+          "path": "src/surface_audit.rs",
+          "size": 52018,
+          "sha256": "b5687ecd8d52bb7e28ebfec1f2dffb2646c6eca06f0f88bf3ea04d20bbb046bf"
         },
         {
           "path": "src/test_support.rs",
-          "size": 2465,
-          "sha256": "d7b3f346c1328c65ee2c297a4b29b5b1b039ed7c55541782d6789beceae7f770"
+          "size": 11463,
+          "sha256": "07a6662e8f1ffdf295841819d2032a069dee069d5dc6287dc7a46b12dd70a1ab"
         },
         {
           "path": "src/ui.rs",
-          "size": 20877,
-          "sha256": "97f6d43dbef18d3097d7ab1fceb08ae933b7f3441b49d299796a714a821f41a7"
+          "size": 50087,
+          "sha256": "4810ca02cfecaeddb15400370ad098bb406400b37aa9abbaac46987ea1925806"
         },
         {
-          "path": "tools/bench/README.md",
-          "size": 6807,
-          "sha256": "ee6d0596fea75dc025a8f646aef7ea8ed37e79d1db3dd635044e67242856f434"
-        },
-        {
-          "path": "tools/bench/analyze.py",
-          "size": 7648,
-          "sha256": "341ea11eb0802183a012c2f2473dea08d148370af70bea989875351781710fec"
-        },
-        {
-          "path": "tools/bench/gen_levels.py",
-          "size": 5026,
-          "sha256": "e8468ef66cf406addafa86a4abef8ca285d334bfdb261ffe003bcdc2bd85d4c1"
-        },
-        {
-          "path": "tools/bench/notes/level-build-cache.md",
-          "size": 5905,
-          "sha256": "b7564e7fa33dd205087e8c50eb1b080335ce5b13e75f9f62a53284c5f8925142"
-        },
-        {
-          "path": "tools/bench/notes/renderer-change-validation.md",
-          "size": 4534,
-          "sha256": "bfb1f8730e4257abc3917ebe7656428ba0e8245edd60b58caf1c7be003621fb8"
-        },
-        {
-          "path": "tools/bench/run_bench.py",
-          "size": 16551,
-          "sha256": "f463774af82a9a20a093127c3ed7f78b041c9886c30563ca090baec75fa52901"
-        },
-        {
-          "path": "tools/bench/runone.sh",
-          "size": 1044,
-          "sha256": "b56426ce2ac7fcbe3b1b929eb81fb07d0ff034fb91c038631c7dc1af21907414"
-        },
-        {
-          "path": "tools/bench/visual_check.py",
-          "size": 10704,
-          "sha256": "9824fc9bf5318b2794baa3275b198494f072846e5c536a78164131e13b5db121"
-        },
-        {
-          "path": "tools/generate_spooner_man.py",
-          "size": 1404,
-          "sha256": "2d9a8fb7a1147f04522b0c7b1b31ea5ee1bf3af9f3573cae0ece7e6ca0d1b27c"
-        },
-        {
-          "path": "tools/levels/build_demo_levels.py",
-          "size": 25539,
-          "sha256": "6925a4b85f4063f9ac4195b3924ffd4d5ebaa0235a5318d30e58b63e71293c9b"
-        },
-        {
-          "path": "tools/props/README.md",
-          "size": 4395,
-          "sha256": "25e24e4d0b4fcc4738b6d7fca669266ac2170e95588655c99008174b3cce7df9"
-        },
-        {
-          "path": "tools/props/build.py",
-          "size": 10279,
-          "sha256": "66fe946615c3a1a93545f42434fb064ecf87c839bfdf55d05e53825d8069c855"
-        },
-        {
-          "path": "tools/props/glb.py",
-          "size": 12137,
-          "sha256": "692c597a8ac194c0712ede02b041a2fca7bf9bb5401043fec7844617e3f8de5e"
-        },
-        {
-          "path": "tools/props/mesh.py",
-          "size": 38297,
-          "sha256": "7de27ccbe68bc02477124a1725355672532998b0d63929b92d7ec4da764301c6"
-        },
-        {
-          "path": "tools/props/palette.py",
-          "size": 3088,
-          "sha256": "91c85b99e44ba7dfac6c56d41aafb65a2a71b1182a118291e546dc2a2f2f26c8"
-        },
-        {
-          "path": "tools/props/parts/__init__.py",
-          "size": 1402,
-          "sha256": "8de030e1f3840cb12fb0c6aa59de1bdd71f8bac91be4324568ca26a4c1c3baa8"
-        },
-        {
-          "path": "tools/props/parts/appliances.py",
-          "size": 41947,
-          "sha256": "a90f23e825fb7fbbd60caaede4d8a7778c5309ffec4b80c1a8dada6d4e933019"
-        },
-        {
-          "path": "tools/props/parts/decor.py",
-          "size": 28080,
-          "sha256": "2f1f39882edcf1fb8df1768ec32b78894635183d0627f4132133c48468a31734"
-        },
-        {
-          "path": "tools/props/parts/furniture.py",
-          "size": 31508,
-          "sha256": "947c11b3bf9a16c76340271f155c5f52916aff467a9b9d699d77bd065d4f5a64"
-        },
-        {
-          "path": "tools/props/parts/spooner_man.py",
-          "size": 17555,
-          "sha256": "0c6b11a052dda2d47281672a067fcf2f571f6433fc61cddb66906cc49cc09463"
-        },
-        {
-          "path": "tools/props/parts/utility.py",
-          "size": 8097,
-          "sha256": "cdf4e5c8bbeb7523f656483989bb580c0d45f439f3a61067ca031841799b0e8d"
-        },
-        {
-          "path": "tools/props/preview.py",
-          "size": 14731,
-          "sha256": "651706f43d8fa50a1528d7159c0ac2ced5094054d823d28890d120d722be217f"
-        },
-        {
-          "path": "tools/props/tex.py",
-          "size": 22361,
-          "sha256": "b499e72cc50394492bab45309bb4f39259bd159835bcee2bde39a71011cea2b5"
+          "path": "tools/assets/validate.py",
+          "size": 48052,
+          "sha256": "546a1091e1582fae30535087a399955b2df1b94fe73b5d9981f0c246131ab1c7"
         }
       ]
     },
@@ -1184,7 +1474,7 @@
       "id": "io.vitrallis.mediacarousel",
       "installable": true,
       "name": "Vitrallis Media Carousel",
-      "version": "0.3.0",
+      "version": "0.4.1",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -1196,14 +1486,14 @@
       "compatibility_notes": "Requires Python 3.9+, Tk 8.6, Pillow >=10.4,<13, qrcode >=7.4,<9 and installed packaging for App Center dependency checks. Optional system ffmpeg/ffprobe must decode VP8, VP9 and WebP; one-click setup requires the Shell multimedia helper. PocketCHIP playback, uploads and keyboard controls were tested from staged source with the Shell VSync compositor. Managed App Center update to this version was not physically exercised.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "f82aadc59d765dd566b44a7b30bd3d991557a05a",
+        "commit": "db53966ec1ff12b566e3b7a1ce4214ce1aa5005c",
         "path": "apps/vitrallis-media-carousel"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 4166,
-          "sha256": "5a73e120953b0ba73689a510f630219d053cf18e095fb9565abfe91f8952b02e"
+          "size": 10457,
+          "sha256": "6e53525d437478ead3cf27ba9bb7352a667d8b1013ec95bd87edbf478c0da7b4"
         },
         {
           "path": "LICENSE",
@@ -1212,18 +1502,18 @@
         },
         {
           "path": "README.md",
-          "size": 23827,
-          "sha256": "14c768d6d3fd6e703684b5579a8d063aeef0cce1eff868f5eca08bcc987d7847"
+          "size": 31594,
+          "sha256": "7ceb47fc2ca9bab92061d0e67cc7f34f06dfd2b1323608d4b27c9f96db0cf41d"
         },
         {
           "path": "animation_cache.py",
-          "size": 5150,
-          "sha256": "22642336cd2ef7db68b8aae7d19046f8c5b415516d8d0d28b8bdf1f106b8d712"
+          "size": 9235,
+          "sha256": "eee0c8e5b50b13d65cb6ce1f8b7f71fc75e1c38be732241087c3af8bdaa17dfb"
         },
         {
           "path": "app.toml",
           "size": 203,
-          "sha256": "8e85c5237d9eaf73759b0e5d2d4930375b5496e7677f0f8917135f580f03576e"
+          "sha256": "10cc3ae6b3b9a89615d5720a3f9178665ce544a31ac7d97734181826370e7c80"
         },
         {
           "path": "assets/README.md",
@@ -1252,13 +1542,13 @@
         },
         {
           "path": "connection.py",
-          "size": 818,
-          "sha256": "8990a49339924d3f3b1f132b2aa193fac92f374f8898480f6c6ac0b6fa4a690c"
+          "size": 987,
+          "sha256": "06c515400be05353b3d544c7dcfb742d7f101794816326e74aefe389880b9afa"
         },
         {
           "path": "convert.py",
-          "size": 13411,
-          "sha256": "2288372456f196fcb2811842bc3d1947f4e69683f9f16a93c9ed379f5af6559a"
+          "size": 28892,
+          "sha256": "40c62ac3e50734b6c58fa77e9e818f22f32ac16c9b78749519992667744e2832"
         },
         {
           "path": "dependencies.py",
@@ -1267,8 +1557,8 @@
         },
         {
           "path": "gpu.py",
-          "size": 14370,
-          "sha256": "7b63a8b7483ab86119887993a740da8a416c6bfba11a59e9aa2d91594a870a77"
+          "size": 14696,
+          "sha256": "d7ddbb7c962ddf6b0e0bcd9acf773b1da8eb5b3f7984dcf846bf495d0eefe88e"
         },
         {
           "path": "icon.png",
@@ -1277,28 +1567,28 @@
         },
         {
           "path": "library.py",
-          "size": 12379,
-          "sha256": "8ae60ad626d1c109e9cb167cd2ce5bfe7610e40bc5186354f3223bb62a7a27ff"
+          "size": 13046,
+          "sha256": "dee00be3cfb8a071fe07b3fb8fb9c15ef8ab90f5173e55641b4f7c9b8b0b9f93"
         },
         {
           "path": "main.py",
           "size": 1321,
-          "sha256": "308028ffe32a24ae361c644557d46761b4cb30e689fb498542ef6bb4063d2ca2"
+          "sha256": "ca1a458ade9d9414db01c8485ca608d7779dece8868e3bbce126163b4e79d672"
         },
         {
           "path": "media.py",
-          "size": 9786,
-          "sha256": "1d19cd94bb5db00f79df4c1bfaaffa8b3880db2c180f1915e6bb2735fec82dbf"
+          "size": 14667,
+          "sha256": "fb62f00c9eab3820c8e30e7366ee4cb51d0f3514e96fb4dac2f5b1330fd303fb"
         },
         {
           "path": "multimedia.py",
-          "size": 3324,
-          "sha256": "7ad5b4cc391733099b8b27f850f2b569c52ffc385c023007b7fe2c1a422fc5c1"
+          "size": 11137,
+          "sha256": "2da19e0079daaeedac6202d421cf8fd489f6564e43faa22f1c8af0dca740079d"
         },
         {
           "path": "player.py",
-          "size": 16799,
-          "sha256": "b18829098393e94172efe8164411101b234f7dfbddaa7afa7b57ab3436203a72"
+          "size": 28100,
+          "sha256": "be38a379febb0e98d9f6f3903d9a42f43f21765188079933d924bd647b4fbf54"
         },
         {
           "path": "previews.py",
@@ -1322,28 +1612,28 @@
         },
         {
           "path": "ui.py",
-          "size": 32895,
-          "sha256": "b92836beef45328a62632664eb0f546f6e8a683308ff96134b8dc73a266cc0ca"
+          "size": 52428,
+          "sha256": "1d71d08334c26c5a01e2d9da8de7c0e17979e535963eb5943cc9d595b3ba3e40"
         },
         {
           "path": "web/app.js",
-          "size": 17796,
-          "sha256": "a4a64d130ca0bdd2ccdc1b5c551a622be69df5a178765dd28af9639055d84926"
+          "size": 26833,
+          "sha256": "bb7cd429259211a0238dbbebc56bf532905f9391f49f70ca3c0242558178276d"
         },
         {
           "path": "web/index.html",
-          "size": 5532,
-          "sha256": "94b6184cfec9d2f37647669dcacdd79d8a34cc8ab614324284c802124d95e4b7"
+          "size": 11197,
+          "sha256": "62b42fd3446ed649c614d1aaa3ce3e478f3009546864cad3e20a09f7406e4e7d"
         },
         {
           "path": "web/style.css",
-          "size": 6217,
-          "sha256": "ae980e7cc1482a44b834ac486c40daef41e9de5b62fc46102d81902f255eddfe"
+          "size": 8955,
+          "sha256": "24a769d616cec998ee6350e3e268efb2508372e1a2072264cccc6d15a2d702fb"
         },
         {
           "path": "web_server.py",
-          "size": 24527,
-          "sha256": "6c26143adb0693762d552e00529f1e611452f6c13ff8accd2c0d70039c6624f1"
+          "size": 30808,
+          "sha256": "1ba33874d9384cc5610a6d033352da3955fd9b7b477b967d6c91078c6ace9c39"
         }
       ]
     }

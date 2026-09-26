@@ -15,9 +15,12 @@ import time
 import zipfile
 from urllib.parse import parse_qs, urlsplit
 
-from convert import ConversionError, Conversions
+from zipfile import ZIP64_LIMIT
+
+from convert import BUCKETS, ConversionError, Conversions
 from library import display_name, identifier
-from media import MAX_UPLOAD, Processes, capabilities, probe
+from media import MAX_UPLOAD, Processes, probe, remember_probe
+from multimedia import capabilities
 from storage import unique_keys
 from previews import Thumbnails
 from dependencies import Installation
@@ -29,6 +32,10 @@ ASSETS = {"/": ("index.html", "text/html; charset=utf-8"),
 
 MAX_DOWNLOAD = 4 * 1024 * 1024 * 1024
 REQUEST_DEADLINE = 160
+
+
+def convert_kinds():
+    return BUCKETS
 
 
 def archive_member_names(items):
@@ -43,9 +50,15 @@ def archive_member_names(items):
 
 
 def archive_size(items):
-    """Conservative upper bound for the streamed ZIP, including all ZIP overhead."""
-    return 24 + sum(item["size"] + 2 * len(member.encode("utf-8")) + 100
-                    for item, member in zip(items, archive_member_names(items)))
+    """Conservative upper bound for the streamed ZIP, including ZIP64 overhead.
+
+    A non-seekable stream emits ZIP64 end records and per-member extras whenever
+    sizes or offsets cross the classic limit, so allow for those records too.
+    """
+    names = archive_member_names(items)
+    members = sum(item["size"] + 2 * len(member.encode("utf-8")) + 100
+                  for item, member in zip(items, names))
+    return 24 + members + 48 * len(items) + 96
 
 
 class ClientWriter:
@@ -106,7 +119,7 @@ class HTTPError(ValueError):
 
 class BoundedServer(ThreadingMixIn, HTTPServer):
     allow_reuse_address = True
-    daemon_threads = False
+    daemon_threads = True
     block_on_close = False
     request_queue_size = 4
 
@@ -161,6 +174,18 @@ class BoundedServer(ThreadingMixIn, HTTPServer):
 
 
 class WebServer:
+    """The management UI is a background service: it never gates playback.
+
+    `start_async` binds, discovers addresses and begins serving on its own
+    thread, so a slow or unavailable network interface cannot delay the
+    slideshow. Failure is recorded and surfaced, never raised into the caller.
+    """
+
+    STARTING = "starting"
+    READY = "ready"
+    FAILED = "failed"
+    STOPPED = "stopped"
+
     def __init__(self, library, settings, host="0.0.0.0", port=8765, conversions=None):
         self.library, self.settings = library, settings
         self.token = secrets.token_hex(3)
@@ -168,6 +193,7 @@ class WebServer:
         self.name = socket.gethostname()[:64]
         self.http = None
         self.thread = None
+        self.serve_thread = None
         self.address_thread = None
         self.processes = Processes()
         self.conversions = conversions or Conversions(library, self.processes)
@@ -177,31 +203,75 @@ class WebServer:
         self.thumbnails = Thumbnails(library, self.processes, self.media_slot)
         self.download_slot = threading.Lock()
         self.stopping = threading.Event()
+        self.ready = threading.Event()
+        self.start_lock = threading.Lock()
+        self.closed = False
         self.urls = []
-        self.state = "Starting"
+        self.state = self.STARTING
+        self.detail = "Web server starting…"
+        self.error = ""
         self.installation = Installation()
         self.auth_lock = threading.Lock()
         self.auth_window = 0
         self.auth_failures = 0
 
-    def start(self):
-        if self.http is not None or self.stopping.is_set():
-            raise RuntimeError("Server already started or stopped")
-        try:
-            self.http = BoundedServer((self.host, self.port), self)
-        except OSError as error:
-            import errno
-            if self.port != 8765 or error.errno != errno.EADDRINUSE:
-                raise
-            self.http = BoundedServer((self.host, 0), self)
-        self.port = self.http.server_port
-        self.refresh_addresses()
-        self.thread = threading.Thread(target=self.http.serve_forever, kwargs={"poll_interval": 0.1},
-                                       name="carousel-http")
-        self.thread.start()
+    def start_async(self):
+        """Begin serving on a worker thread and return immediately."""
+        with self.start_lock:
+            if self.http is not None or self.thread is not None:
+                raise RuntimeError("Server already started or starting")
+            if self.stopping.is_set():
+                raise RuntimeError("Server already stopped")
+            thread = threading.Thread(target=self._serve, name="carousel-http-start")
+            self.thread = thread
+            thread.start()
+            return thread
 
-        self.address_thread = threading.Thread(target=self.watch_addresses, name="carousel-address")
-        self.address_thread.start()
+    def _serve(self):
+        try:
+            if self.stopping.is_set():
+                return
+            try:
+                server = BoundedServer((self.host, self.port), self)
+            except OSError as error:
+                import errno
+                if self.port != 8765 or error.errno != errno.EADDRINUSE:
+                    raise
+                server = BoundedServer((self.host, 0), self)
+            if self.stopping.is_set():
+                server.server_close()
+                return
+            self.http = server
+            self.port = server.server_port
+            self.detail = "Discovering the local address…"
+            self.refresh_addresses()
+            serve = threading.Thread(target=server.serve_forever,
+                                     kwargs={"poll_interval": 0.1}, name="carousel-http")
+            self.serve_thread = serve
+            serve.start()
+            address = threading.Thread(target=self.watch_addresses, name="carousel-address")
+            self.address_thread = address
+            address.start()
+        except Exception as error:  # Playback must continue without a management UI.
+            self.error = str(error)
+            self.state = self.FAILED
+            self.detail = "Web server unavailable: " + self.error
+        finally:
+            self.ready.set()
+
+    @property
+    def available(self):
+        return self.state == self.READY
+
+    def wait_ready(self, timeout=None):
+        self.ready.wait(timeout)
+        return self.state
+
+    def start(self):
+        """Compatibility helper for callers and tests that want a bound server."""
+        self.start_async()
+        self.wait_ready(timeout=30)
+        return self.state
 
     def watch_addresses(self):
         while not self.stopping.wait(60):
@@ -212,9 +282,11 @@ class WebServer:
         self.urls = [f"http://{address}:{self.port}" for address in addresses]
         if not self.urls:
             self.urls = [f"http://127.0.0.1:{self.port}"]
-            self.state = "Local only address · check Wi-Fi"
+            self.state = self.READY
+            self.detail = "Local only address · check Wi-Fi"
         else:
-            self.state = "Ready"
+            self.state = self.READY
+            self.detail = "Ready"
 
     def authenticated(self, header):
         valid = (isinstance(header, str) and header.isascii()
@@ -231,33 +303,52 @@ class WebServer:
         return False
 
     def close(self):
+        with self.start_lock:
+            if self.closed:
+                return
+            self.closed = True
         self.stopping.set()
-        if self.address_thread is not None:
-            self.address_thread.join(timeout=3)
+        starter = self.thread
+        if starter is not None and starter is not threading.current_thread():
+            starter.join(timeout=6)
+        address, self.address_thread = self.address_thread, None
+        if address is not None:
+            address.join(timeout=3)
         self.conversions.close()
-        if self.http is None:
+        server = self.http
+        if server is None:
             self.processes.close()
+            self.state = self.STOPPED
+            self.detail = "Stopped"
             return
-        if self.thread is not None:
-            self.http.shutdown()
-            self.thread.join(timeout=2)
-        with self.http.worker_lock:
-            sockets = list(self.http.sockets)
+        serve = self.serve_thread
+        if serve is not None:
+            server.shutdown()
+            serve.join(timeout=2)
+        with server.worker_lock:
+            sockets = list(server.sockets)
         for connection in sockets:
             try:
                 connection.shutdown(socket.SHUT_RDWR)
             except OSError:
                 pass
         self.processes.close()
-        self.http.server_close()
-        with self.http.worker_lock:
-            workers = list(self.http.workers)
+        server.server_close()
+        with server.worker_lock:
+            workers = list(server.workers)
         deadline = time.monotonic() + 4
         for worker in workers:
             worker.join(timeout=max(0, deadline - time.monotonic()))
         if any(worker.is_alive() for worker in workers):
-            raise RuntimeError("HTTP worker did not stop within 4 seconds")
-        self.state = "Stopped"
+            # Workers are daemon threads that only own a socket already shut down;
+            # report instead of blocking exit on an unresponsive peer.
+            print("event=server status=stopping", file=sys.stderr)
+        self.state = self.STOPPED
+        self.detail = "Stopped"
+
+    def snapshot(self):
+        return {"state": self.state, "detail": self.detail, "error": self.error,
+                "urls": list(self.urls), "name": self.name}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -320,8 +411,11 @@ class Handler(BaseHTTPRequestHandler):
                 raise HTTPError(400, "One Host header is required")
             host = urlsplit("http://" + hosts[0])
             try:
+                address = ipaddress.ip_address(host.hostname)
                 valid_host = (host.port == self.owner.port and not host.username and not host.path
-                              and ipaddress.ip_address(host.hostname).is_private)
+                              and address.is_private and not address.is_link_local
+                              and not address.is_unspecified and not address.is_multicast
+                              and not address.is_reserved)
             except (ValueError, TypeError):
                 valid_host = False
             if not valid_host:
@@ -329,7 +423,7 @@ class Handler(BaseHTTPRequestHandler):
             origins = self.headers.get_all("Origin", [])
             if origins and origins != ["http://" + hosts[0]]:
                 raise HTTPError(403, "Cross-origin requests are not allowed")
-            if self.command == "GET" and parsed.path in ASSETS and not parsed.query:
+            if self.command == "GET" and parsed.path in ASSETS:
                 filename, mime = ASSETS[parsed.path]
                 self.reply(200, (WEB / filename).read_bytes(), mime)
                 return
@@ -364,13 +458,20 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get("Transfer-Encoding") or len(lengths) != 1 or not lengths[0].isascii() or not lengths[0].isdigit():
             raise HTTPError(411, "One explicit Content-Length is required")
         length = int(lengths[0])
-        if not 1 <= length <= maximum:
+        if length == 0:
+            raise HTTPError(400, "The request body is empty")
+        if length > maximum:
             raise HTTPError(413, f"Request too large (maximum {maximum} bytes)")
         return length
 
+    @staticmethod
+    def content_type_is(header, expected):
+        """Accept `type/subtype` with optional parameters such as charset."""
+        return isinstance(header, str) and header.split(";", 1)[0].strip().lower() == expected
+
     def json_body(self):
         length = self.content_length(65536)
-        if self.headers.get("Content-Type") != "application/json":
+        if not self.content_type_is(self.headers.get("Content-Type"), "application/json"):
             raise HTTPError(415, "Expected application/json")
         raw = self.rfile.read(length)
         if len(raw) != length:
@@ -385,10 +486,17 @@ class Handler(BaseHTTPRequestHandler):
         library, settings = self.owner.library, self.owner.settings
         if self.command == "GET" and parsed.path == "/api/state":
             self.reply(200, {"collections": library.snapshot(), "settings": settings.snapshot(),
-                            "device": self.owner.name, "urls": self.owner.urls, "status": self.owner.state,
+                            "device": self.owner.name, "urls": self.owner.urls,
+                            "status": self.owner.detail,
+                            "server": self.owner.snapshot(),
                             "capabilities": capabilities(blocking=False), "installation": self.owner.installation.snapshot(),
                             "conversion": self.owner.conversions.snapshot(), "max_upload": MAX_UPLOAD,
                             "max_download": MAX_DOWNLOAD, "warning": library.warning or settings.warning})
+        elif self.command == "POST" and parsed.path == "/api/convert":
+            self.reply(202, self.bulk_convert(self.json_body()))
+        elif self.command == "POST" and parsed.path == "/api/convert/cancel":
+            self.owner.conversions.request_cancel()
+            self.reply(202, self.owner.conversions.snapshot())
         elif self.command == "POST" and parsed.path == "/api/dependencies/install":
             if self.json_body() != {"install": "ffmpeg"}:
                 raise ValueError("Expected explicit FFmpeg installation request")
@@ -442,6 +550,29 @@ class Handler(BaseHTTPRequestHandler):
         else:
             raise HTTPError(404, "Unknown API route")
 
+    def bulk_convert(self, body):
+        """Queue one bulk job: {"scope", "collection", "kinds", "replace"}."""
+        if not isinstance(body, dict) or set(body) - {"scope", "collection", "kinds", "replace"}:
+            raise ValueError("Expected scope, collection, kinds and replace")
+        scope = body.get("scope", "collection")
+        if scope not in ("collection", "all"):
+            raise ValueError("scope must be collection or all")
+        kinds = body.get("kinds", ["gif"])
+        if (not isinstance(kinds, list) or not kinds
+                or len(kinds) > len(convert_kinds()) or not all(isinstance(kind, str) for kind in kinds)
+                or set(kinds) - set(convert_kinds())):
+            raise ValueError("kinds must be a non-empty subset of gif and image")
+        replace = body.get("replace", False)
+        if type(replace) is not bool:
+            raise ValueError("replace must be true or false")
+        collection = None
+        if scope == "collection":
+            collection = identifier(body.get("collection", ""))
+        try:
+            return self.owner.conversions.start_bulk(scope, kinds, replace, collection)
+        except ConversionError as error:
+            raise HTTPError(error.code, str(error))
+
     def download(self, cid):
         items = self.owner.library.playlist(cid)
         bound = archive_size(items)
@@ -464,6 +595,10 @@ class Handler(BaseHTTPRequestHandler):
     def stream_archive(self, pairs, bound):
         # No temp file and no buffering: zipfile streams data descriptors straight
         # to the socket. HTTP/1.0 close-delimited, so no Content-Length is sent.
+        # ZIP64 is allowed because a non-seekable sink cannot rewrite a local
+        # header: any item at or over the classic 2 GiB limit must opt into the
+        # ZIP64 data descriptor up front, and archives over that limit need the
+        # ZIP64 end record.
         self.send_response(200)
         self.send_header("Content-Type", "application/zip")
         self.send_header("Content-Disposition", 'attachment; filename="collection.zip"')
@@ -476,7 +611,7 @@ class Handler(BaseHTTPRequestHandler):
         self.connection.settimeout(20)
         self.refresh_deadline()
         writer = ClientWriter(self.wfile)
-        archive = zipfile.ZipFile(writer, "w", compression=zipfile.ZIP_STORED, allowZip64=False)
+        archive = zipfile.ZipFile(writer, "w", compression=zipfile.ZIP_STORED, allowZip64=True)
         try:
             for item, member in pairs:
                 if self.owner.stopping.is_set():
@@ -484,7 +619,8 @@ class Handler(BaseHTTPRequestHandler):
                 with self.owner.library.open_item(item) as source:
                     if os.fstat(source.fileno()).st_size != item["size"]:
                         raise ValueError("Media size changed; refresh the collection")
-                    with archive.open(member, "w") as target:
+                    with archive.open(member, "w",
+                                      force_zip64=item["size"] >= ZIP64_LIMIT) as target:
                         remaining, staged = item["size"], 0
                         while remaining:
                             chunk = source.read(min(65536, remaining))
@@ -497,12 +633,16 @@ class Handler(BaseHTTPRequestHandler):
                                 staged = 0
                                 self.refresh_deadline()
                 self.refresh_deadline()
-        except BaseException:
+        except BaseException as error:
             # Abandon the archive: a partial central directory must never make the
             # truncated stream look like a finished download.
             writer.abandoned = True
             archive.fp = None
-            raise
+            if isinstance(error, (HTTPError, OSError, ValueError, TimeoutError, ConnectionError)):
+                raise
+            # Anything else (a zipfile size-limit RuntimeError, for example) is an
+            # internal failure; surface a clean result instead of a worker traceback.
+            raise HTTPError(500, "Folder download failed; the archive was not completed") from error
         archive.close()
 
     def refresh_deadline(self):
@@ -512,7 +652,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def upload(self, cid, query):
         length = self.content_length(MAX_UPLOAD)
-        if self.headers.get("Content-Type") != "application/octet-stream":
+        if not self.content_type_is(self.headers.get("Content-Type"), "application/octet-stream"):
             raise HTTPError(415, "Upload a raw file using application/octet-stream")
         if shutil.disk_usage(self.owner.library.paths.uploads).free < length + 16 * 1024 * 1024:
             raise HTTPError(507, "Not enough free space to stage this upload")
@@ -529,7 +669,9 @@ class Handler(BaseHTTPRequestHandler):
             with stream:
                 remaining, deadline = length, time.monotonic() + 120
                 while remaining:
-                    if self.owner.stopping.is_set() or time.monotonic() > deadline:
+                    if self.owner.stopping.is_set():
+                        raise HTTPError(503, "Server stopping")
+                    if time.monotonic() > deadline:
                         raise HTTPError(408, "Upload exceeded the 120-second deadline")
                     chunk = self.rfile.read1(min(65536, remaining))
                     if not chunk:
@@ -543,6 +685,7 @@ class Handler(BaseHTTPRequestHandler):
             if self.owner.stopping.is_set():
                 raise HTTPError(503, "Server stopping")
             item = self.owner.library.add_upload(cid, name, temporary, info)
+            remember_probe((item["id"], item["size"]), info)
             if item["kind"] == "gif" and self.owner.settings.snapshot().get("convert_gifs"):
                 try:
                     self.owner.conversions.start(cid, item["id"])

@@ -1,4 +1,5 @@
-"""Bounded media inspection and local-only, muted FFmpeg decoding."""
+"""Bounded media inspection, cached video metadata and local-only muted FFmpeg decoding."""
+from collections import OrderedDict
 import json
 import math
 import os
@@ -19,30 +20,51 @@ MAX_GIF_PIXELS = 1_000_000
 MAX_FRAMES = 1000
 MAX_ANIMATION_PIXELS = 256_000_000
 MAX_VIDEO_SECONDS = 1800
+MAX_VIDEO_FPS = 30
+VIDEO_FPS_FALLBACK = 25
 FORMATS = ("PNG", "JPEG", "WEBP", "GIF")
+
+# Playback must not re-probe an immutable blob every time it starts. Blobs are
+# named by content ID and verified by size, so (id, size) identifies the file.
+_PROBE_CACHE = OrderedDict()
+_PROBE_CACHE_LIMIT = 128
+_PROBE_LOCK = threading.Lock()
 
 
 class MediaError(ValueError):
     pass
 
 
-from multimedia import capabilities
-
 
 def terminate(process):
-    """All app-owned subprocesses start a new session; include their children."""
+    """All app-owned subprocesses start a new session; include their children.
+
+    A child that already exited but has not been reaped yet can answer
+    ``killpg`` with EPERM on some platforms (macOS) instead of ESRCH, so the
+    signal attempt is best-effort and the reaping wait is what always runs.
+    A child that was already reaped must never be signalled: its process-group
+    ID may have been reused by an unrelated process.
+    """
+    if process.returncode is not None:
+        return
     try:
         os.killpg(process.pid, signal.SIGTERM)
-    except ProcessLookupError:
+    except (ProcessLookupError, PermissionError):
         pass
     try:
         process.wait(timeout=0.5)
+        return
     except subprocess.TimeoutExpired:
-        try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
+        pass
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        pass
+    try:
         process.wait(timeout=1)
+    except subprocess.TimeoutExpired:
+        # Bounded: an unkillable child must never take the caller down with it.
+        pass
 
 
 class Processes:
@@ -79,6 +101,59 @@ class Processes:
             active = list(self.active)
         for process in active:
             self.finish(process)
+
+
+def remember_probe(identity, info):
+    """Cache inspection results for an immutable media blob."""
+    if not identity or not info:
+        return
+    with _PROBE_LOCK:
+        _PROBE_CACHE[identity] = dict(info)
+        _PROBE_CACHE.move_to_end(identity)
+        while len(_PROBE_CACHE) > _PROBE_CACHE_LIMIT:
+            _PROBE_CACHE.popitem(last=False)
+
+
+def cached_probe(identity):
+    if not identity:
+        return None
+    with _PROBE_LOCK:
+        info = _PROBE_CACHE.get(identity)
+        if info is not None:
+            _PROBE_CACHE.move_to_end(identity)
+            return dict(info)
+    return None
+
+
+def forget_probe(identity):
+    with _PROBE_LOCK:
+        _PROBE_CACHE.pop(identity, None)
+
+
+def frame_rate(value):
+    """Parse an FFprobe rational frame rate into a usable playback rate."""
+    number = None
+    try:
+        if isinstance(value, (int, float, str)):
+            text = str(value)
+            if "/" in text:
+                numerator, denominator = text.split("/", 1)
+                number = float(numerator) / float(denominator)
+            else:
+                number = float(text)
+    except (TypeError, ValueError, ZeroDivisionError):
+        return None
+    if number is None or not math.isfinite(number) or number <= 0:
+        return None
+    return number
+
+
+def playback_fps(value):
+    """Clamp a probed frame rate to something a small screen should present."""
+    rate = frame_rate(value)
+    if rate is None:
+        return float(VIDEO_FPS_FALLBACK)
+    return max(1.0, min(float(MAX_VIDEO_FPS), rate))
 
 
 def probe(path, processes):
@@ -136,25 +211,34 @@ def webm_header(stream):
     return True
 
 
+def ffprobe_json(fd, entries, tags=False, timeout=10):
+    """Run FFprobe on an already-open descriptor without touching the path."""
+    binary = shutil.which("ffprobe")
+    if not binary:
+        raise MediaError("WebM unavailable: install system ffmpeg and ffprobe")
+    args = [binary, "-v", "error", "-threads", "1", "-protocol_whitelist", "file,pipe",
+            "-f", "matroska,webm", "-select_streams", "v:0", "-show_entries", entries,
+            "-of", "json", "/dev/fd/" + str(fd)]
+    result = subprocess.run(args, pass_fds=(fd,), stdin=subprocess.DEVNULL,
+                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                            timeout=timeout, check=False)
+    if result.returncode or len(result.stdout) > 65536:
+        raise MediaError("WebM could not be inspected")
+    return json.loads(result.stdout)
+
+
 def video_info(stream):
     if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
         raise MediaError("WebM unavailable: install system ffmpeg and ffprobe")
     stream.seek(0)
-    args = [shutil.which("ffprobe"), "-v", "error", "-threads", "1", "-protocol_whitelist", "file,pipe",
-            "-f", "matroska,webm", "-select_streams", "v:0", "-show_entries",
-            "stream=codec_name,width,height:format=duration", "-of", "json",
-            "/dev/fd/" + str(stream.fileno())]
-    result = subprocess.run(args, pass_fds=(stream.fileno(),), stdin=subprocess.DEVNULL,
-                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=10,
-                            check=False)
-    if result.returncode or len(result.stdout) > 4096:
-        raise MediaError("WebM could not be inspected")
+    data = ffprobe_json(stream.fileno(),
+                        "stream=codec_name,width,height,avg_frame_rate,r_frame_rate:format=duration")
     try:
-        data = json.loads(result.stdout)
         video = data["streams"][0]
         width, height = video["width"], video["height"]
         duration = float(data["format"]["duration"])
-        if (video["codec_name"] not in ("vp8", "vp9", "av1")
+        codec = video["codec_name"]
+        if (codec not in ("vp8", "vp9", "av1")
                 or not 1 <= width <= 4096 or not 1 <= height <= 2160
                 or not math.isfinite(duration) or not 0 < duration <= MAX_VIDEO_SECONDS):
             raise ValueError
@@ -167,20 +251,63 @@ def video_info(stream):
                             stderr=subprocess.DEVNULL, timeout=10, check=False)
     if result.returncode:
         raise MediaError("WebM has no decodable video frame")
-    return {"kind": "webm", "width": width, "height": height, "duration": duration, "animated": True}
+    fps = frame_rate(video.get("avg_frame_rate")) or frame_rate(video.get("r_frame_rate"))
+    if fps is None or not 1 <= fps <= 240:
+        fps = float(VIDEO_FPS_FALLBACK)
+    return {"kind": "webm", "width": width, "height": height, "duration": duration,
+            "codec": codec, "fps": fps, "animated": True}
 
 
-def video_command(fd, size):
+def video_details(stream, identity=None):
+    """Cached playback metadata for one open video; probes at most once per blob."""
+    info = cached_probe(identity)
+    if info and info.get("kind") == "webm" and info.get("fps"):
+        return info
+    stream.seek(0)
+    data = ffprobe_json(stream.fileno(),
+                        "stream=codec_name,width,height,avg_frame_rate,r_frame_rate:format=duration")
+    try:
+        video = data["streams"][0]
+        duration = float(data["format"]["duration"])
+        codec = video["codec_name"]
+        width, height = int(video["width"]), int(video["height"])
+        if (codec not in ("vp8", "vp9", "av1") or not math.isfinite(duration)
+                or not 0 < duration <= MAX_VIDEO_SECONDS):
+            raise ValueError
+    except (KeyError, IndexError, TypeError, ValueError) as error:
+        raise MediaError("WebM could not be inspected for playback") from error
+    fps = frame_rate(video.get("avg_frame_rate")) or frame_rate(video.get("r_frame_rate"))
+    info = {"kind": "webm", "width": width, "height": height, "duration": duration,
+            "codec": codec, "fps": fps if fps and 1 <= fps <= 240 else float(VIDEO_FPS_FALLBACK),
+            "animated": True}
+    remember_probe(identity, info)
+    return info
+
+
+def video_command(fd, size, fps=None, hwaccel=None, loop=False, limit=MAX_VIDEO_SECONDS):
+    """Muted, scaled, frame-rate-normalised raw video from an open descriptor.
+
+    `fps` normalises the output to a constant rate so a presentation deadline of
+    1/fps per frame reproduces the source duration instead of guessing.
+    """
     width, height = size
     decoder = shutil.which("ffmpeg")
     if not decoder or not shutil.which("ffprobe"):
         raise MediaError("WebM unavailable: install system ffmpeg and ffprobe")
-    return [decoder, "-v", "error", "-nostdin", "-xerror", "-threads", "1",
-            "-filter_threads", "1", "-protocol_whitelist", "file,pipe", "-f", "matroska,webm",
-            "-i", "/dev/fd/" + str(fd), "-map", "0:v:0", "-an", "-sn", "-dn",
-            "-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
-            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=20",
-            "-t", str(MAX_VIDEO_SECONDS), "-threads", "1"]
+    rate = playback_fps(fps)
+    command = [decoder, "-v", "error", "-nostdin", "-xerror", "-threads", "1",
+               "-filter_threads", "1", "-protocol_whitelist", "file,pipe",
+               "-f", "matroska,webm"]
+    if hwaccel:
+        # Input option: FFmpeg keeps frames in system memory for the filter graph.
+        command += ["-hwaccel", hwaccel]
+    if loop:
+        command += ["-stream_loop", "-1"]
+    command += ["-i", "/dev/fd/" + str(fd), "-map", "0:v:0", "-an", "-sn", "-dn",
+                "-vf", f"fps={rate:g},scale={width}:{height}:force_original_aspect_ratio=decrease,"
+                       f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1",
+                "-t", str(limit), "-threads", "1"]
+    return command
 
 
 def inspect_stream(stream):

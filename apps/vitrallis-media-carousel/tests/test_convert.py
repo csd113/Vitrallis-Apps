@@ -54,24 +54,47 @@ class ConversionTests(StorageCase):
     def test_snapshot_shape_and_name_conversion(self):
         idle = Conversions(self.library, self.processes)
         self.addCleanup(idle.close)
-        self.assertEqual(idle.snapshot(), {"status": "idle", "message": "", "item": None,
-                                           "replacement": None, "name": "", "collection": None,
-                                           "converter": ""})
+        state = idle.snapshot()
+        self.assertEqual({key: state[key] for key in ("status", "message", "item", "replacement",
+                                                      "name", "collection", "converter")},
+                         {"status": "idle", "message": "", "item": None,
+                          "replacement": None, "name": "", "collection": None,
+                          "converter": ""})
+        job = state["job"]
+        self.assertEqual(job["status"], "idle")
+        self.assertEqual((job["total"], job["completed"], job["failed"], job["skipped"]),
+                         (0, 0, 0, 0))
+        self.assertEqual(job["results"], [])
         self.assertEqual(converter_available(), shutil.which("gif2webp"))
         self.assertEqual(converted_name("holiday.GIF"), "holiday.webp")
         self.assertEqual(converted_name("clip"), "clip.webp")
+        self.assertEqual(converted_name("photo.jpeg"), "photo.webp")
         self.assertEqual(len(converted_name("x" * 160 + ".gif")), 160)
 
-    def test_start_rejects_unknown_media_and_non_gif(self):
-        photo = self.add("photo.png")
+    def test_start_rejects_unknown_media_and_unconvertible_kinds(self):
+        video = self.add("clip.webm", b"video", "webm")
         with self.assertRaises((KeyError, ValueError)):
-            self.conversions.start("f" * 32, photo["id"])
+            self.conversions.start("f" * 32, video["id"])
         with self.assertRaises(KeyError):
             self.conversions.start(self.cid, "f" * 32)
         with self.assertRaises(ConversionError) as error:
-            self.conversions.start(self.cid, photo["id"])
+            self.conversions.start(self.cid, video["id"])
         self.assertEqual(error.exception.code, 400)
         self.assertEqual(self.conversions.snapshot()["status"], "idle")
+
+    def test_static_images_convert_to_webp_and_keep_their_geometry(self):
+        photo = self.add("photo.png")
+        started = self.conversions.start(self.cid, photo["id"])
+        self.assertEqual(started["status"], "running")
+        self.assertEqual(started["job"]["total"], 1)
+        state = self.wait()
+        self.assertEqual(state["status"], "ready")
+        self.assertEqual(state["name"], "photo.webp")
+        self.assertGreaterEqual(state["job"]["completed"], 1)
+        with Image.open(self.paths.media / state["replacement"]) as result:
+            self.assertEqual((result.format, result.size), ("WEBP", (64, 32)))
+            self.assertFalse(result.is_animated)
+        self.assertEqual(list(self.paths.uploads.iterdir()), [])
 
     def test_start_rejects_insufficient_free_space(self):
         item = self.add("clip.gif", gif_bytes(), "gif")
@@ -273,6 +296,32 @@ class ConversionTests(StorageCase):
             self.assertTrue(entered.wait(3))
             conversions.close()
         self.assertEqual(conversions.snapshot()["status"], "idle")
+        self.assertEqual(self.library.playlist(self.cid), [item])
+        self.assertEqual(list(self.paths.uploads.iterdir()), [])
+
+    def test_close_reports_a_pillow_encode_that_ignores_cancellation(self):
+        item = self.add("clip.gif", gif_bytes(), "gif")
+        entered, release = threading.Event(), threading.Event()
+
+        def slow(instance, stream, staged, details):
+            entered.set()
+            release.wait(10)  # like Pillow's C encoder: cannot observe cancellation
+            return Conversions._convert_pillow(instance, stream, staged, details)
+
+        conversions = Conversions(self.library, self.processes)
+        with patch("convert.converter_available", return_value=None), \
+                patch.object(Conversions, "_convert_pillow", slow):
+            conversions.start(self.cid, item["id"])
+            self.assertTrue(entered.wait(3))
+            conversions.close()  # bounded: reports instead of blocking shutdown
+            workers = [t for t in threading.enumerate()
+                       if t.name.startswith("carousel-conversion")]
+            self.assertTrue(workers)
+            self.assertTrue(all(thread.daemon for thread in workers))
+            release.set()
+            for worker in workers:
+                worker.join(timeout=10)
+        # The abandoned encode never commits; its staging file is reclaimed.
         self.assertEqual(self.library.playlist(self.cid), [item])
         self.assertEqual(list(self.paths.uploads.iterdir()), [])
 

@@ -11,6 +11,7 @@ from convert import ConversionError
 from player import GpuFrame
 from settings import DEFAULTS
 from ui import App, Services
+from web_server import WebServer
 from main import install_shutdown_handlers
 
 
@@ -79,10 +80,29 @@ class NativeTests(StorageCase):
             self.app.poll_id = None
         self.app.poll()
 
+    def resize(self, width, height):
+        self.root.geometry(f"{width}x{height}")
+        self.root.update()
+        self.root.update_idletasks()
+        self.assertEqual((self.root.winfo_width(), self.root.winfo_height()), (width, height))
+
+    def mapped_bottom(self, widget):
+        return widget.winfo_rooty() + widget.winfo_height() - self.root.winfo_rooty()
+
+    def force_focus(self, widget):
+        widget.focus_set()
+        self.root.update()
+        if self.root.focus_get() is not widget:
+            widget.focus_force()
+            self.root.update()
+        return self.root.focus_get() is widget
+
     def test_home_480_layout_large_touch_targets_and_keyboard_focus(self):
+        # The address appears as soon as the background server binds; playback
+        # never waited for it.
+        self.wait_for(lambda: "http://127.0.0.1:" in self.app.url_label.cget("text"))
         self.root.update_idletasks()
         self.assertEqual((self.root.winfo_width(), self.root.winfo_height()), (480, 272))
-        self.assertIn("http://127.0.0.1:", self.app.url_label.cget("text"))
         for button in self.app.folder_buttons:
             self.assertGreaterEqual(button.winfo_height(), 36)
             self.assertLessEqual(button.winfo_rooty() + button.winfo_height(), self.root.winfo_rooty() + 272)
@@ -126,6 +146,157 @@ class NativeTests(StorageCase):
                           "convert_gifs": True})
         self.app.escape()
         self.assertEqual(self.app.screen, "home")
+
+    def test_settings_save_is_mapped_and_keyboard_reachable_at_both_sizes(self):
+        # BLOCKER 1 regression: the action row must never be starved by the form.
+        for width, height in ((480, 272), (400, 240)):
+            self.resize(width, height)
+            self.app.settings_screen()
+            self.root.update()
+            save = self.app.save_button
+            self.assertTrue(save.winfo_ismapped(), (width, height))
+            self.assertGreater(save.winfo_width(), 1, (width, height))
+            self.assertGreater(save.winfo_height(), 1, (width, height))
+            self.assertTrue(save.bind("<Return>"))
+            self.assertLessEqual(self.mapped_bottom(save), height)
+            self.assertEqual(self.app.settings_message.cget("text"),
+                             "Applies when you start a collection.")
+            controls = self.app.setting_controls
+            for control in controls:
+                self.assertLessEqual(self.mapped_bottom(control), height)
+                self.assertEqual(control.winfo_height(), control.winfo_reqheight())
+            # Tab from the first spinbox must reach Save, not skip it.
+            seen, widget = [], controls[0]
+            for _ in range(10):
+                widget = widget.tk_focusNext()
+                seen.append(widget)
+                if widget is save:
+                    break
+            self.assertIn(save, seen, (width, height))
+            self.app.escape()
+            self.assertEqual(self.app.screen, "home")
+
+    def test_settings_captions_wrap_without_overlapping_controls(self):
+        self.resize(400, 240)
+        self.app.settings_screen()
+        self.root.update()
+        labels = self.app.setting_labels
+        self.assertEqual(len(labels), 5)
+        for caption, control in zip(labels, self.app.setting_controls):
+            self.assertFalse(
+                caption.winfo_rootx() + caption.winfo_width() > control.winfo_rootx() + 1
+                and caption.winfo_rooty() < control.winfo_rooty() + control.winfo_height()
+                and control.winfo_rooty() < caption.winfo_rooty() + caption.winfo_height(),
+                caption.cget("text"))
+            self.assertLessEqual(self.mapped_bottom(caption), 240)
+
+    def test_home_long_status_keeps_touch_targets_and_does_not_clip(self):
+        # HIGH 3 + HIGH 2: a long status band must not collapse the folder list.
+        self.resize(400, 240)
+        self.app.services.library.create("Second collection")
+        self.app.draw_folders()
+        self.app.services.server.state = WebServer.FAILED
+        self.app.home_notice = ("Cannot start: Expecting value: line 1 column 1 (char 0). "
+                                "Web server unavailable: address already in use so phones "
+                                "cannot upload; playback continues locally from the existing "
+                                "library until the README troubleshooting steps are followed.")
+        self.app.update_status()
+        self.root.update()
+        self.assertEqual(len(self.app.folder_buttons), 2)
+        for button in self.app.folder_buttons:
+            self.assertGreaterEqual(button.winfo_height(), 36)
+            self.assertLessEqual(self.mapped_bottom(button), 240)
+        status = self.app.status_label
+        lines = self.app.wrap_text(status.cget("text"), self.app.status_font,
+                                   int(status.cget("wraplength")))
+        self.assertLessEqual(len(lines), 2)
+        for line in lines:
+            self.assertLessEqual(self.app.status_font.measure(line), status.winfo_width())
+        self.assertTrue(status.cget("text").endswith("…"))
+
+    def test_status_wraplength_follows_the_qr_slot(self):
+        # HIGH 2: wrapping must track the width the QR image really occupies.
+        from PIL import Image
+        with patch("ui.qr_image", return_value=Image.new("RGB", (103, 103), "white")):
+            self.app.qr_url = None
+            self.app.update_address()
+        self.root.update()
+        self.assertIsNotNone(self.app.qr_photo)
+        status = self.app.status_label
+        self.assertLessEqual(int(status.cget("wraplength")), status.winfo_width())
+
+    def test_home_status_does_not_repeat_ready(self):
+        # MEDIUM 8: the server detail and the startup notice both said "Ready".
+        self.app.services.server.state = WebServer.READY
+        self.app.services.server.detail = "Ready"
+        self.app.home_notice = "Ready · select a collection to play"
+        self.assertEqual(self.app.home_status().count("Ready"), 1)
+
+    def test_home_paging_stays_put_and_keeps_focus_at_the_boundary(self):
+        self.app.services.library.create("Second collection")
+        self.app.draw_folders()
+        self.root.update()
+        self.app.folder_buttons[0].focus_force()
+        self.root.update()
+        with patch.object(self.app, "draw_folders", wraps=self.app.draw_folders) as draw:
+            self.app.change_page(-1)
+            self.app.change_page(1)
+        self.assertEqual(draw.call_count, 0)
+        self.assertEqual(self.app.page, 0)
+        self.assertEqual(self.root.focus_get(), self.app.folder_buttons[0])
+
+    def test_move_focus_enters_the_list_from_the_header(self):
+        self.app.services.library.create("Second collection")
+        self.app.draw_folders()
+        self.root.update()
+        self.app.settings_button.focus_force()
+        self.root.update()
+        self.app.move_focus(1)
+        self.assertEqual(self.root.focus_get(), self.app.folder_buttons[0])
+        self.app.settings_button.focus_force()
+        self.root.update()
+        self.app.move_focus(-1)
+        self.assertEqual(self.root.focus_get(), self.app.folder_buttons[-1])
+
+    def test_empty_library_state_is_explicit(self):
+        with patch.object(self.app.services.library, "snapshot", return_value=[]):
+            self.app.draw_folders()
+        self.root.update()
+        self.assertEqual(self.app.page_label.cget("text"), "Collections 0/0")
+        self.assertFalse(self.app.folder_buttons)
+        messages = [child.cget("text") for child in self.app.folder_frame.winfo_children()]
+        self.assertTrue(any("Library is empty" in text for text in messages), messages)
+        self.assertEqual(self.app.page_back.cget("state"), "disabled")
+        self.assertEqual(self.app.page_forward.cget("state"), "disabled")
+
+    def test_startup_failure_is_explained_instead_of_raw_json(self):
+        self.cleanup_app()
+        root = tk.Tk()
+        def broken():
+            raise ValueError("Expecting value: line 1 column 1 (char 0)")
+        app = App(root, broken)
+        deadline = time.monotonic() + 6
+        while not app.startup_failed and time.monotonic() < deadline:
+            root.update()
+            time.sleep(.01)
+        self.assertTrue(app.startup_failed)
+        root.update()
+        try:
+            self.assertIn("README", app.status_label.cget("text"))
+            self.assertNotIn("Expecting value", app.status_label.cget("text"))
+            self.assertEqual(app.page_label.cget("text"), "Library unavailable")
+            self.assertEqual(app.settings_button.cget("state"), "disabled")
+            self.assertEqual(app.page_back.cget("state"), "disabled")
+            self.assertEqual(app.page_forward.cget("state"), "disabled")
+            messages = [child.cget("text") for child in app.folder_frame.winfo_children()]
+            self.assertTrue(any("Cannot start" in text for text in messages), messages)
+        finally:
+            app.close()
+            deadline = time.monotonic() + 6
+            while not app.finished and time.monotonic() < deadline:
+                root.update()
+                time.sleep(.01)
+            app.finish()
 
     def test_empty_and_all_bad_playlists_return_with_explanation(self):
         self.app.play(self.cid)
@@ -215,8 +386,12 @@ class NativeTests(StorageCase):
         with patch("web_server.BoundedServer", side_effect=OSError("Denied bind")):
             services = Services(self.paths, "127.0.0.1", 0)
         try:
-            self.assertIn("unavailable", services.server.state)
+            self.assertEqual(services.server.wait_ready(timeout=5), WebServer.FAILED)
+            self.assertIn("unavailable", services.server.detail)
             self.assertEqual(services.library.snapshot()[0]["name"], "Unsorted")
+            # Playback services are ready even though the management UI is not.
+            self.assertIsNotNone(services.decoder)
+            self.assertTrue(services.decoder.thread.is_alive())
         finally:
             services.close()
 
@@ -283,39 +458,72 @@ class NativeTests(StorageCase):
             self.app.playback_tick()
         self.assertTrue(self.app.overlay_visible)
         self.app.pause()  # resume
-        focused = self.app.overlay.winfo_children()[0]
+        focused = self.app.pause_button  # a grandchild inside the controls frame
         with patch.object(self.root, "focus_get", return_value=focused):
             self.app.overlay_until = 0
             self.app.playback_tick()
+            self.assertTrue(self.app.overlay_has_focus())
         self.assertTrue(self.app.overlay_visible)
 
-    def test_present_frame_converts_gpu_frame_once_and_skips_fitting_resize(self):
+    def test_overlay_stays_visible_with_real_descendant_focus(self):
+        # HIGH 4 regression: the five buttons sit inside the controls frame, so
+        # the focus check must walk the whole overlay subtree.
+        self.upload_to_services("animation.gif", gif_bytes(), "gif")
+        self.app.services.settings.save(dict(DEFAULTS, repeats=1, loop=True))
+        self.app.play(self.cid)
+        self.wait_for(lambda: self.app.photo is not None)
+        self.assertTrue(self.force_focus(self.app.pause_button))
+        with patch.object(self.app.clock, "ready", return_value=False):
+            self.app.overlay_until = 0
+            self.app.playback_tick()
+        self.assertTrue(self.app.overlay_visible)
+        self.assertTrue(self.app.overlay_has_focus())
+        self.assertTrue(self.force_focus(self.app.canvas))
+        with patch.object(self.app.clock, "ready", return_value=False):
+            self.app.overlay_until = 0
+            self.app.playback_tick()
+        self.assertFalse(self.app.overlay_visible)
+        self.assertFalse(self.app.overlay_has_focus())
+
+    def test_present_frame_reuses_one_tk_photo_without_channel_conversion(self):
         from PIL import Image
-
-        class CountingFrame(GpuFrame):
-            converts = 0
-
-            def convert(self, mode):
-                CountingFrame.converts += 1
-                return super().convert(mode)
 
         self.app.canvas = tk.Canvas(self.app.frame, width=64, height=48)
         self.app.canvas.pack()
         self.app.image_id = self.app.canvas.create_image(0, 0)
         self.root.update_idletasks()
         self.app.close_gpu()
-        frame = CountingFrame.from_image(Image.new("RGBA", (8, 8), "red"))
-        with patch("ui.display_copy") as copy:
+        frame = GpuFrame.from_image(Image.new("RGBA", (8, 8), "red"))
+        with patch.object(Image.Image, "convert", side_effect=AssertionError("channel conversion")), \
+                patch("ui.freeze", side_effect=AssertionError("redundant resize")):
             self.app.present_frame(frame)
-            self.app.present_frame(self.app.last_frame)
-            copy.assert_not_called()
-        self.assertEqual(CountingFrame.converts, 1)
+            photo = self.app.photo
+            self.app.present_frame(frame)
+        self.assertIsNotNone(photo)
+        # One Tcl photo object serves the whole item; later frames paste into it.
+        self.assertIs(self.app.photo, photo)
+
+    def test_a_changed_frame_shape_rebuilds_the_tk_photo(self):
+        from PIL import Image
+
+        self.app.canvas = tk.Canvas(self.app.frame, width=64, height=48)
+        self.app.canvas.pack()
+        self.app.image_id = self.app.canvas.create_image(0, 0)
+        self.root.update_idletasks()
+        self.app.close_gpu()
+        self.app.present_frame(GpuFrame.from_image(Image.new("RGB", (8, 4), "red")))
+        first = self.app.photo
+        self.app.present_frame(GpuFrame.from_image(Image.new("RGB", (8, 4), "blue")))
+        self.assertIs(self.app.photo, first)
+        self.app.present_frame(GpuFrame.from_image(Image.new("RGB", (16, 8), "red")))
+        self.assertIsNot(self.app.photo, first)
 
     def test_convert_action_eligibility_and_keyboard_binding(self):
         self.assertTrue(self.root.bind("<c>"))
         self.assertTrue(self.root.bind("<C>"))
-        png = self.upload_to_services("photo.png", png_bytes(), "png")
+        webp = self.upload_to_services("already.webp", webp_bytes(), "webp")
         gif = self.upload_to_services("animation.gif", gif_bytes(), "gif")
+        png = self.upload_to_services("photo.png", png_bytes(), "png")
         self.app.services.settings.save(dict(DEFAULTS, repeats=1, loop=False))
         fake = FakeConversions()
         with patch.object(self.app.services, "conversions", fake):
@@ -327,9 +535,9 @@ class NativeTests(StorageCase):
                 self.assertGreaterEqual(button.winfo_height(), 36)
             self.assertLessEqual(self.app.overlay.winfo_rooty() + self.app.overlay.winfo_height(),
                                  self.root.winfo_rooty() + 272)
-            self.assertEqual(self.app.playlist.current["id"], png["id"])
+            self.assertEqual(self.app.playlist.current["id"], webp["id"])
             self.assertEqual(self.app.convert_button.cget("state"), "disabled")
-            self.assertIn("GIF", self.app.conversion_label.cget("text"))
+            self.assertIn("native", self.app.conversion_label.cget("text"))
             self.app.convert_key(None)
             self.assertEqual(fake.started, [])
             self.app.navigate(1)
@@ -341,6 +549,13 @@ class NativeTests(StorageCase):
             self.assertTrue(self.app.conversion_running)
             self.assertEqual(self.app.convert_button.cget("state"), "disabled")
             self.assertIn("Converting", self.app.conversion_label.cget("text"))
+            # Static images are convertible too, so the action stays useful.
+            fake.state.update(status="idle")
+            self.app.conversion_running = False
+            self.app.navigate(1)
+            self.assertEqual(self.app.playlist.current["id"], png["id"])
+            self.app.refresh_conversion_ui()
+            self.assertEqual(self.app.convert_button.cget("state"), "normal")
 
     def test_web_started_conversion_appears_in_the_overlay(self):
         self.upload_to_services("animation.gif", gif_bytes(), "gif")
@@ -381,8 +596,9 @@ class NativeTests(StorageCase):
             self.app.convert_current()
             self.assertEqual(fake.started, [(self.cid, gif["id"])])
             replacement = self.upload_to_services("animation.webp", webp_bytes(), "webp")
+            # The real converter publishes the already-renamed target...
             fake.state.update(status="ready", item=gif["id"], replacement=replacement["id"],
-                              name="animation.gif", collection=self.cid, message="done")
+                              name="animation.webp", collection=self.cid, message="done")
             load = Mock(wraps=self.app.load_item)
             with patch.object(self.app, "load_item", load):
                 self.app.conversion_poll = 0.0
@@ -390,9 +606,37 @@ class NativeTests(StorageCase):
                 self.assertEqual(load.call_count, 1)
                 self.assertEqual(self.app.playlist.current["id"], replacement["id"])
                 self.assertFalse(self.app.conversion_running)
-                self.assertIn("Converted", self.app.conversion_label.cget("text"))
+                # ...but the message names the item the user still sees.
+                self.assertIn("Converted animation.gif to WebP",
+                              self.app.conversion_label.cget("text"))
+                self.assertNotIn("animation.webp", self.app.conversion_label.cget("text"))
                 # The replacement is a WebP still, not another convertible GIF.
                 self.assertEqual(self.app.convert_button.cget("state"), "disabled")
                 self.app.conversion_poll = 0.0
                 self.app.track_conversion()
                 self.assertEqual(load.call_count, 1)  # terminal snapshot handled once
+
+    def test_conversion_message_clamps_by_pixels_and_keeps_the_controls(self):
+        # MEDIUM 6: a 70-character failure used to clip at 400 px wide.
+        self.upload_to_services("animation.gif", gif_bytes(), "gif")
+        self.app.services.settings.save(dict(DEFAULTS, repeats=1, loop=False))
+        self.resize(400, 240)
+        self.app.play(self.cid)
+        self.wait_for(lambda: self.app.photo is not None)
+        self.app.show_controls()
+        self.app.conversion_message = ("Conversion failed: the original file is unchanged and "
+                                       "can be retried after repairing the media or uploading a "
+                                       "replacement image file through the management page; no "
+                                       "library entries were removed by this failed conversion")
+        self.app.refresh_conversion_ui()
+        self.root.update()
+        text = self.app.conversion_label.cget("text")
+        self.assertTrue(text.endswith("…"), text)
+        status = self.app.conversion_label
+        lines = self.app.wrap_text(text, self.app.conversion_font, int(status.cget("wraplength")))
+        self.assertLessEqual(len(lines), 2)
+        for line in lines:
+            self.assertLessEqual(self.app.conversion_font.measure(line), status.winfo_width())
+        # Two wrapped lines grow the overlay instead of shrinking the buttons.
+        self.assertGreaterEqual(self.app.pause_button.winfo_height(), 36)
+        self.assertLessEqual(self.mapped_bottom(self.app.pause_button), 240)

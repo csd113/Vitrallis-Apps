@@ -6,9 +6,9 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from support import StorageCase, png_bytes
-from player import Decoder
+from player import Decoder, PlaybackClock
 from settings import DEFAULTS
-from ui import App
+from ui import App, MAX_CATCHUP, STARVED_MS, WAKE_MS
 
 
 class DecoderStillCacheTests(StorageCase):
@@ -161,7 +161,33 @@ class PlaybackPollTests(unittest.TestCase):
         self.assertEqual(len(reads), 1)
 
 
-class ScheduleIntervalTests(unittest.TestCase):
+class TickHarness:
+    """Drive the real presentation loop with a controllable monotonic clock."""
+
+    def tick_app(self, now):
+        app = App.__new__(App)
+        app.finished = False
+        app.hidden = False
+        app.screen = "playback"
+        app.starved = False
+        app.generation = 1
+        app.animated = True
+        app.overlay_visible = False
+        app.overlay_until = 0.0
+        app.root = SimpleNamespace(focus_get=lambda: None)
+        app.canvas = SimpleNamespace(winfo_width=lambda: 480, winfo_height=lambda: 272)
+        app.clock = PlaybackClock(lambda: now[0])
+        app.services = SimpleNamespace(decoder=SimpleNamespace(events=queue.Queue(maxsize=64)))
+        app.presented = []
+        app.present_frame = app.presented.append
+        app.advance = lambda *args: None
+        app.close_gpu = lambda: None
+        app.show_controls = lambda: None
+        app.load_item = lambda item: None
+        return app
+
+
+class ScheduleIntervalTests(TickHarness, unittest.TestCase):
     def test_idle_hidden_and_due_clock_intervals(self):
         app = App.__new__(App)
         app.finished = False
@@ -182,10 +208,152 @@ class ScheduleIntervalTests(unittest.TestCase):
         app.schedule()
         self.assertEqual(delays[-1], 500)
         app.hidden = False
+        app.starved = False
         app.clock = SimpleNamespace(delay_ms=lambda: 1)
-        app.next_present = 0.0
         app.schedule()
         self.assertEqual(delays[-1], 4)
-        app.next_present = time.monotonic() + 0.5
+
+    def test_waiting_for_the_decoder_backs_the_poll_off(self):
+        app = App.__new__(App)
+        app.finished = False
+        app.hidden = False
+        app.screen = "playback"
+        delays = []
+        app.root = SimpleNamespace(after=lambda delay, callback: delays.append(delay))
+        app.clock = SimpleNamespace(delay_ms=lambda: 1)
+        app.starved = True
         app.schedule()
-        self.assertGreaterEqual(delays[-1], 490)
+        self.assertEqual(delays[-1], STARVED_MS)
+        # A due deadline with frames ready again returns to precise pacing.
+        app.starved = False
+        app.schedule()
+        self.assertEqual(delays[-1], 4)
+
+    def test_pacing_never_adds_processing_time_to_a_frame_delay(self):
+        now = [10.0]
+        app = self.tick_app(now)
+        app.services.decoder.events.put((1, "frame", "a", 0.04))
+        app.playback_tick()
+        self.assertEqual(app.presented, ["a"])
+        self.assertAlmostEqual(app.clock.deadline, 10.04)
+        # A slow decode/present of 25 ms must not push the media timeline later.
+        now[0] = 10.065
+        app.services.decoder.events.put((1, "frame", "b", 0.04))
+        app.playback_tick()
+        self.assertEqual(app.presented, ["a", "b"])
+        self.assertAlmostEqual(app.clock.deadline, 10.08)
+
+    def test_late_frames_are_dropped_to_catch_up_without_looping_forever(self):
+        now = [10.0]
+        app = self.tick_app(now)
+        app.services.decoder.events.put((1, "frame", "first", 0.04))
+        app.playback_tick()
+        self.assertEqual(app.presented, ["first"])
+        # Playback stalled for a full second; every queued frame is already stale.
+        now[0] = 11.0
+        stale = MAX_CATCHUP + 4
+        for index in range(stale):
+            app.services.decoder.events.put((1, "frame", "stale%d" % index, 0.04))
+        app.playback_tick()
+        # Eight stale frames are dropped, the ninth is shown after resynchronising.
+        self.assertEqual(app.presented, ["first", "stale%d" % MAX_CATCHUP])
+        self.assertEqual(app.services.decoder.events.qsize(), stale - MAX_CATCHUP - 1)
+        self.assertAlmostEqual(app.clock.deadline, now[0], places=3)
+
+    def test_starved_polling_waits_for_the_decoder_instead_of_spinning(self):
+        now = [10.0]
+        app = self.tick_app(now)
+        app.clock.deadline = 9.0  # The deadline is already due with nothing decoded.
+        app.playback_tick()
+        self.assertTrue(app.starved)
+        self.assertEqual(app.presented, [])
+
+    def test_variable_duration_frames_follow_the_media_timeline(self):
+        now = [0.0]
+        app = self.tick_app(now)
+        durations = (0.04, 0.5, 0.04, 1.0)
+        for index, seconds in enumerate(durations):
+            app.services.decoder.events.put((1, "frame", index, seconds))
+        expected, elapsed = [], 0.0
+        for index, seconds in enumerate(durations):
+            now[0] = elapsed          # Present each frame at its own start time.
+            app.playback_tick()
+            expected.append(index)
+            elapsed += seconds
+        self.assertEqual(app.presented, expected)
+        self.assertAlmostEqual(app.clock.deadline, elapsed)
+
+    def test_pause_freezes_the_deadline_and_resume_rebases_it(self):
+        now = [5.0]
+        app = self.tick_app(now)
+        app.services.decoder.events.put((1, "frame", "a", 0.04))
+        app.playback_tick()
+        app.clock.toggle()
+        now[0] = 30.0
+        app.playback_tick()
+        self.assertEqual(app.presented, ["a"])
+        app.clock.toggle()
+        self.assertAlmostEqual(app.clock.deadline, 30.04)
+        now[0] = 30.05
+        app.services.decoder.events.put((1, "frame", "b", 0.04))
+        app.playback_tick()
+        self.assertEqual(app.presented, ["a", "b"])
+
+    def test_frames_from_an_abandoned_generation_are_never_presented(self):
+        now = [1.0]
+        app = self.tick_app(now)
+        app.services.decoder.events.put((99, "frame", "stale-item", 0.04))
+        app.services.decoder.events.put((1, "frame", "current", 0.04))
+        app.playback_tick()
+        self.assertEqual(app.presented, ["current"])
+
+
+class LoadItemWakeTests(unittest.TestCase):
+    """A hand-driven load must not wait out the previously scheduled poll."""
+
+    def load_app(self, poll_id):
+        app = App.__new__(App)
+        app.poll_id = poll_id
+        app.screen = "playback"
+        app.gpu_renderer = None
+        app.conversion_label = None
+        item = {"id": "item-1", "kind": "png", "name": "photo.png"}
+        app.playlist = SimpleNamespace(current=item, settings=dict(DEFAULTS),
+                                       next=lambda: item, previous=lambda: item,
+                                       upcoming=lambda: [])
+        requests = []
+        app.services = SimpleNamespace(decoder=SimpleNamespace(
+            request=lambda *args, **kwargs: requests.append((args, kwargs)) or 7))
+        app.canvas = SimpleNamespace(delete=lambda tag: None,
+                                     itemconfigure=lambda *args, **kwargs: None,
+                                     winfo_width=lambda: 480, winfo_height=lambda: 272)
+        app.image_id = 1
+        app.pause_button = SimpleNamespace(configure=lambda **kwargs: None)
+        app.requests = requests
+        app.calls = []
+        app.timers = []
+
+        def after(delay, callback):
+            app.calls.append(("after", delay, callback))
+            app.timers.append((delay, callback))
+            return "new-timer"
+
+        app.root = SimpleNamespace(
+            after=after, after_cancel=lambda tid: app.calls.append(("cancel", tid)))
+        return app
+
+    def test_hand_driven_load_restarts_the_pending_timer(self):
+        app = self.load_app("pending-timer")
+        app.advance()
+        self.assertEqual(len(app.requests), 1)
+        self.assertEqual(app.calls, [("cancel", "pending-timer"), ("after", WAKE_MS, app.poll)])
+        self.assertEqual(WAKE_MS, 4)
+        self.assertEqual(app.poll_id, "new-timer")
+        self.assertEqual(app.timers, [(WAKE_MS, app.poll)])
+
+    def test_load_inside_poll_leaves_pacing_to_poll_end(self):
+        app = self.load_app(None)
+        app.advance()
+        self.assertEqual(len(app.requests), 1)
+        self.assertEqual(app.calls, [])
+        self.assertIsNone(app.poll_id)

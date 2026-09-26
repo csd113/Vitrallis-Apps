@@ -56,6 +56,7 @@ class ImageRenderer:
         self.buffer = c.c_uint(0)
         self.texture = c.c_uint(0)
         self.image_size = None
+        self.image_shape = None
         self.max_texture = c.c_int()
         self.renderer = ""
         self.api_version = ""
@@ -235,25 +236,30 @@ class ImageRenderer:
             raise GpuUnavailable("The GPU rejected an image operation.")
 
     def present(self, image, width: int, height: int) -> None:
+        """Upload one display-ready frame; RGB and RGBA keep their own format."""
         if max(image.size) > self.max_texture.value:
             raise GpuUnavailable("Image exceeds the GPU texture size limit.")
         self._current()
-        rgba = image if image.mode == "RGBA" else image.convert("RGBA")
-        pixels = rgba.tobytes()
+        pixels = image.tobytes()
+        shape = (image.size, image.mode)
+        # GL_RGB for opaque video, GL_RGBA for animation frames that need alpha.
+        internal = 0x1908 if image.mode == "RGBA" else 0x1907
         self.gl.glBindTexture(0x0DE1, self.texture.value)
-        if image.size != self.image_size:
-            self.gl.glTexImage2D(0x0DE1, 0, 0x1908, image.width, image.height, 0,
-                                 0x1908, 0x1401, pixels)
+        if shape != self.image_shape:
+            self.gl.glTexImage2D(0x0DE1, 0, internal, image.width, image.height, 0,
+                                 internal, 0x1401, pixels)
         else:
             self.gl.glTexSubImage2D(0x0DE1, 0, 0, 0, image.width, image.height,
-                                    0x1908, 0x1401, pixels)
+                                    internal, 0x1401, pixels)
         self._check()
+        self.image_shape = shape
         self.image_size = image.size
         self.repaint(width, height)
 
     def clear(self) -> None:
         self._current()
         self.image_size = None
+        self.image_shape = None
         self.gl.glClearColor(0, 0, 0, 1)
         self.gl.glClear(0x4000)
         if not self.egl.eglSwapBuffers(self.display, self.surface):
@@ -297,3 +303,4 @@ class ImageRenderer:
         self.display = self.surface = self.context = self.xdisplay = None
         self.program, self.buffer.value, self.texture.value = 0, 0, 0
         self.image_size = None
+        self.image_shape = None

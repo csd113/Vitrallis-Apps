@@ -133,6 +133,34 @@ class DownloadTests(WebCase):
         self.assertTrue(self.server.download_slot.acquire(blocking=False))
         self.server.download_slot.release()
 
+    def test_zip64_records_stream_for_members_and_large_offsets(self):
+        # A non-seekable sink cannot rewrite a local header, so a member at or
+        # over the classic limit must be opened with force_zip64 before writing,
+        # and an archive whose central directory offset crosses that limit needs
+        # the ZIP64 end record. Patch both limits to exercise the real path
+        # without writing two gigabytes.
+        content = bytes(range(256)) * 64  # 16 KiB, well over the patched limit
+        for index in range(3):
+            self.add(f"large-{index}.png", content=content)
+        with patch.object(web_server, "ZIP64_LIMIT", 1024), \
+                patch.object(zipfile, "ZIP64_LIMIT", 1024):
+            status, raw, _ = self.request("GET", route(self.cid))
+        self.assertEqual(status, 200)
+        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            for index in range(3):
+                self.assertEqual(archive.read(f"large-{index}.png"), content)
+
+    def test_advertised_archive_bound_covers_zip64_overhead(self):
+        content = bytes(range(256)) * 64
+        items = [self.add(f"big-{index}.png", content=content) for index in range(3)]
+        bound = archive_size(items)
+        with patch.object(web_server, "ZIP64_LIMIT", 1024), \
+                patch.object(zipfile, "ZIP64_LIMIT", 1024):
+            status, raw, headers = self.request("GET", route(self.cid))
+        self.assertEqual(status, 200)
+        self.assertLessEqual(len(raw), bound)
+        self.assertEqual(headers["X-Archive-Bytes"], str(bound))
+
     def test_short_source_mid_stream_aborts_without_a_json_error(self):
         content = bytes(range(256)) * 800
         item = self.add("large.png", content=content)

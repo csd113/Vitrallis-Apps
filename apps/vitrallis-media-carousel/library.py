@@ -94,6 +94,7 @@ class Library:
 
     def cleanup(self):
         live = {item["id"] for row in self.data["collections"] for item in row["items"]}
+        problems = False
         for directory in (self.paths.media, self.paths.uploads):
             safe_directory(directory, private=True)
             for path in directory.iterdir():
@@ -102,10 +103,23 @@ class Library:
                 if ((directory == self.paths.media and ID_PATTERN.fullmatch(path.name))
                         or (directory == self.paths.uploads
                             and path.name.startswith(("upload-", "convert-")))):
-                    with regular_open(path, MAX_UPLOAD):
+                    try:
+                        # Validation is what makes unlinking safe: an unreadable,
+                        # linked or non-regular entry is reported and left alone.
+                        with regular_open(path, MAX_UPLOAD):
+                            pass
+                        path.unlink()
+                    except FileNotFoundError:
                         pass
-                    path.unlink()
-            sync_directory(directory)
+                    except (OSError, ValueError):
+                        problems = True
+            try:
+                sync_directory(directory)
+            except OSError:
+                problems = True
+        if problems:
+            note = "Some unreferenced files could not be cleaned up; check storage."
+            self.warning = (self.warning + " " + note).strip() if self.warning else note
 
     def snapshot(self):
         with self.lock:

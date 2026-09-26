@@ -7,7 +7,10 @@ def qr_image(url):
     parts = urlsplit(url)
     try:
         address = ipaddress.ip_address(parts.hostname)
-        valid = (parts.scheme == 'http' and address.is_private and not address.is_loopback
+        valid = (parts.scheme == 'http' and address.is_private
+                 and not address.is_loopback and not address.is_link_local
+                 and not address.is_unspecified and not address.is_multicast
+                 and not address.is_reserved
                  and not parts.username and parts.port and not parts.query
                  and not parts.fragment and parts.path in ('', '/'))
     except (ValueError, TypeError):
