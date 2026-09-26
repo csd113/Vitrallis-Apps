@@ -460,7 +460,7 @@
       "id": "io.vitrallis.liminalrust",
       "installable": false,
       "name": "Places",
-      "version": "0.11.0",
+      "version": "0.11.1",
       "runtime": "rust",
       "binaries": {
         "armv7-unknown-linux-gnueabihf": "bin/armv7-unknown-linux-gnueabihf/app"
@@ -474,24 +474,29 @@
       "compatibility_notes": "Requires PocketCHIP ARMv7 hard-float Linux, glibc 2.36+, SDL2 2.32+, Mali/Lima OpenGL ES 2.0 and X11. App Manager install, update and repair of this edition still need device verification.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "db53966ec1ff12b566e3b7a1ce4214ce1aa5005c",
+        "commit": "86c1fe4b908a34ef99cdc0fe1054d2711a8260ec",
         "path": "apps/places-pocketchip"
       },
       "files": [
         {
+          "path": ".cargo/config.toml",
+          "size": 850,
+          "sha256": "83bbe352d1e67aeb489e29aeee643ec35f22c2a2fa392114122a97def98d3972"
+        },
+        {
           "path": "CHANGELOG.md",
-          "size": 158880,
-          "sha256": "66bfa1230cab95419ec1c982e114b4222ba9a5b3701ab7fbaea1c75081025855"
+          "size": 159209,
+          "sha256": "92f24c55efff7980c536363bc20adc6472466305d28665daa29fa21bd66e68a6"
         },
         {
           "path": "Cargo.lock",
           "size": 12338,
-          "sha256": "dab1c1583fc99fe6c8d257bbeb95d1858946a6c576d05da3df12a1500e64a14f"
+          "sha256": "f574970981c8cd1bdca25935caaabca1e14eebe87d2d41fd905af4871f561227"
         },
         {
           "path": "Cargo.toml",
           "size": 1590,
-          "sha256": "bc4423cf3066afe04b6ec0040f70870a53aa0b30a1057ab24c78c61e23feddfb"
+          "sha256": "faa285db30eada4b843e7ba5e4994e82ed175c49d85c4bc8984ed0929d0fc0f8"
         },
         {
           "path": "LICENSE",
@@ -501,7 +506,7 @@
         {
           "path": "README.md",
           "size": 2211,
-          "sha256": "cabe7e5fa49c6e5b58921f3111f346394d9d3b124a54dd2436192b172ad5a215"
+          "sha256": "2b3e0f0b4958bbbfd485e7e64ec5d54b29ee6465b6032801cc94238a206112a4"
         },
         {
           "path": "THIRD_PARTY_LICENSES.txt",
@@ -511,7 +516,7 @@
         {
           "path": "app.toml",
           "size": 249,
-          "sha256": "cf50afc776d83af805ed124e18a7da9775e052f06095b3c4166af9da0ad579fc"
+          "sha256": "1727cc04e1926467854ec4622e45937c853698a5051b9c206c59ca85da246007"
         },
         {
           "path": "assets/README.md",
@@ -890,8 +895,8 @@
         },
         {
           "path": "assets/environment/office/textures/lights/fluorescent_panel_01.png",
-          "size": 85781,
-          "sha256": "aca87c7ad5a5263a1f9d86430d569eb7123bdad0b7b877094ab57e62424e0e40"
+          "size": 34232,
+          "sha256": "ee748684ea850bc006a723eb3e044f9976742843bc46205aefa3faddd3cf933b"
         },
         {
           "path": "assets/environment/office/textures/walls/wallpaper_stained_01.png",
@@ -910,8 +915,8 @@
         },
         {
           "path": "assets/environment/pool/decals/no_diving_01.png",
-          "size": 141216,
-          "sha256": "1fe6d0fca3ce2b5567841618fdc7374eedb5ba78c5ab520d35adbd8290c922d2"
+          "size": 60835,
+          "sha256": "e563a69ca590fbf33cd70e7ea11e2f261ae89f84da467ee2cb52796049ba1e36"
         },
         {
           "path": "assets/environment/pool/props/models/pool_chair.glb",
@@ -960,8 +965,8 @@
         },
         {
           "path": "assets/environment/pool/textures/ceilings/pool_ceiling_01.png",
-          "size": 169437,
-          "sha256": "1ebbc3f192cd7f8ed81a48542ec805c0b90bfa10087a4a11340148aeb80b2b1e"
+          "size": 155025,
+          "sha256": "17cf29de7fb44ed25a1a47bd96b8ca2436d0b6b490245196920ce0a2bab31d93"
         },
         {
           "path": "assets/environment/pool/textures/floors/pool_tile_basin_01.png",
@@ -1006,7 +1011,7 @@
         {
           "path": "bin/armv7-unknown-linux-gnueabihf/app",
           "size": 2077792,
-          "sha256": "b90588cb6990428d2d546d675264061e9064ceb24a4cd4c76d4f518340490447"
+          "sha256": "788ef0745f803c6f80aec0c81c6a00a64a100079acdf4cb16078b298cc7e8fde"
         },
         {
           "path": "icon.png",
