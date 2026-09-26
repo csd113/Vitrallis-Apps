@@ -1,4 +1,9 @@
+# Changelog
+
 ## 0.11.0 — 2026-09-25
+
+- Package the PocketCHIP edition for App Manager under the existing Places app
+  ID with an ARMv7 binary and display-sized textures.
 
 A fourth PocketCHIP pass fixes the level geometry's face winding and then turns
 on back-face culling for every single-sided surface. Five generators were
@@ -363,7 +368,7 @@ OpenGL/GLES2 renderer state before the desktop renderer modernization begins.
 - No wgpu migration, renderer alteration, cleanup or gameplay work is included
   in this release.
 
-## Unreleased — Settings, display and runtime configuration
+### Unreleased — Settings, display and runtime configuration
 
 Places now starts like a desktop game and its pause-menu Settings screen is the
 real control center for player configuration. Settings is split into
@@ -436,7 +441,7 @@ renderer works in Retina drawable pixels rather than the logical window size.
   now differs on ~3% of pixels at the demo spawn; before the fix it was
   pixel-identical.
 
-## Unreleased — Desktop texture policy
+### Unreleased — Desktop texture policy
 
 Places is a desktop game now, and the asset pipeline no longer treats a
 low-memory handheld as its budget. **256×256 is the normal native prop texture
@@ -491,7 +496,7 @@ refreshed domestic props ship their real 256×256 artwork again.
   every emitted triangle has real area, covering the pool walls, the
   pool-to-hall landing and the Home extension.
 
-## Unreleased — Adversarial architecture audit
+### Unreleased — Adversarial architecture audit
 
 A deliberate break-it pass over the Home theme's generic architectural pieces
 found and fixed a set of cross-system defects: geometry that only worked at the
@@ -552,7 +557,7 @@ boundaries, and collision that could stop a player on a legal slope.
   down-facing face and takes the same flat shade as a box's bottom cap; a real
   curve's sloped segments keep the vertical gradient unchanged.
 
-## Unreleased — Home theme and generic architectural pieces
+### Unreleased — Home theme and generic architectural pieces
 
 Places gains a residential **Home** theme and a set of **generic
 architectural** level primitives that any theme can use. Both are ordinary
@@ -611,7 +616,7 @@ Home.
 - `tools/assets/validate.py` validates the new level arrays: material
   references, per-surface `shine` overrides and dimensions.
 
-## Unreleased — Surface shine and the Places Demo material pass
+### Unreleased — Surface shine and the Places Demo material pass
 
 Reflections were reading far too strong for the Places aesthetic: linoleum
 mirrored the room, ordinary brushed metal read like chrome, and floors and
@@ -667,7 +672,7 @@ official demo was re-authored with it.
 - Walls, wallpaper, ceilings, carpet and the painted grille stay matte; glass
   and the backlit signs keep their smooth-sheen defaults.
 
-## Unreleased — Batch 5: compiled-build readiness, cleanup, QA, documentation
+### Unreleased — Batch 5: compiled-build readiness, cleanup, QA, documentation
 
 Batch 5 is a stabilization pass, not a feature batch. It makes the compiled
 binary a first-class citizen, removes the accumulations of four development
@@ -771,7 +776,7 @@ against the current engine.
 - `settings.json`, `cache/`, `import/` and drop-in level files are gitignored,
   so running the game no longer dirties the repository.
 
-## Unreleased — Batch 4: post-processing, selective reflections, dynamic polish, visual repair
+### Unreleased — Batch 4: post-processing, selective reflections, dynamic polish, visual repair
 
 Batch 4 finishes the presentation path the offscreen target made possible and
 repairs three defects the earlier batches left behind. It adds no new lighting
@@ -902,7 +907,7 @@ materials already author, and the fog is a scalar mix.
 
 ---
 
-## Unreleased — Batch 3: surface response, transparency/glass, offscreen framebuffer
+### Unreleased — Batch 3: surface response, transparency/glass, offscreen framebuffer
 
 Batch 3 makes the surfaces *react* to the Batch 1/2 lighting, gives materials a
 real alpha contract (including glass you can look through), and puts the 3D scene
@@ -1116,7 +1121,7 @@ missed. Both are engine fixes; no level, texture or fixture was touched.
 
 # Changelog
 
-## Unreleased — Batch 1 foundation: quality profiles, generic lights, true emission
+### Unreleased — Batch 1 foundation: quality profiles, generic lights, true emission
 
 This batch lays three foundations that later rendering work (lightmaps, surface
 response, transparency, reflections, post-processing, dynamic objects) will build
@@ -1186,7 +1191,7 @@ on, without implementing any of them.
   0.18 with `emission: 1.0`: the diffuser reads fully bright while the room
   keeps its dim pool — the authored proof that the two are independent.
 
-## Unreleased — doorway floors own their threshold plane
+### Unreleased — doorway floors own their threshold plane
 
 Some doorways in `Places Demo` flickered between the two adjoining rooms'
 floor textures as the camera moved: the office/stairs door at x = 19 and the
@@ -1233,7 +1238,7 @@ face", and it would also be culled away in a culling-enabled build.
   ledge over a lower floor, a doorway chain, the two affected `Places Demo`
   doorways and Z-axis cap winding.
 
-## Unreleased — decals own their depth plane
+### Unreleased — decals own their depth plane
 
 Wall and floor decals could flicker in `Places Demo`: the base surface showed
 through the marking, in patches at some camera distances and angles and
@@ -1279,7 +1284,7 @@ lost only some pixels, which is the flicker as the camera moved.
   pixel-comparison shot list, so a future renderer change that reopens the
   depth conflict shows up as a large component.
 
-## Unreleased — partition-aware baselines and vertical light isolation
+### Unreleased — partition-aware baselines and vertical light isolation
 
 Two lighting-architecture gaps are closed. A room is no longer assumed to be one
 open space, and a floor or ceiling is now a real light boundary rather than a
@@ -1350,7 +1355,7 @@ pair of decorative planes.
   The intentionally upgraded 1024x1024 artwork is accepted, and the no-diving
   sign test now asserts its real cut-out contract.
 
-## Unreleased — coplanar surfaces and wall-boundary light
+### Unreleased — coplanar surfaces and wall-boundary light
 
 Places could emit a wall surface in the same plane as another wall's surface,
 and the static lighting let a fixture's pool slip through the few millimetres
@@ -1403,7 +1408,7 @@ an opaque wall.
   abutting_wall_pieces_leave_no_seam,
   a_surface_mounted_fixture_is_not_blocked_by_its_own_wall}`.
 
-## Unreleased — fixture surfaces are authored artwork
+### Unreleased — fixture surfaces are authored artwork
 
 A light fixture's **mesh** is still generated geometry, but what that mesh
 shows is now an ordinary external PNG: the catalog's `asset_type: "light"` entry
@@ -1598,7 +1603,7 @@ demonstrable.
 clean-package launch of both `Places/` and `Places.app` from outside the
 repository tree.
 
-## 0.5.3 — Goal 5.5: wall-boundary lighting isolation and source refactor
+## 0.5.3 — 2026-09-21
 
 An engine-quality phase rather than a content phase: the baked lighting now
 treats an opaque wall as a lighting boundary, the wall-corner artifacts that
@@ -2168,7 +2173,7 @@ expects.
 - Keep the room floor's tessellation exact around a floor patch, so a damp
   carpet region has crisp edges without a second overlapping floor slab.
 
-## Development history (pre-release)
+### Development history (pre-release)
 
 The releases below predate the first published App Manager release. They were
 development iterations of the renderer, the level format, the editor and the
