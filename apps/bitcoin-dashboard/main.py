@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pocket Bitcoin: CoinGecko CAD quote and 24-hour chart, sized for PocketCHIP."""
+"""Watch-only mempool.space dashboard and preserved CAD chart for PocketCHIP."""
 import json
 import math
 import os
@@ -22,7 +22,7 @@ from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 # Display and HTTP user-agent version; publication metadata comes from app.toml.
-VERSION = '1.2.5'
+VERSION = '1.3.0'
 BLOCK_HIGHLIGHT_SECONDS = 10
 SATOSHIS_PER_BTC = 100_000_000
 MAX_SUPPLY = 21_000_000 * SATOSHIS_PER_BTC
@@ -199,7 +199,12 @@ def fetch(endpoint, base=BASE):
             raise ConfigurationError('Invalid API key configuration')
         request.add_unredirected_header('x-cg-demo-api-key', key)
     deadline = time.monotonic() + 30
-    with build_opener(SafeRedirectHandler()).open(request, timeout=18) as response:
+    from tor_transport import proxy_config, TorHTTPSHandler
+    from urllib.request import ProxyHandler
+    handlers = [SafeRedirectHandler()]
+    if proxy_config() is not None:
+        handlers.extend([ProxyHandler({}), TorHTTPSHandler()])
+    with build_opener(*handlers).open(request, timeout=18) as response:
         data = bytearray()
         while len(data) <= 1_000_000:
             if time.monotonic() >= deadline:
@@ -302,13 +307,23 @@ class App:
             pass  # Optional artwork must not prevent the dashboard from starting.
         self.load_cache()
         self.draw()
-        self.refresh_all()
         self.settings_button.focus_set()
+        from monitor_ui import Monitor
+        self.monitor = Monitor(self, fetch)
+        self.refresh_all()
+        root.bind('<n>', lambda event: self.open_monitor('network'))
+        root.bind('<w>', lambda event: self.open_monitor('watch'))
         self.poll_id = root.after(200, self.poll)
+
+    def open_monitor(self, page):
+        if not isinstance(self.root.focus_get(), tk.Entry):
+            self.monitor.show(page)
+        return None
 
     def button(self, parent, label, command):
         button = tk.Button(parent, text=label, command=command,
-            bg=PANEL, fg=INK, activebackground='#294050', activeforeground=INK,
+            bg=PANEL, fg=BG if self.root.tk.call('tk', 'windowingsystem') == 'aqua' else INK,
+            activebackground='#294050', activeforeground=INK,
             disabledforeground=MUTED, relief='flat', bd=0,
             highlightthickness=1, highlightbackground='#354254', highlightcolor=ORANGE,
             font=('DejaVu Sans', -12), takefocus=True)
@@ -361,6 +376,12 @@ class App:
                     pass
 
     def escape(self, event=None):
+        if getattr(self, 'monitor', None) and self.monitor.visible:
+            if self.monitor.form:
+                self.monitor.show('watch')
+            else:
+                self.monitor.hide()
+            return 'break'
         if self.settings_panel is not None:
             self.toggle_settings()
         else:
@@ -403,6 +424,8 @@ class App:
             self.open_card(pressed)
 
     def move_card(self, event):
+        if getattr(self, 'monitor', None) and self.monitor.visible:
+            return None
         if self.settings_panel is not None or self.detail_card is not None:
             return None
         forward = event.keysym in ('Right', 'Down')
@@ -495,6 +518,8 @@ class App:
         text(18, 217, note, 10, MUTED, max_width=width-36)
 
     def close(self):
+        if getattr(self, 'monitor', None) and not self.monitor.closed:
+            self.monitor.close()
         if self.closed:
             return
         self.closed = True
@@ -507,6 +532,8 @@ class App:
         self.root.destroy()
 
     def toggle_settings(self):
+        if getattr(self, 'monitor', None) and self.monitor.visible:
+            return
         if self.settings_panel is not None:
             self.settings_panel.destroy()
             self.settings_panel = None
@@ -619,6 +646,10 @@ class App:
                     pass
 
     def refresh_all(self, manual=False):
+        if getattr(self, 'monitor', None) and self.monitor.visible:
+            if not isinstance(self.root.focus_get(), tk.Entry):
+                self.monitor.refresh(manual)
+            return
         if self.closed:
             return
         self.refresh(manual)
@@ -626,6 +657,8 @@ class App:
         self.draw()
 
     def refresh_chain(self, manual=False):
+        if getattr(self, 'monitor', None) and self.monitor.visible:
+            return
         now = time.monotonic()
         allowed = manual and not self.chain_failures and now - self.last_chain_start >= 20
         if self.closed or self.chain_busy or (now < self.next_chain and not allowed):
@@ -657,6 +690,8 @@ class App:
         self.events.put(('chain_done', failed))
 
     def refresh(self, manual=False):
+        if getattr(self, 'monitor', None) and self.monitor.visible:
+            return
         now = time.monotonic()
         allowed_manual = manual and not self.failures and now - self.last_start >= 20
         if self.closed or self.busy or (now < self.next_fetch and not allowed_manual):

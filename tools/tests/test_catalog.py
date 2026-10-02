@@ -170,6 +170,17 @@ class PackageTests(unittest.TestCase):
             with self.subTest(after=after), self.assertRaises(lib.Invalid):
                 lib.manifest(files, 'hello')
 
+    def test_shell_tor_manifest_contract(self):
+        original = self.files['app.toml'].decode().replace('network = false', 'network = true')
+        for mode in ('none', 'preferred', 'required'):
+            files = dict(self.files, **{'app.toml': (original + '\n[network]\ntor = "'+mode+'"\n').encode()})
+            self.assertEqual(lib.manifest(files, 'tor')['network'], {'tor': mode})
+        for table in ('tor = "unknown"', 'tor = true', 'tor = "required"\nproxy = "url"', ''):
+            files = dict(self.files, **{'app.toml': (original + '\n[network]\n'+table).encode()})
+            with self.assertRaises(lib.Invalid): lib.manifest(files, 'tor')
+        files = dict(self.files, **{'app.toml': (self.files['app.toml'].decode() + '\n[network]\ntor = "required"').encode()})
+        with self.assertRaises(lib.Invalid): lib.manifest(files, 'no network')
+
     def test_corrupt_and_truncated_icon(self):
         for icon in [b'not a png', self.files['icon.png'][:-1], self.files['icon.png'] + b'extra']:
             files = dict(self.files, **{'icon.png': icon})

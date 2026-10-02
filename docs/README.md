@@ -37,3 +37,6 @@ certification for later releases or other hardware.
 - [Experimental Rust application packaging](experimental-rust.md)
 
 - [Licensing, attribution and unresolved provenance](../THIRD_PARTY_NOTICES.md)
+
+- [Artwork audit and conventions](artwork.md)
+- [Prepared source releases and publication boundary](release-preparation.md)

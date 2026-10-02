@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1 — 2026-10-01
+
+- Replace the App Center icon with optimized transparent GPT-generated artwork readable at small launcher sizes.
+
 ## 0.3.0 — 2026-09-19
 
 - Cache menu glyph textures and batch ordered glow/body/grass sprites while preserving particle count and controls.

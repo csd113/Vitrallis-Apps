@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.2 — 2026-10-01
+
+- Fit collection names and long status tokens by measured pixels on the PocketCHIP display.
+- Keep native macOS button labels readable during desktop verification.
+- Preserve the selected collection and header focus during library refreshes instead of jumping to the first row.
+
 Changes are listed newest first. Dates use America/Vancouver time.
 
 ## 0.4.1 — 2026-09-25

@@ -117,6 +117,35 @@ class NativeTests(StorageCase):
         self.app.move_focus(1)
         self.assertEqual(self.app.page, 1)
 
+    def test_refresh_preserves_collection_and_header_focus(self):
+        self.app.services.library.create("Second collection")
+        self.app.draw_folders()
+        self.root.update()
+        self.app.folder_buttons[1].focus_force()
+        self.root.update()
+        selected = self.app.folder_ids[1]
+        self.app.draw_folders()
+        self.root.update()
+        self.assertEqual(self.app.folder_ids[self.app.folder_buttons.index(self.root.focus_get())], selected)
+        self.app.settings_button.focus_force()
+        self.root.update()
+        self.app.draw_folders()
+        self.root.update()
+        self.assertIs(self.root.focus_get(), self.app.settings_button)
+
+    def test_wide_names_and_unbroken_status_fit_by_pixels(self):
+        from tkinter.font import Font
+        self.app.services.library.create("W" * 60)
+        self.app.draw_folders()
+        self.root.update()
+        font = Font(root=self.root, font=self.app.folder_buttons[-1].cget('font'))
+        self.assertLessEqual(font.measure(self.app.folder_buttons[-1].cget('text')),
+                             self.app.folder_frame.winfo_width()-26)
+        lines = self.app.clamp_text('W'*100, self.app.status_font, 160, 2).splitlines()
+        self.assertLessEqual(len(lines), 2)
+        for line in lines:
+            self.assertLessEqual(self.app.status_font.measure(line), 160)
+
     def test_prepared_gpu_frame_can_fall_back_to_tk(self):
         from PIL import Image
         self.app.canvas = tk.Canvas(self.app.frame)

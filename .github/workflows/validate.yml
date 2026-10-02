@@ -27,17 +27,51 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install desktop test prerequisites
+      - name: Determine runtime scope
+        id: scope
+        env:
+          TEST_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+          base = os.environ.get('TEST_BASE', '')
+          if not base or base == '0' * 40:
+              base = subprocess.check_output(['git', 'hash-object', '-w', '-t', 'tree', '/dev/null'], text=True).strip()
+          result = subprocess.check_output([sys.executable, 'tools/scoped_tests.py', '--base', base], text=True)
+          selected = json.loads(result)['runtime_packages']
+          print(result, end='')
+          (Path(os.environ['RUNNER_TEMP']) / 'runtime-scope.json').write_text(json.dumps(selected))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('runtime=' + ('true' if selected else 'false') + '\n')
+          PY
+      - name: Install affected runtime prerequisites
+        if: steps.scope.outputs.runtime == 'true'
         run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb ffmpeg libegl1 libgles2 libgl1-mesa-dri libsdl2-dev
-      - name: Install Media Carousel Python dependency
-        run: python -m pip install -r apps/vitrallis-media-carousel/requirements.txt
+      - name: Install affected Python dependencies
+        if: steps.scope.outputs.runtime == 'true'
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+          for package in json.loads((Path(os.environ['RUNNER_TEMP']) / 'runtime-scope.json').read_text()):
+              requirements = Path(package) / 'requirements.txt'
+              if requirements.is_file():
+                  subprocess.run([sys.executable, '-m', 'pip', 'install', '-r', str(requirements)], check=True)
+          PY
       - name: Validate schema, catalog, pinned hashes and example manifest
         run: |
           python tools/validate_catalog.py --source-repo csd113/Places="$RUNNER_TEMP/places" --catalog apps.json --package examples/hello-vitrallis
           python tools/validate_catalog.py --package examples/hello-rust
-      - name: Validate and test every native package (GUI required)
+      - name: Validate every package without launching applications
         run: |
-          xvfb-run -a python - <<'PY'
+          python - <<'PY'
           from pathlib import Path
           import subprocess
           import sys
@@ -50,22 +84,23 @@ jobs:
               for package in sorted(root.iterdir()):
                   match(package.as_posix(), SOURCE_PATH, package)
                   subprocess.run([sys.executable, 'tools/validate_catalog.py', '--package', str(package)], check=True)
-                  subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', str(package / 'tests'), '-v'], check=True)
           PY
       - name: Tooling regression tests
         run: python -m unittest discover -s tools/tests -v
-      - name: Example desktop tests (GUI required)
-        run: xvfb-run -a python -m unittest discover -s examples/hello-vitrallis/tests -v
-      - name: Experimental Rust example and packaging
-        env:
-          CARGO_TARGET_DIR: ${{ runner.temp }}/vitrallis-rust-target
+      - name: Test affected applications (GUI required)
+        if: steps.scope.outputs.runtime == 'true'
         run: |
-          python -m unittest discover -s examples/hello-rust/tests -v
-          cargo fmt --manifest-path examples/hello-rust/Cargo.toml --all --check
-          cargo clippy --manifest-path examples/hello-rust/Cargo.toml --workspace --all-targets --all-features -- -D warnings -D clippy::all -D clippy::pedantic -D clippy::nursery -D clippy::cargo
-          cargo test --manifest-path examples/hello-rust/Cargo.toml --workspace --all-features
-          python tools/build_rust_app.py --source examples/hello-rust --output "${{ runner.temp }}/hello-rust-package" --target x86_64-unknown-linux-gnu
-          python "${{ runner.temp }}/hello-rust-package/main.py"
+          xvfb-run -a python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+          command = [sys.executable, 'tools/scoped_tests.py', '--run']
+          for package in json.loads((Path(os.environ['RUNNER_TEMP']) / 'runtime-scope.json').read_text()):
+              command.extend(['--app', package])
+          subprocess.run(command, check=True)
+          PY
       - name: Compile Python outside packages
         env:
           PYTHONPYCACHEPREFIX: ${{ runner.temp }}/vitrallis-pycache

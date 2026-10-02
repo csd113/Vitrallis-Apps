@@ -4,7 +4,7 @@ A locally managed slideshow for the screen running Vitrallis. Upload from your
 phone/computer, organize collections, then select one in the native Python app.
 Playback does not open a browser.
 
-**0.4.1** · `io.vitrallis.mediacarousel` · manifest v1.
+**0.4.2** · `io.vitrallis.mediacarousel` · manifest v1.
 
 [Changelog](CHANGELOG.md).
 
@@ -454,3 +454,11 @@ EGL now requests backbuffer presentation synchronized to VSync and uses absolute
 Since 0.4.0, 0.3.0's 30 FPS presentation ceiling is gone: the Tk fallback presents at the media's own deadline and drops expired frames with a bounded catch-up instead of slowing the animation down. The animation on screen streams its first frame immediately and records itself for later repeats, so the earlier "complete preparation before the clock starts" loading delay no longer applies. Video uses one decoder process per item instead of one per repeat, and is paced from the source frame rate rather than a fixed 20 FPS resample.
 
 See the [2026-09-19 verification report](../../docs/verification/platform-app-refinements-2026-09-19/README.md) for measured app performance, physical tearing confirmation, reboot evidence and installation-validation limits.
+
+## Focus and small-screen layout
+
+Collection names are fitted by actual font width, preserving item counts; long
+unbroken status tokens wrap within their panel. Background library refreshes keep
+the selected collection or header control focused. Playback keeps the existing
+bounded GPU/Tk scheduling and hidden-window idle path. Run this app alone with
+`python3 tools/scoped_tests.py --app apps/vitrallis-media-carousel --run`.

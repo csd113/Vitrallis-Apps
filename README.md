@@ -46,7 +46,8 @@ manifest v1**. Runtime requirements and device verification vary by app; see
 <!-- App rows are derived from apps.json; refresh names, descriptions and links when catalog membership changes. -->
 | App | What it does |
 | --- | --- |
-| [Bitcoin Dashboard](apps/bitcoin-dashboard/README.md) | Bitcoin CAD price, chart, and network dashboard for the PocketCHIP. |
+| [Calculator](apps/calculator/README.md) | Decimal arithmetic, parentheses and keyboard navigation for PocketCHIP; installation awaits device verification. |
+| [Bitcoin Dashboard](apps/bitcoin-dashboard/README.md) | Bitcoin network and watch-only address pages, plus the preserved CAD chart. |
 | [Vitrallis Debug](apps/vitrallis-debug/README.md) | Offline network, CPU, temperature, and memory diagnostics for the PocketCHIP. |
 | [Vitrallis Media Carousel](apps/vitrallis-media-carousel/README.md) | Native media slideshow with LAN uploads, named collections and shared settings. |
 | [Places](apps/places-pocketchip/README.md) | A native first-person exploration game for PocketCHIP, replacing the older Liminal package. |
