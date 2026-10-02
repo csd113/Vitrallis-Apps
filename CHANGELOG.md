@@ -8,6 +8,10 @@ use America/Vancouver time. App IDs remain stable; each app ships its own
 and place new records in the newest date section. See the
 [changelog policy](docs/changelog-policy.md) for the required submission format.
 
+## 2026-10-01
+
+- Removed `io.vitrallis.carouselrust` (Carousel-Rust) from the catalog and deleted its app package and dedicated CI checks. Historical release notes and verification records remain in the repository; the deleted package and its changelog remain available in Git history.
+
 ## 2026-09-26
 
 - Updated `io.vitrallis.liminalrust` `0.11.1`: Replace the older Liminal package with the PocketCHIP edition of Places, including its ARMv7 build, baked lighting and catalog-sized artwork with repaired texture seams. Installation remains disabled pending App Manager lifecycle verification. [App changelog](apps/places-pocketchip/CHANGELOG.md).

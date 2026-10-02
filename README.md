@@ -49,7 +49,6 @@ manifest v1**. Runtime requirements and device verification vary by app; see
 | [Bitcoin Dashboard](apps/bitcoin-dashboard/README.md) | Bitcoin CAD price, chart, and network dashboard for the PocketCHIP. |
 | [Vitrallis Debug](apps/vitrallis-debug/README.md) | Offline network, CPU, temperature, and memory diagnostics for the PocketCHIP. |
 | [Vitrallis Media Carousel](apps/vitrallis-media-carousel/README.md) | Native media slideshow with LAN uploads, named collections and shared settings. |
-| [Carousel-Rust](apps/carousel-rust/README.md) | Rust media carousel sharing the Python photo library; requires the Shell native Rust runtime. |
 | [Places](apps/places-pocketchip/README.md) | A native first-person exploration game for PocketCHIP, replacing the older Liminal package. |
 | [Firefly Field](apps/firefly-field/README.md) | A calm, fullscreen pixel-art firefly meadow rendered through SDL2. |
 
