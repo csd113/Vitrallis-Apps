@@ -10,6 +10,16 @@ and place new records in the newest date section. See the
 
 ## 2026-10-01
 
+- Added `io.vitrallis.calculator` `0.1.0`: Add a keyboard-first decimal calculator with precedence, parentheses, percent, bounded input and optimized artwork. [App changelog](apps/calculator/CHANGELOG.md).
+- Updated `io.vitrallis.bitcoindashboard` `1.3.0`: Add mempool.space network pages, persistent watch-only address monitoring and fail-closed shared Tor transport while preserving the CAD chart. [App changelog](apps/bitcoin-dashboard/CHANGELOG.md).
+- Updated `io.vitrallis.mediacarousel` `0.4.2`: Fit collection names and status text by measured pixels and preserve keyboard focus during library refreshes. [App changelog](apps/vitrallis-media-carousel/CHANGELOG.md).
+- Updated `io.vitrallis.debug` `0.3.2`: Replace the launcher icon with optimized transparent GPT-generated artwork. [App changelog](apps/vitrallis-debug/CHANGELOG.md).
+- Updated `io.vitrallis.fireflyfield` `0.3.1`: Replace the launcher icon with optimized transparent GPT-generated artwork. [App changelog](apps/firefly-field/CHANGELOG.md).
+
+Calculator and the new Bitcoin release remain installation-disabled pending device
+lifecycle/presentation verification and real Arti routing checks. Other existing
+installation flags are preserved.
+
 - Removed `io.vitrallis.carouselrust` (Carousel-Rust) from the catalog and deleted its app package and dedicated CI checks. Historical release notes and verification records remain in the repository; the deleted package and its changelog remain available in Git history.
 
 ## 2026-09-26

@@ -109,13 +109,13 @@ build/launch when that example is selected.
 
 ## Remaining release/device work
 
-Source changes are uncommitted and unpublished by instruction. Catalog pins and
-root catalog release history remain unchanged: new versions cannot be safely
-advertised until source commits are authorized, published and pinned. Calculator
-has its package/launcher definition and documented App Center metadata, but is
-not yet advertised by `apps.json`. Follow [release preparation](../../release-preparation.md)
-and the existing source-first publication policy. No claim is made that this
-uncommitted branch is ready to merge as a catalog release.
+At the initial handoff, source changes were uncommitted and unpublished by
+instruction. The user subsequently authorized publication and merging. Source
+commit `0ebb648e06958b4971686ff8c30aad7ec41b14e4` was pushed before generating
+all five catalog inventories and matching root release records. Calculator and
+the new Bitcoin release remain installation-disabled pending device verification. Follow [release preparation](../../release-preparation.md)
+and the existing source-first publication policy. The completed committed release must pass the required publication checks
+before merging.
 
 Real PocketCHIP installation/update/repair, keyboard hardware, R8 memory/CPU,
 compositor buffering/VSync and real Arti bootstrapping/routing remain unverified.

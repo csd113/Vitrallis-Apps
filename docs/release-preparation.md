@@ -17,18 +17,14 @@ Compatibility: “Requires Python 3.11+ and system Tkinter; compositor-backed st
 presentation. Device install/update/repair verification pending.” Keep installation
 disabled until that verification is complete.
 
-No source commits, remote publication or catalog pin changes are authorized in
-this pass. `apps.json` therefore continues to advertise its existing published
-versions; new source cannot safely receive invented commit hashes or dirty-tree
-inventories. Root `CHANGELOG.md` records published catalog versions and must not
-announce these unpublished source releases as already available.
+The user authorized source publication and merging on 2026-10-01. Source commit
+`0ebb648e06958b4971686ff8c30aad7ec41b14e4` was pushed before generating catalog
+inventories. All five versions are pinned to that published commit. The matching
+root release records are included with the catalog update. Calculator and the new
+Bitcoin release are installation-disabled pending device and real Arti checks;
+other existing installation flags are preserved.
 
-After review and explicit authorization, follow `docs/publishing-apps.md`: commit
-and publish the tested source, then use its full reachable SHA with
-`tools/update_catalog.py` for all five packages. Add the matching Added/Updated
-root changelog records when generating those pins, submit source and catalog
-together through a PR, and retain source commits when merging. Required committed
-publication checks cannot establish agreement with these uncommitted edits yet.
-
+Source and catalog are submitted together through a pull request, with a merge
+commit retaining all source pins. Required checks must pass before merging.
 Runtime validation scope is Carousel, Calculator and Bitcoin. Icon-only Debug and
 Firefly changes receive asset/package checks without launching either app.
