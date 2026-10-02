@@ -155,3 +155,12 @@ Document and bound any unsynchronized fallback; arbitrary sleeps do not fix tear
 Follow the [rendering contract](rendering.md) and verify the physical backend before publishing.
 
 Precompiled Rust payloads can use the [experimental Rust packaging profile](experimental-rust.md). Python remains the default runtime and catalog v1 is unchanged.
+
+## Optional shared Tor contract
+
+Networked apps may add `[network]` with exactly `tor = "none"`, `"preferred"`
+or `"required"`. Preferred/required need `permissions.network = true`. This
+matches Vitrallis-Shell's shared Arti contract; the table is packaged in the
+manifest while catalog v1 stays unchanged. The app must use SOCKS5 remote DNS.
+Shell-provided availability is a launch snapshot: handle proxy failure without
+silently bypassing the selected route. Do not start an app-local Tor service.

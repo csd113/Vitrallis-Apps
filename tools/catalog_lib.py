@@ -412,6 +412,16 @@ def manifest(files, where, *, allow_unbuilt=False):
         raise Invalid(f'{where}/app.toml: {error}') from error
     keys = {'manifest_version', 'name', 'id', 'version', 'runtime', 'permissions'}
     keys.add('binaries' if data.get('runtime') == 'rust' else 'entry')
+    if 'network' in data:
+        keys.add('network')
+        network = data['network']
+        require(type(network) is dict and set(network) == {'tor'}
+                and type(network['tor']) is str
+                and network['tor'] in {'none', 'preferred', 'required'},
+                where, 'network must contain only tor = none/preferred/required')
+        require(network['tor'] == 'none' or (type(data.get('permissions')) is dict
+                and data['permissions'].get('network') is True),
+                where, 'Tor requires network permission')
     require(set(data) == keys, f'{where}/app.toml', 'missing or unknown manifest v1 fields')
     require(type(data['manifest_version']) is int and data['manifest_version'] == 1,
             where, 'unsupported manifest_version (expected integer 1)')

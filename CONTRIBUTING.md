@@ -78,7 +78,8 @@ python3 tools/validate_catalog.py --package apps/my-app
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/my-app/tests -v
 ```
 
-Then run the full repository checks. CI uses Python 3.11 and 3.13, Linux/Xvfb,
+Then run global metadata/tooling checks and the affected runtime suites with
+`python3 tools/scoped_tests.py --run`; see the testing guide. CI uses Python 3.11 and 3.13, Linux/Xvfb,
 Tkinter, Pillow, and FFmpeg. Report skipped tests and host-specific failures;
 desktop success does not establish device compatibility.
 

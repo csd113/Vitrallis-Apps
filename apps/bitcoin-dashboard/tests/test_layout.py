@@ -11,6 +11,19 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import main as bitcoin
+from monitor_ui import Monitor
+
+OriginalApp = bitcoin.App
+
+class ChartApp(OriginalApp):
+    def __init__(self, root):
+        with patch.object(Monitor, 'refresh'):
+            super().__init__(root)
+        self.monitor.next_refresh = float('inf')
+        self.monitor.visible = False
+        self.monitor.frame.place_forget()
+        self.settings_button.focus_set()
+
 
 class LayoutTests(unittest.TestCase):
     def setUp(self):
@@ -26,8 +39,8 @@ class LayoutTests(unittest.TestCase):
 
     def make_app(self):
         root = tk.Tk()
-        with patch.object(bitcoin.App, 'refresh_all'):
-            app = bitcoin.App(root)
+        with patch.object(ChartApp, 'refresh_all'):
+            app = ChartApp(root)
         self.addCleanup(app.close)
         root.after_cancel(app.poll_id)
         app.poll_id = None
@@ -225,8 +238,8 @@ class LayoutTests(unittest.TestCase):
         root = tk.Tk()
         app = None
         try:
-            with patch.object(bitcoin.App, 'refresh_all'), patch.object(bitcoin.App, 'poll'):
-                app = bitcoin.App(root)
+            with patch.object(ChartApp, 'refresh_all'), patch.object(ChartApp, 'poll'):
+                app = ChartApp(root)
                 root.update()
                 now = time.time()
                 cases = [
@@ -344,8 +357,8 @@ class LayoutTests(unittest.TestCase):
         app.save_cache()
         app.close()
         root = tk.Tk()
-        with patch.object(bitcoin.App, 'refresh_all') as refresh:
-            restored = bitcoin.App(root)
+        with patch.object(ChartApp, 'refresh_all') as refresh:
+            restored = ChartApp(root)
         self.addCleanup(restored.close)
         # Cache validation converts chain timestamps to milliseconds and back.
         # That round trip can differ by one floating-point unit.
@@ -494,9 +507,9 @@ class LayoutTests(unittest.TestCase):
         try:
             with tempfile.TemporaryDirectory() as directory, \
                  patch.object(bitcoin, 'SETTINGS', Path(directory) / 'settings.json'), \
-                 patch.object(bitcoin.App, 'refresh_all'), \
-                 patch.object(bitcoin.App, 'refresh_chain'):
-                app = bitcoin.App(root)
+                 patch.object(ChartApp, 'refresh_all'), \
+                 patch.object(ChartApp, 'refresh_chain'):
+                app = ChartApp(root)
                 root.update()
                 app.data = {'height': 100, 'chain_updated': time.time()}
                 app.next_fetch = float('inf')

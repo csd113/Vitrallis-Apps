@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2 — 2026-10-01
+
+- Replace the App Center icon with optimized transparent GPT-generated artwork readable at small launcher sizes.
+
 Changes are listed newest first. Dates use America/Vancouver time.
 
 ## 0.3.1 — 2026-09-21

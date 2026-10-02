@@ -1,13 +1,64 @@
 # Bitcoin Dashboard
 
 A lightweight Bitcoin dashboard for the PocketCHIP's **480 × 272** display,
-built with Python and Tkinter. Current native package version: **1.2.5**.
+built with Python and Tkinter. Current native package version: **1.3.0**.
 
 [Changelog](CHANGELOG.md) · [Native package contract](../../docs/creating-apps.md)
 
 ![Bitcoin CAD v1.0.0 running on PocketCHIP; v1.2.0 also adds Settings and card detail views](assets/dashboard.png)
 
-## Features
+## Network and watch pages
+
+The default page uses mempool.space mainnet data: latest block height, block
+transaction count/size, recommended fee rates and mempool count/virtual size.
+N opens Network, W opens Watch, and the CAD chart button (or Escape) returns to
+the preserved CAD chart. Tab/Shift+Tab reaches all controls; Enter/Space activates
+them. In Watch, Up/Down selects an address. Add/Edit provides ordinary text
+entries and keyboard Save/Cancel controls; deletion requires pressing Sure?.
+The legacy chart's Settings and card shortcuts remain available on that page.
+Global shortcuts do not intercept letters while typing labels or addresses.
+
+Watch up to eight public mainnet addresses, each with a 1–24 character label,
+confirmed and pending balances in exact satoshis, three recent transaction
+summaries (confirmed/pending and net address movement), and last successful
+refresh time. Address validation checks Base58Check or Bech32/Bech32m checksums,
+witness versions/lengths and mainnet prefixes before saving or requesting data.
+The watch list lives in `~/.config/pocket-bitcoin/watch.json`, written atomically
+only on edits. An unreadable list is preserved and edits are blocked until repaired.
+Balance/activity caches are bounded to watched addresses and live only in RAM.
+
+This is strictly watch-only. It never handles private keys, seed phrases, wallet
+passwords, signing or transaction submission. The data service sees the requested
+public address; labels stay local. Refresh covers the network and currently
+selected watch only, avoiding requests for unseen addresses. R requests a refresh
+subject to a 20-second minimum and error backoff. Automatic refresh is every five
+minutes, with exponential failure delays capped at 30 minutes. One worker keeps
+Tk responsive; cached successful values survive errors and show their timestamp.
+Requests have connection/read timeouts, a response deadline and a 1 MB size cap;
+a refresh stops starting new requests after a 60-second work budget. Workers are
+daemons and stop starting requests after close; an in-flight timed request may
+finish afterward without delaying application exit. Hidden pages do not poll APIs.
+
+The API endpoints are `/api/v1/blocks`, `/api/v1/fees/recommended`, `/api/mempool`,
+`/api/address/:address` and `/api/address/:address/txs`. Contracts were checked
+against [official mempool routes](https://github.com/mempool/mempool/blob/master/backend/src/api/bitcoin/bitcoin.routes.ts)
+and [Esplora](https://github.com/Blockstream/esplora/blob/master/API.md).
+
+## Shared Tor / Arti
+
+The package requests Shell Tor with `[network] tor = "preferred"`. With the
+Shell's API-v1 environment present, all API traffic (including legacy providers)
+uses the existing loopback SOCKS5 service at 127.0.0.1:9150, with destination DNS
+resolved by Tor and normal TLS certificate verification. Invalid/unavailable Tor
+configuration or a failed proxy request fails cleanly without direct fallback.
+The page names the selected route and shows errors; a connected launch snapshot
+is not a promise that future requests work. No Tor is bundled or started here.
+Without a Shell Tor contract (standalone launch), requests use ordinary HTTPS.
+For fail-closed launch isolation, a maintainer can select `tor = "required"`
+following Shell's Bubblewrap contract; this changes shipped metadata and needs
+its own version/publication. Real Arti and PocketCHIP verification remain required.
+
+## Preserved CAD chart features
 
 - Bitcoin price in Canadian dollars, 24-hour change, and a price chart.
 - Latest reported block height, circulating supply, and dated blockchain size.
@@ -16,7 +67,8 @@ built with Python and Tkinter. Current native package version: **1.2.5**.
 - Background refreshes, retries, and saved-data indicators during network outages.
 - High-contrast touch controls and RAM session caching to reduce flash writes.
 
-Market data comes from CoinGecko; network statistics come from Blockchain.com.
+The primary network/watch pages use mempool.space. The preserved CAD chart
+uses CoinGecko and its legacy supply/size cards use Blockchain.com.
 This is a dashboard—it does not download the blockchain.
 
 ## Native package and runtime

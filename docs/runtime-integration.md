@@ -54,17 +54,16 @@ Repository tooling separately requires Python 3.11+.
 
 ## Current catalog and recorded evidence
 
-On **2026-09-20**, the local `apps.json` matched the published default-branch
-catalog. All five entries are enabled. Versions and source inventories belong to
-that catalog; an enabled flag is not installation certification. This cleanup
-changes source documentation/licensing, not published pins or binaries.
+Carousel-Rust was removed from the catalog and source tree on **2026-10-01**.
+Its dated verification records remain below as historical evidence. Current
+catalog membership and versions are recorded in `apps.json`; an enabled flag
+is not installation certification.
 
 | App | Runtime and prerequisites | Dated evidence and limits |
 | --- | --- | --- |
 | [Bitcoin Dashboard](../apps/bitcoin-dashboard/README.md) | Python 3.8+, Tk 8.6; no pip dependencies | Catalog records PocketCHIP native installation/focus; that note supplies no test date and is not fresh validation |
 | [Vitrallis Debug](../apps/vitrallis-debug/README.md) | Linux, Python 3.8+, Tk; Pulse needs X11/XWayland, EGL/GLES2 and hardware drivers | September 19 staged-source telemetry/keyboard/overlay checks; managed update to 0.3.0 not exercised |
 | [Vitrallis Media Carousel](../apps/vitrallis-media-carousel/README.md) | Python 3.9+, Tk 8.6; automatic Pillow >=10.4,<13 and qrcode >=7.4,<9; optional system ffmpeg/ffprobe | September 19 staged playback/uploads/keyboard and codec checks; managed update to catalog 0.2.1 not physically exercised |
-| [Carousel-Rust](../apps/carousel-rust/README.md) | Published ARMv7 hard-float payload, glibc 2.36+, SDL2; catalog requires Mali/Lima and a VSync X11 compositor; optional ffmpeg/ffprobe | September 19 native lifecycle, codec and playback evidence; see the exact versions and isolated QA setup in the record |
 | [Firefly Field](../apps/firefly-field/README.md) | Python 3.8+, system SDL2 2.0+ and video driver; SDL 2.0.18+ enables batching; no pip dependencies | September 19 physical Mali/Lima rendering measurements; managed update to 0.3.0 not exercised |
 
 See [September 19 platform/app evidence](verification/platform-app-refinements-2026-09-19/README.md),

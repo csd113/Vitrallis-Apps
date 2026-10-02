@@ -8,7 +8,8 @@ stock assets were imported. Its generation prompt was:
 
 `firefly.png`, `grass.png` and `glow.png` preserve the package's original sprite
 art as actual image assets rather than generating pixels on every launch.
-`make_icon.py` remains the standard-library source for the existing package icon.
+`make_icon.py` preserves the earlier icon generator for reference; running it
+would replace the new generated App Center artwork.
 
 Each PNG has a `.rgba.z` runtime companion: zlib-compressed, tightly packed RGBA8
 pixels, with dimensions fixed in the app. This keeps the runtime dependency-free.
@@ -24,3 +25,7 @@ python3 assets/pack_textures.py
 
 Pillow is only an optional maintainer tool, not an app dependency. Startup fails
 with an actionable asset filename if a packaged texture is missing or corrupt.
+
+The root icon was replaced on 2026-10-01 with OpenAI built-in image generation,
+then alpha-preserving scaled to 128×128. The original runtime sprites are unchanged.
+See `docs/artwork.md` in the repository for the audit, prompts and processing.

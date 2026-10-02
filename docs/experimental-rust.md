@@ -7,8 +7,8 @@ runtime alternative. Python packages retain their existing contract unchanged.
 
 ```toml
 manifest_version = 1
-name = "Carousel-Rust"
-id = "io.vitrallis.carouselrust"
+name = "My Rust App"
+id = "org.example.myrustapp"
 version = "0.1.0"
 runtime = "rust"
 
@@ -29,7 +29,7 @@ executable. ARM additionally requires EABI5 hard float. Installed launchers exec
 the selected binary. Windowed apps must supply X11 process identity and satisfy
 the same rendering, keyboard, storage, and publication requirements as Python.
 
-`apps/carousel-rust` implements this profile for new Rust apps.
+`apps/places-pocketchip` implements this native Rust profile.
 `examples/hello-rust` is a historical
 Python-supervised experiment, not the current native runtime template.
 
@@ -44,7 +44,7 @@ package; stage only the final mapped executable payloads.
 On a build machine with the appropriate Rust target and cross linker:
 
 ```sh
-python3 tools/build_rust_app.py --source apps/carousel-rust \
+python3 tools/build_rust_app.py --source apps/my-rust-app \
   --output /absolute/fresh/staged-package --target armv7-unknown-linux-gnueabihf \
   --zig --glibc 2.36
 ```

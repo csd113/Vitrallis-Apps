@@ -203,7 +203,8 @@ class App:
         self.schedule()
 
     def button(self, parent, text, command, **kwargs):
-        button = tk.Button(parent, text=text, command=command, bg=PANEL, fg=INK,
+        button = tk.Button(parent, text=text, command=command, bg=PANEL,
+                           fg=BG if self.root.tk.call("tk", "windowingsystem") == "aqua" else INK,
                            activebackground=ACCENT, activeforeground=BG,
                            disabledforeground=MUTED, relief="flat", bd=0,
                            highlightthickness=2, highlightbackground=PANEL,
@@ -228,6 +229,14 @@ class App:
                     current = word
                 else:
                     current = candidate
+                # URLs and diagnostics can contain a long unbroken token.
+                # Split by measured pixels so even these stay within the panel.
+                while current and font.measure(current) > width:
+                    end = 1
+                    while end < len(current) and font.measure(current[:end + 1]) <= width:
+                        end += 1
+                    lines.append(current[:end])
+                    current = current[end:]
             lines.append(current)
         return lines or [""]
 
@@ -237,12 +246,10 @@ class App:
         if len(wrapped) <= lines:
             return text
         wrapped = wrapped[:max(1, lines)]
-        while wrapped and font.measure(wrapped[-1].strip() + " …") > width:
-            head = wrapped[-1].rsplit(" ", 1)[0] if " " in wrapped[-1].strip() else ""
-            if not head:
-                break
-            wrapped[-1] = head
-        wrapped[-1] = (wrapped[-1].strip() + " …").strip()
+        tail = wrapped[-1].strip()
+        while tail and font.measure(tail + " …") > width:
+            tail = tail[:-1].rstrip()
+        wrapped[-1] = (tail + " …").strip()
         return "\n".join(wrapped)
 
     def status_lines(self):
@@ -422,9 +429,17 @@ class App:
         self.layout_connection()
 
     def draw_folders(self):
+        focused = self.root.focus_get()
+        previous_buttons = getattr(self, 'folder_buttons', [])
+        previous_ids = getattr(self, 'folder_ids', [])
+        selected_id = (previous_ids[previous_buttons.index(focused)]
+                       if focused in previous_buttons else None)
+        first_draw = not previous_buttons
         for child in self.folder_frame.winfo_children():
             child.destroy()
         self.folder_buttons = []
+        self.folder_ids = []
+        self.folder_rows = []
         self.folder_message = None
         if not self.services:
             message = STARTUP_FAILURE if self.startup_failed else "Starting the local library…"
@@ -449,9 +464,12 @@ class App:
                                  lambda cid=row["id"]: self.play(cid), anchor="w", padx=10)
             button.place(relx=0, rely=index * 0.5, relwidth=1)
             self.folder_buttons.append(button)
+            self.folder_ids.append(row['id'])
+            self.folder_rows.append((row['name'], len(row['items'])))
         self.layout_folders()
-        if self.folder_buttons:
-            self.folder_buttons[0].focus_set()
+        if self.folder_buttons and (first_draw or selected_id is not None):
+            index = self.folder_ids.index(selected_id) if selected_id in self.folder_ids else 0
+            self.folder_buttons[index].focus_set()
 
     def show_folder_message(self, text):
         self.folder_message = self.label(self.folder_frame, text, justify="left")
@@ -477,6 +495,19 @@ class App:
         buttons = getattr(self, "folder_buttons", [])
         if not buttons:
             return
+        width = max(1, self.folder_frame.winfo_width() - 26)
+        font = tkfont.Font(root=self.root, font=buttons[0].cget('font'))
+        for button, (name, count) in zip(buttons, getattr(self, 'folder_rows', [])):
+            suffix = f"   ·   {count} items"
+            available = max(1, width - font.measure(suffix))
+            label = name
+            if font.measure(label) > available:
+                while label and font.measure(label + '…') > available:
+                    label = label[:-1]
+                label += '…'
+            text = label + suffix
+            if button.cget('text') != text:
+                button.configure(text=text)
         two = len(buttons) > 1
         floor = MIN_FOLDER_ROW if (not two or height >= 2 * MIN_FOLDER_ROW + 3) else 1
         row_height = min(height, max(floor, (height - 3) // 2))

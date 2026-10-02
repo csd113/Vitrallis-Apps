@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0 — 2026-10-01
+
+- Keep native macOS button labels readable during desktop verification.
+- Add mempool.space network and watch-only address pages with validated local persistence and bounded asynchronous refresh.
+- Support Shell-provided Tor SOCKS5 with remote DNS and fail-closed request handling while preserving the CAD chart.
+
 Changes are listed newest first. Dates use America/Vancouver time.
 
 ## 1.2.5 — 2026-09-21

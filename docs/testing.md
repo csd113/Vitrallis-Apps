@@ -31,50 +31,50 @@ On macOS use a Tk-enabled Python and an active desktop. WSL needs a graphical
 session or Xvfb just like headless Linux. App Center separately needs `packaging`
 for dependency range checks; it is not a dependency of the repository validators.
 
-## Run the complete working-tree checks
+## Scoped working-tree checks
 
-On a graphical desktop, run this block directly. On headless Linux, first start
-an Xvfb-backed shell with `xvfb-run -a sh`, run the block in that shell, then `exit`.
-Each suite runs in a separate Python process, as in CI, so app modules with the
-same names do not interfere with one another.
+Validate package manifests and catalog hashes globally: these checks never boot
+applications. Run tooling regression tests globally as well. Runtime, GUI,
+screenshot and launch tests run only for affected packages, in separate processes:
 
 ```sh
-(
-  set -eu
-  export PYTHONDONTWRITEBYTECODE=1
-  export VITRALLIS_REQUIRE_GUI=1
-  places_checkout="$(mktemp -d)"
-  git clone https://github.com/csd113/Places.git "$places_checkout"
-  source_mapping="csd113/Places=$places_checkout"
-  python3 tools/validate_catalog.py --source-repo "$source_mapping" --catalog apps.json --package examples/hello-vitrallis
-  python3 -m unittest discover -s tools/tests -v
-  python3 -m unittest discover -s examples/hello-vitrallis/tests -v
-  python3 tools/validate_catalog.py --package examples/hello-rust
-  python3 -m unittest discover -s examples/hello-rust/tests -v
-  for package in apps/*; do
-    [ -e "$package" ] || [ -L "$package" ] || continue
-    python3 tools/validate_catalog.py --package "$package"
-    python3 -m unittest discover -s "$package/tests" -v
-  done
-  PYTHONPYCACHEPREFIX="$(mktemp -d)/vitrallis-pycache" \
-    python3 -m compileall -q tools examples/hello-vitrallis
-  if [ -d apps ]; then
-    PYTHONPYCACHEPREFIX="$(mktemp -d)/vitrallis-pycache" \
-      python3 -m compileall -q apps
-  fi
-  git diff --check
-)
+python3 tools/scoped_tests.py                       # preview local changes
+python3 tools/scoped_tests.py --run                 # test local affected apps
+python3 tools/scoped_tests.py --app apps/bitcoin-dashboard --run
+python3 tools/scoped_tests.py --base origin/main --run
+python3 -B -m unittest discover -s tools/tests -v
+python3 tools/validate_catalog.py --package apps/my-app
+git diff --check
 ```
 
-The loop validates and tests every directory under `apps/`, including newly added
-packages; keep that directory reserved for packages. The temporary compilation
-cache is outside the source and can be removed afterward.
+On headless Linux, prefix the runtime command with `xvfb-run -a` and set
+`VITRALLIS_REQUIRE_GUI=1 VITRALLIS_REQUIRE_EGL=1` so unavailable rendering fails
+instead of silently skipping. No display is needed for scope previews or metadata
+checks. An explicit `--app` adds a suite to the detected scope; it does not hide
+other affected packages. Untracked files are included during local development.
 
-`VITRALLIS_REQUIRE_GUI=1` makes the example and Media Carousel fail when their
-GUI cannot run. Bitcoin's layout tests require Tk/display directly. Vitrallis
-Debug's two GUI smoke tests require `DISPLAY` and can skip without an X11
-desktop. Always inspect skips rather than treating the flag
-as a guarantee that every GUI test ran. Linux/Xvfb CI exercises that guard.
+The selector discovers packages from manifests. Code, runtime assets, dependency
+requirements and tests select their owning package. README/changelog/license,
+manifest and icon changes require package/asset checks without booting apps.
+Python imports are followed transitively to local shared modules; Cargo path
+dependencies select their dependents. Dynamic loading or shared non-code assets
+must declare repository-relative dependencies in an app-local
+`test-dependencies.json` JSON array. Invalid dependencies or unparseable Python
+fail the scope check. Deleted files and both sides of renames remain changes.
+There is no hard-coded application list. Tooling or CI edits alone do not imply
+that application runtimes changed; their regression tests remain global.
+
+Selected Rust packages receive formatting, strict Clippy and Cargo tests, with
+build output outside their package. The Rust example additionally builds and
+launches its host staged payload only when selected. CI preserves global schema,
+catalog pins, package checks, tooling tests, compilation and whitespace checks.
+CI skips graphical prerequisites and application dependency installation when
+the detected runtime scope is empty. Compare pull requests against the merge
+base of their base SHA and pushes against their predecessor;
+a first push uses the empty tree. Review the printed runtime scope in CI.
+
+Do not use a generic loop to boot all apps for single-app development. Desktop
+checks cannot establish PocketCHIP scanout, performance or device compatibility.
 
 ## Check committed release history
 
@@ -127,7 +127,7 @@ rules do not define the installed inventory; committed files outside app-local
 
 | Check | Scope |
 | --- | --- |
-| [validate (3.11) and validate (3.13)](../.github/workflows/validate.yml) | Linux schema/catalog pins, example and every app, tooling tests, real Tk/Xvfb tests, FFmpeg/Pillow media tests, compilation, and whitespace |
+| [validate (3.11) and validate (3.13)](../.github/workflows/validate.yml) | Global schema/catalog/package checks, tooling tests and compilation; affected app Tk/Xvfb, media and Rust suites |
 | [Changelog policy](../.github/workflows/changelog-policy.yml) | Committed release histories, version increases, preserved notes, and complete publication agreement |
 
 CI runs on pushes and pull requests without path filters. Tooling tests use
@@ -155,16 +155,7 @@ foreign architecture at runtime. See [experimental Rust](experimental-rust.md).
 ## Native Rust application checks
 
 For each app containing `Cargo.toml`, run the same format, strict Clippy and Cargo
-test commands above with `CARGO_TARGET_DIR` outside the package. Install host SDL2
-development files for Carousel-Rust. Build a host executable, then run its real
-codec parity tests with:
-
-```sh
-CAROUSEL_RUST_TEST_BINARY=/absolute/host/build/carousel-rust \
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/carousel-rust/tests -v
-```
-
-Pillow is the test oracle, not a Rust runtime dependency. Missing host binary or
-Pillow explicitly skips these tests; CI provides both. Package validation checks
-the shipped ARMv7 ELF independently from the host binary. Device presentation
-and performance remain separate from host/Xvfb tests.
+test commands above with `CARGO_TARGET_DIR` outside the package. Install the
+host development dependencies documented by that app. Package validation checks
+the shipped target ELF independently from host tests. Device presentation and
+performance remain separate from host tests.
