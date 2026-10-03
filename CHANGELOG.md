@@ -8,6 +8,14 @@ use America/Vancouver time. App IDs remain stable; each app ships its own
 and place new records in the newest date section. See the
 [changelog policy](docs/changelog-policy.md) for the required submission format.
 
+## 2026-10-02
+
+- Updated `io.vitrallis.bitcoindashboard` `1.3.1`: Keep settings and watch-only addresses in private persistent AppData and reject unsafe storage paths. [App changelog](apps/bitcoin-dashboard/CHANGELOG.md).
+- Updated `io.vitrallis.mediacarousel` `0.4.3`: Separate saved media, uploads and settings from replaceable app files and validate storage roots before writes. [App changelog](apps/vitrallis-media-carousel/CHANGELOG.md).
+
+Existing installation flags are preserved. Physical lifecycle certification for
+these new packages remains in progress.
+
 ## 2026-10-01
 
 - Added `io.vitrallis.calculator` `0.1.0`: Add a keyboard-first decimal calculator with precedence, parentheses, percent, bounded input and optimized artwork. [App changelog](apps/calculator/CHANGELOG.md).

@@ -5,7 +5,7 @@
       "id": "io.vitrallis.bitcoindashboard",
       "installable": false,
       "name": "Bitcoin Dashboard",
-      "version": "1.3.0",
+      "version": "1.3.1",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -17,14 +17,14 @@
       "compatibility_notes": "Requires Python and Tkinter; shared Tor uses Shell API v1 and SOCKS5 remote DNS. New network/watch UI and real Arti device integration verification pending.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "0ebb648e06958b4971686ff8c30aad7ec41b14e4",
+        "commit": "b1460ed1d7b373719e0edfc1d4fb5fbc9e29e504",
         "path": "apps/bitcoin-dashboard"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 5665,
-          "sha256": "3a672da0311738a3d6f5d6f1cf1d014a72f1d307e9fa45c3919db706e0b43f2f"
+          "size": 5930,
+          "sha256": "5b1507f0488e390618612a79c9581aa138450ab5708a2ad4ad9edc03ad4affdb"
         },
         {
           "path": "LICENSE",
@@ -33,28 +33,23 @@
         },
         {
           "path": "README.md",
-          "size": 8514,
-          "sha256": "68f496026b28d8e137b7ff91ab1f7086d554786a1715a37b75a1fa9672bdc44c"
+          "size": 8738,
+          "sha256": "ba23f105187f9a3d3133748afcb4698a96418c8177d733265f2e7e5d231d5c6c"
         },
         {
           "path": "app.toml",
           "size": 228,
-          "sha256": "3e695dd300465126916f617e1f1bc80be6aebed3f2145aa2a42234385e043ffa"
+          "sha256": "fa58cad496cc06d9ff5296622f666f4fdf22329826c4ef8951d189635ddfcd97"
         },
         {
           "path": "assets/README.md",
-          "size": 478,
-          "sha256": "222404366dcbb9a860d296e9879c3c0307147644f0ea59e634e334b2143953a0"
-        },
-        {
-          "path": "assets/dashboard.png",
-          "size": 40594,
-          "sha256": "91aba850f575e3698caaffa1577c3b561553d6c130b1705cd172851af0cb805a"
+          "size": 245,
+          "sha256": "3f8049ab35e552afe0fd38972e7beb43a0f39333ef505f58251fdafe6f0949d8"
         },
         {
           "path": "docs/development.md",
-          "size": 11230,
-          "sha256": "4441dd9bbea6a694670af71e687314878c7e87b569e0c36b8ba31fa20dc06b45"
+          "size": 11155,
+          "sha256": "4ab7d8658ae94bc0214f7eef2a3700f73d3e18f623c83b2275dacb0e0aaa257b"
         },
         {
           "path": "icon.png",
@@ -63,13 +58,13 @@
         },
         {
           "path": "main.py",
-          "size": 44268,
-          "sha256": "5d5ca08f4b8648ffe19c0d1f7eefe336f7ac0e1e305b0a2091e1ee26d5c1005f"
+          "size": 44479,
+          "sha256": "d27ce03fa10a939efe9a6a2d4a7c6c349e73642e46635e8548f3b0161319d473"
         },
         {
           "path": "monitor.py",
-          "size": 8317,
-          "sha256": "51990a647b29bad46cb587a55d11bfa1407ecf29fc21b1fad9cb06bfbba1c156"
+          "size": 8578,
+          "sha256": "db4e192beca8c8ec372798d9ec4e33d0b3e5e2d2c3fc12875a0a8190de13312c"
         },
         {
           "path": "monitor_ui.py",
@@ -80,6 +75,11 @@
           "path": "requirements.txt",
           "size": 76,
           "sha256": "0cee70ab425b69d50a4b23207ed958015db6faea15aa64ba50c81f88792aa662"
+        },
+        {
+          "path": "storage_paths.py",
+          "size": 1718,
+          "sha256": "9036a1fea89ef2b2b2af54b7faefc24479bdaec42aa785aaf7f1bce6130202e9"
         },
         {
           "path": "tor_transport.py",
@@ -1377,7 +1377,7 @@
       "id": "io.vitrallis.mediacarousel",
       "installable": true,
       "name": "Vitrallis Media Carousel",
-      "version": "0.4.2",
+      "version": "0.4.3",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -1389,14 +1389,14 @@
       "compatibility_notes": "Requires Python 3.9+, Tk 8.6, Pillow >=10.4,<13, qrcode >=7.4,<9 and installed packaging for App Center dependency checks. Optional system ffmpeg/ffprobe must decode VP8, VP9 and WebP; one-click setup requires the Shell multimedia helper. PocketCHIP playback, uploads and keyboard controls were tested from staged source with the Shell VSync compositor. Managed App Center update to this version was not physically exercised.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "0ebb648e06958b4971686ff8c30aad7ec41b14e4",
+        "commit": "b1460ed1d7b373719e0edfc1d4fb5fbc9e29e504",
         "path": "apps/vitrallis-media-carousel"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 10761,
-          "sha256": "00d775294537c56d761436dee7b340762a64fbfcdf1bddd560fa49072a6a7982"
+          "size": 11004,
+          "sha256": "5a2028f804d73aa0bbbbbdfa9acdb22bf9d8a32e4a77665493b69871e7782542"
         },
         {
           "path": "LICENSE",
@@ -1405,8 +1405,8 @@
         },
         {
           "path": "README.md",
-          "size": 32023,
-          "sha256": "8e4c4b3d10864f8f5b1aa839b100d5ae7c417bb9e6e09afbaa9847601afeaeb2"
+          "size": 31916,
+          "sha256": "450cf3d60fd719c056e75846f5fe30b0aa92abdd78e30fb8fe28c2c6bb0c9718"
         },
         {
           "path": "animation_cache.py",
@@ -1416,7 +1416,7 @@
         {
           "path": "app.toml",
           "size": 203,
-          "sha256": "758d48a81f42aac52f01239e2e61f402276308e46c4ed57a9d0ceaa1a778b5fc"
+          "sha256": "d0edd0b1cc6c55c985730f783cb25ac94c4adcf8c2bc8f458d132fd4c1ccf6b7"
         },
         {
           "path": "assets/README.md",
@@ -1476,7 +1476,7 @@
         {
           "path": "main.py",
           "size": 1321,
-          "sha256": "b3524d353bcc2d771a3f6172a0a58e867bd225d5d07265d36de88cd67c36b8f8"
+          "sha256": "4b1dff3cf89d8fef71ea10c8b4dfa2d7f59db9011ef115fb386d660b24cacd75"
         },
         {
           "path": "media.py",
@@ -1510,8 +1510,8 @@
         },
         {
           "path": "storage.py",
-          "size": 5623,
-          "sha256": "b2e147f33dd00e37af79df42c6388a7607c4ac780f83731512a045e3d9c94c6d"
+          "size": 5634,
+          "sha256": "f6c5e7458f41ccae35c1ece5cce59a3dd5420c7b06b0d4752ea7f84cd5095071"
         },
         {
           "path": "ui.py",
