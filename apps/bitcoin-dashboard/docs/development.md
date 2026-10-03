@@ -147,7 +147,6 @@ Version 1.0.0 passed all **16 tests** on the PocketCHIP, including malformed dat
 - `icon.png` — original native package icon.
 - `requirements.txt` — system runtime requirements; no pip dependencies.
 - `README.md` and `CHANGELOG.md` — operation and release history.
-- `assets/dashboard.png` — original version 1.0.0 PocketCHIP screenshot.
 - `assets/README.md` — artwork provenance.
 - `docs/development.md` — data sources and implementation details.
 - `tests/` — data, layout and native package regressions; excluded from publication.

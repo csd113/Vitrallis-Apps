@@ -1,4 +1,4 @@
-"""Current XDG storage assumption, strict POSIX paths and durable JSON writes."""
+"""Persistent Vitrallis AppData, disposable XDG cache and durable JSON writes."""
 import fcntl
 import json
 import os
@@ -109,9 +109,9 @@ class Paths:
         env = os.environ if environ is None else environ
         home = env.get("HOME", str(Path.home()))
         safe_directory(home)
-        self.config = self._root(env.get("XDG_CONFIG_HOME", home + "/.config"))
-        self.data = self._root(env.get("XDG_DATA_HOME", home + "/.local/share"))
-        self.cache = self._root(env.get("XDG_CACHE_HOME", home + "/.cache"))
+        self.data = self._root(env.get("VITRALLIS_APP_DATA_DIR", home + "/Documents/Vitrallis/AppData/" + APP_ID))
+        self.config = self.data / "Config"
+        self.cache = self._root(env.get("XDG_CACHE_HOME", home + "/.cache") + "/" + APP_ID)
         self.media = self.data / "media"
         self.uploads = self.data / "uploads"
         directories = (self.config, self.data, self.cache, self.media, self.uploads)
@@ -128,8 +128,8 @@ class Paths:
     @staticmethod
     def _root(base):
         if not base.startswith("/") or ".." in base.split("/"):
-            raise ValueError("Invalid XDG storage location")
-        path = Path(base) / APP_ID
+            raise ValueError("Invalid application storage location")
+        path = Path(base)
         package = Path(__file__).resolve().parent
         if path == package or package in path.parents:
             raise ValueError("Storage must be outside the installed app package")

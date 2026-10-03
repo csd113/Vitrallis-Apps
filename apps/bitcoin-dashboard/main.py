@@ -22,7 +22,7 @@ from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 # Display and HTTP user-agent version; publication metadata comes from app.toml.
-VERSION = '1.3.0'
+VERSION = '1.3.1'
 BLOCK_HIGHLIGHT_SECONDS = 10
 SATOSHIS_PER_BTC = 100_000_000
 MAX_SUPPLY = 21_000_000 * SATOSHIS_PER_BTC
@@ -31,7 +31,7 @@ CARD_TITLES = ('Block height', 'Bitcoin in existence', 'Blockchain size')
 # Expected failures at the untrusted JSON/HTTP boundary, including truncated HTTP.
 DATA_ERRORS = (OSError, HTTPException, ValueError, KeyError, TypeError,
                OverflowError, RecursionError)
-SETTINGS = Path.home() / '.config/pocket-bitcoin/settings.json'
+SETTINGS = Path(os.environ.get('VITRALLIS_APP_DATA_DIR', str(Path.home() / 'Documents/Vitrallis/AppData/io.vitrallis.bitcoindashboard'))) / 'settings.json'
 
 BASE = 'https://api.coingecko.com/api/v3/'
 # Session cache is in RAM, preserving the PocketCHIP's NAND flash.
@@ -340,6 +340,8 @@ class App:
         self.settings_notice = 'Changes are saved automatically.'
         self.settings_warning = False
         try:
+            from storage_paths import private_parent
+            private_parent(SETTINGS, create=False)
             raw = read_json(SETTINGS, 4096)
             if isinstance(raw, dict) and type(raw.get('highlight_new_blocks')) is bool:
                 return raw['highlight_new_blocks']
@@ -354,7 +356,8 @@ class App:
     def save_settings(self):
         name = None
         try:
-            SETTINGS.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            from storage_paths import private_parent
+            private_parent(SETTINGS)
             info = SETTINGS.parent.lstat()
             if (not SETTINGS.parent.is_dir() or SETTINGS.parent.is_symlink()
                     or info.st_uid != os.getuid() or info.st_mode & 0o077):

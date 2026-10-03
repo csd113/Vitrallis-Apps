@@ -83,7 +83,7 @@ class DataTests(unittest.TestCase):
     def test_corrupt_cache_does_not_crash(self):
         app = self.make_app()
         with tempfile.TemporaryDirectory() as directory:
-            cache = Path(directory) / 'data.json'
+            cache = Path(directory).resolve() / 'data.json'
             cache.write_text('{invalid')
             with patch.object(bitcoin, 'CACHE', cache):
                 app.load_cache()
@@ -153,7 +153,7 @@ class DataTests(unittest.TestCase):
         app.data.update(bitcoin.blockchain_size(self.size()))
         app.data.update(size_fetched=time.time(), updated=time.time(), points='bad chart')
         with tempfile.TemporaryDirectory() as directory:
-            cache = Path(directory) / 'data.json'
+            cache = Path(directory).resolve() / 'data.json'
             with patch.object(bitcoin, 'CACHE', cache):
                 app.save_cache()
                 restored = self.make_app()
@@ -257,7 +257,7 @@ class DataTests(unittest.TestCase):
         self.assertEqual(bitcoin.format_supply(123450000), '1.234')
         self.assertEqual(bitcoin.format_supply(123550000), '1.236')
         with tempfile.TemporaryDirectory() as directory:
-            cache = Path(directory) / 'data.json'
+            cache = Path(directory).resolve() / 'data.json'
             with patch.object(bitcoin, 'CACHE', cache):
                 app.save_cache()
                 restored = self.make_app()
@@ -267,7 +267,7 @@ class DataTests(unittest.TestCase):
     def test_deep_oversized_and_nonregular_cache_are_ignored(self):
         app = self.make_app()
         with tempfile.TemporaryDirectory() as directory:
-            cache = Path(directory) / 'data.json'
+            cache = Path(directory).resolve() / 'data.json'
             with patch.object(bitcoin, 'CACHE', cache):
                 for content in ('[' * 2000 + ']' * 2000, ' ' * 1_000_001, '\ufffd'):
                     cache.write_text(content)
@@ -279,7 +279,7 @@ class DataTests(unittest.TestCase):
                 self.assertEqual(app.data, {'price': 12})
 
                 cache.unlink()
-                target = Path(directory) / 'target'
+                target = Path(directory).resolve() / 'target'
                 target.write_text('{}')
                 cache.symlink_to(target)
                 app.load_cache()
@@ -305,7 +305,7 @@ class DataTests(unittest.TestCase):
     def test_cache_write_rejects_symlink_directory_and_survives_cleanup_error(self):
         app = self.make_app()
         with tempfile.TemporaryDirectory() as directory:
-            parent = Path(directory)
+            parent = Path(directory).resolve()
             linked = parent / 'link'
             linked.symlink_to(parent, target_is_directory=True)
             with patch.object(bitcoin, 'CACHE', linked / 'data.json'):
@@ -386,7 +386,7 @@ class BlockIndicatorTests(unittest.TestCase):
 
     def test_settings_roundtrip_and_validation(self):
         with tempfile.TemporaryDirectory() as directory:
-            settings = Path(directory) / 'private/settings.json'
+            settings = Path(directory).resolve() / 'private/settings.json'
             with patch.object(bitcoin, 'SETTINGS', settings):
                 self.assertTrue(self.app.load_settings())
                 self.app.highlight_enabled = False
@@ -400,7 +400,7 @@ class BlockIndicatorTests(unittest.TestCase):
 
     def test_failed_settings_replace_preserves_previous_choice(self):
         with tempfile.TemporaryDirectory() as directory:
-            settings = Path(directory) / 'settings.json'
+            settings = Path(directory).resolve() / 'settings.json'
             with patch.object(bitcoin, 'SETTINGS', settings):
                 self.app.highlight_enabled = False
                 self.assertTrue(self.app.save_settings())
@@ -408,11 +408,11 @@ class BlockIndicatorTests(unittest.TestCase):
                 with patch.object(bitcoin.os, 'replace', side_effect=OSError('disk full')):
                     self.assertFalse(self.app.save_settings())
                 self.assertFalse(self.app.load_settings())
-                self.assertEqual(list(Path(directory).iterdir()), [settings])
+                self.assertEqual(list(Path(directory).resolve().iterdir()), [settings])
 
     def test_settings_unsafe_directory_is_not_written(self):
         with tempfile.TemporaryDirectory() as directory:
-            parent = Path(directory) / 'public'
+            parent = Path(directory).resolve() / 'public'
             parent.mkdir(mode=0o755)
             with patch.object(bitcoin, 'SETTINGS', parent / 'settings.json'):
                 self.assertFalse(self.app.save_settings())
