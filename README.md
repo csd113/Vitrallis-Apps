@@ -55,11 +55,12 @@ manifest v1**. Runtime requirements and device verification vary by app; see
 | [Music](apps/music/README.md) | Browse local music, play tracks, and see song information and album artwork. |
 | [Sketch](apps/sketch/README.md) | Draw with touch or keys, undo strokes, and save lossless PNG sketches. |
 
-This branch pins all eight apps in `apps.json`, including Music, Sketch and the
-System Monitor update. Source commits are published before generated catalog pins;
-App Center receives these versions after the draft PR is merged into its configured
-catalog branch. Music and Sketch remain installation-disabled pending device checks. Physical PocketCHIP/App Center validation is intentionally deferred to
-a later dedicated integration pass; local tests do not certify hardware behavior.
+All eight apps are published in `apps.json` with installation enabled. In App Center,
+refresh the catalog, select an app, and choose Install or Update. Places additionally
+requires trusting its `csd113/Places` source in Details. The
+[October 3 device audit](docs/verification/apps-hardware-2026-10-03/README.md)
+records managed installation and lifecycle results, source repairs and remaining
+hardware limitations.
 
 [`apps.json`](apps.json) records advertised versions, publisher enablement, and
 compatibility notes. Enablement is not hardware certification; source publication

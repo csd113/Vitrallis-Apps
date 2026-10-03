@@ -66,13 +66,14 @@ is not installation certification.
 
 | App | Runtime and prerequisites | Dated evidence and limits |
 | --- | --- | --- |
-| [Bitcoin Dashboard](../apps/bitcoin-dashboard/README.md) | Python 3.8+, Tk 8.6; no pip dependencies | Catalog records PocketCHIP native installation/focus; that note supplies no test date and is not fresh validation |
-| [System Monitor](../apps/vitrallis-debug/README.md) | Linux, Python 3.11+, Tk; Pulse needs X11/XWayland, EGL/GLES2 and hardware drivers | October 2–3 proc/sysfs fixtures, 480×272 input and read-only staged launch; actual 0.4.0 App Center/Lima validation deferred |
-| [Calculator](../apps/calculator/README.md) | Python 3.11+, system Tk; no pip requirements | October 2–3 staged provisioning/import/repeated TERM checks; physical 0.1.1 install/update/repair deferred |
-| [Music](../apps/music/README.md) | Python 3.11+, Tk, Pillow >=10.4,<13; system FFplay/FFprobe/FFmpeg | October 2–3 bounded library, null/dummy decoder and staged checks; installation disabled pending device validation |
-| [Sketch](../apps/sketch/README.md) | Python 3.11+, Tk, Pillow >=10.4,<13 | October 2–3 input/PNG durability and staged checks; installation disabled pending device validation |
-| [Vitrallis Media Carousel](../apps/vitrallis-media-carousel/README.md) | Python 3.9+, Tk 8.6; automatic Pillow >=10.4,<13 and qrcode >=7.4,<9; optional system ffmpeg/ffprobe | September 19 staged playback/uploads/keyboard and codec checks; managed update to catalog 0.2.1 not physically exercised |
-| [Firefly Field](../apps/firefly-field/README.md) | Python 3.8+, system SDL2 2.0+ and video driver; SDL 2.0.18+ enables batching; no pip dependencies | September 19 physical Mali/Lima rendering measurements; managed update to 0.3.0 not exercised |
+| [Bitcoin Dashboard](../apps/bitcoin-dashboard/README.md) | Python 3.8+, Tk 8.6; no pip dependencies | October 3 managed 1.3.1 lifecycle and offline cached/error states; fresh Tor/API data unavailable |
+| [System Monitor](../apps/vitrallis-debug/README.md) | Linux, Python 3.11+, Tk; Pulse needs X11/XWayland, EGL/GLES2 and hardware drivers | October 3 managed 0.4.0 lifecycle and native 0.4.1 network-counter repair; GPU utilization accuracy unresolved |
+| [Calculator](../apps/calculator/README.md) | Python 3.11+, system Tk; no pip requirements | October 3 managed 0.1.1 removal/reinstall, arithmetic, Home/resume and offline exit; physical input/scanout unverified |
+| [Music](../apps/music/README.md) | Python 3.11+, Tk, Pillow >=10.4,<13; system FFplay/FFprobe/FFmpeg | October 3 managed 0.1.0 lifecycle and 25 native 0.1.1 source tests; speaker output unverified |
+| [Sketch](../apps/sketch/README.md) | Python 3.11+, Tk, Pillow >=10.4,<13 | October 3 managed 0.1.0 drawing/save/open/lifecycle and 17 native tests; physical touch/scanout unverified |
+| [Vitrallis Media Carousel](../apps/vitrallis-media-carousel/README.md) | Python 3.9+, Tk 8.6; automatic Pillow >=10.4,<13 and qrcode >=7.4,<9; optional system ffmpeg/ffprobe | October 3 managed 0.4.3 lifecycle and native 0.4.4 VP8 source repair; cold startup remains slow |
+| [Firefly Field](../apps/firefly-field/README.md) | Python 3.8+, system SDL2 2.0+ and video driver; SDL 2.0.18+ enables batching; no pip dependencies | October 3 managed 0.3.1 lifecycle and native 0.3.2 packing comparison; low FPS remains a concern |
+| [Places](../apps/places-pocketchip/README.md) | ARMv7 hard-float Linux, glibc 2.36+, SDL2 2.32+, GLES2/X11; trust csd113/Places | October 3 managed 0.11.2 removal/reinstall, movement/pause/Home/resume/offline exit; settings/cache preserved |
 
 See [September 19 platform/app evidence](verification/platform-app-refinements-2026-09-19/README.md),
 [Carousel-Rust lifecycle evidence](verification/carousel-rust-2026-09-19/README.md),
@@ -119,9 +120,9 @@ Calculator's original catalog entry was publisher-disabled, rather than invalid.
 The original payload passed macOS staged provisioning/import/GUI checks; prepared
 0.1.1 also fixes Linux idle termination and passed repeated read-only launch on
 both platforms. Calculator 0.1.1, Music 0.1.0, Sketch 0.1.0 and System Monitor 0.4.0
-now have published source and generated catalog pins in this draft PR branch.
-They reach the default App Center catalog only after merge. Music and Sketch
-remain disabled pending dedicated device validation. See the [local verification record](verification/apps-readiness-2026-10-02/README.md).
+had published source and generated catalog pins in the draft PR branch.
+At that pass, the releases were draft-only and Music and Sketch remained disabled.
+See the [local verification record](verification/apps-readiness-2026-10-02/README.md).
 
 The current [Shell storage contract](https://github.com/csd113/Vitrallis-Shell/blob/main/docs/settings-storage.md)
 exports `VITRALLIS_APP_ID` and `VITRALLIS_DOCUMENTS_DIR`; its canonical fallback is
@@ -133,7 +134,8 @@ files never belong to the source/package payload. The public upstream storage gu
 may still describe the previous path while parallel Shell release work is pending.
 An invalid launcher identity or unsafe storage path fails closed.
 
-Physical PocketCHIP/App Center validation is intentionally deferred to a later
-dedicated integration pass. No Shell changes or physical-device access are part
-of this work. Playback output, Lima readings, actual launcher focus/timeout,
-update/repair/removal/reinstall and synchronized scanout remain device checks.
+The October 2 pass deferred physical validation and made no Shell changes or
+device accesses. The separately authorized October 3 pass completed managed
+removal/reinstallation for all eight apps. All catalog installation flags are now
+enabled; exact versions, source repairs and remaining physical/performance checks
+are recorded in the [October 3 audit](verification/apps-hardware-2026-10-03/README.md).

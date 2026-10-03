@@ -7,8 +7,10 @@ three unrelated Notepad documents. All nineteen files present before the audit
 also retain their original contents and permissions.
 
 This is an audit with qualified results, not certification of every app or physical
-input, audio and presentation behavior. Music and Monitor fixes remain uncommitted;
-Carousel has a separate repair patch. No Shell source or installed build was edited.
+input, audio and presentation behavior. At audit handback, Music and Monitor fixes
+were uncommitted
+and Carousel had a separate repair patch; the publication follow-up below records
+their subsequent releases. No Shell source or installed build was edited.
 
 ## Device and boundary
 
@@ -125,9 +127,10 @@ normally. This does not certify cold-start performance. One earlier orphaned
 comparison disappeared without a diagnostic trace; kernel logs were unavailable
 to the normal user, so its cause remains unknown.
 
-No production Carousel source was overwritten. Incorporation must accompany the
-separate pending 0.4.4 release decision, matching notes and source-first publication.
-The pending Firefly 0.3.2 decision and other worker's edits also remain untouched.
+At audit handback, no production Carousel source had been overwritten; Carousel
+0.4.4 and Firefly 0.3.2 still required separate release decisions and publication.
+The subsequent authorized publication incorporates copies of those repairs while
+preserving the other worker's checkout.
 
 ## Resource measurements and startup
 
@@ -183,7 +186,7 @@ App code does not bypass the Shell runtime contract.
 | `git apply --check docs/verification/apps-hardware-2026-10-03/carousel-startup-candidate.patch` in a clean b146 source copy and the independent release worktree | Pass; neither checkout was patched |
 | AST parsing of touched/manual-helper Python and generated remote code; `git diff --check` | Pass |
 
-No Rust code was changed; Rust validation was not run. The release rehearsal now
+During the hardware audit, no Rust code was changed and Rust validation was not run. The release rehearsal now
 derives fixture versions and notes from generated entries and current changelogs,
 rather than hard-coding previous package versions. It creates commits only in
 disposable test repositories.
@@ -209,10 +212,10 @@ It retains catalog/settings backups, captures, checkpoint data and thirteen
 immutable source snapshots. New drawing/media fixtures belong to the audit;
 pre-existing documents/settings/media were preserved. Tests use temporary data.
 
-No new real source commits, public catalog entries, merges or branches were
-created in this follow-up. PR #20 remains at `75e593dbc1fc14dd6b630a7add5d9c48b283913f`;
-its earlier green CI does not cover these uncommitted changes. Music 0.1.1 and
-Monitor 0.4.1 still require source-first publication and matching catalog records.
+At audit handback, no new real source commits, public catalog entries, merges or
+branches had been created in the hardware follow-up. PR #20 was at `75e593dbc1fc14dd6b630a7add5d9c48b283913f`;
+its earlier green CI did not cover those uncommitted changes. Music 0.1.1 and
+Monitor 0.4.1 still required source-first publication and matching catalog records.
 
 ## Device handback
 
@@ -239,9 +242,43 @@ following handback.
   cache candidate may need to recreate obsolete launchers while preserving AppData.
   Its deployment and native launch-latency result are outside this audit.
 
-Remaining certification work: apply/publish the prepared repairs through their
-proper releases; retest cold startup and Carousel decoder behavior with the next
+Remaining certification work: retest cold startup and Carousel decoder behavior with the next
 Shell candidate; resolve GPU utilization accuracy and Firefly performance; exercise
 injected-fault Repair; and confirm physical keyboard/touch, audible output and
 synchronized scanout. Existing owner decisions remain separate; this audit does
 not create new approval requests or claim those checks passed.
+
+## Authorized publication follow-up — 2026-10-03
+
+The maintainer subsequently requested pushing, merging into main, and enabling
+installation of all apps. Music 0.1.1, Monitor 0.4.1, Firefly 0.3.2 and Carousel
+0.4.4 publish the tested source repairs described above with matching dated notes
+and generated inventories. Calculator 0.1.1, Sketch 0.1.0, Bitcoin 1.3.1 and Places
+0.11.2 retain their original source pins. All eight catalog install flags are enabled;
+the compatibility notes retain the qualified native results and remaining limits.
+
+Music/Monitor source was pushed in `a6a92bd`; the combined source including
+Carousel/Firefly repairs was pushed in
+`21774cfa5ce0670f2b2884d0060f238cd6af0b4d` before generating catalog pins.
+Integration PR #21 preserves the preceding releases and their histories; PR #20
+publishes the follow-up versions and enablement. Source commits remain reachable
+through merge commits. This publication uses host/GitHub checks after device
+handback and makes no new device or Shell changes.
+
+The publication checks additionally reproduced the Music startup-pause regression
+on Linux Python 3.11: `/proc/<pid>/cmdline` was briefly empty during exec, so
+absence of the helper path prematurely authorized SIGSTOP. Source commit
+`ad32a6755ced427e6206c6e2b13b88cb891799da` treats that empty transition as
+startup and adds a deterministic regression without relaxing parent-death tests.
+Music's final host suite passed 26 tests with three Linux-only skips. A Linux
+Python 3.11 container passed 201 checks: 100 repetitions of both parent-death tests
+plus the command-line transition regression. This final adjustment was tested on
+host/container and CI, without reacquiring the device.
+
+Publication validation also passed all eight package manifests and both examples,
+274 Carousel tests (one optional EGL skip), 21 Firefly tests, 76 Monitor tests
+(two opt-in skips), and 84 tooling tests (four optional staged-GUI skips).
+Places passed `cargo fmt --all --check`, the required strict workspace/all-targets/
+all-features Clippy command, and `cargo test --workspace --all-features`:
+843 tests passed and three were ignored. GitHub's required Python 3.11/3.13
+checks exercise the Linux graphical runtime separately from these host results.
