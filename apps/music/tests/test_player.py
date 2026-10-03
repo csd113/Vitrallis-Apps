@@ -5,6 +5,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 import signal
+import os
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from player import EXTENSIONS, Player, Track, metadata, next_index, scan
@@ -51,6 +52,28 @@ class LibraryTests(unittest.TestCase):
             track=metadata(Path('/music/track.flac'))
         self.assertEqual((track.title,track.artist,track.album,track.duration),('AB','Artist','Album',42.5))
 
+    def test_probe_allows_valid_child_startup_beyond_four_seconds(self):
+        from player import Probe
+        probe = Probe()
+        try:
+            # Real PocketCHIP FFprobe startup exceeded the former four-second budget.
+            data = probe([sys.executable, '-I', '-B', '-c',
+                          'import time; time.sleep(4.1); print("valid metadata")'])
+            self.assertEqual(data.strip(), b'valid metadata')
+        finally:
+            probe.close()
+
+    def test_audio_stream_tags_fill_missing_container_metadata(self):
+        data = {'format': {'duration': '180', 'tags': {'ARTIST': 'Container artist'}},
+                'streams': [{'codec_type': 'video', 'tags': {'title': 'Cover image'}},
+                            {'codec_type': 'audio', 'tags': {'TITLE': 'Vorbis title',
+                             'artist': 'Stream artist', 'album': 'Vorbis album'}}]}
+        import json
+        with patch('player.shutil.which', return_value='/ffprobe'):
+            track = metadata(Path('/music/tone.ogg'), lambda *a, **k: json.dumps(data).encode())
+        self.assertEqual((track.title, track.artist, track.album),
+                         ('Vorbis title', 'Container artist', 'Vorbis album'))
+
     def test_modes_and_end_of_library(self):
         self.assertIsNone(next_index(0,0))
         self.assertIsNone(next_index(1,2))
@@ -60,12 +83,28 @@ class LibraryTests(unittest.TestCase):
 
 
 class FakeProcess:
-    def __init__(self):self.signals=[];self.returncode=None;self.waits=0
+    def __init__(self):self.signals=[];self.returncode=None;self.waits=0;self.pid=os.getpid()
     def poll(self):return self.returncode
     def send_signal(self,s):self.signals.append(s)
     def terminate(self):self.returncode=0
     def kill(self):self.returncode=-9
     def wait(self,timeout=None):self.waits+=1;return self.returncode
+
+
+class OwnedChildTests(unittest.TestCase):
+    def test_empty_exec_transition_cannot_authorize_startup_pause(self):
+        from unittest.mock import mock_open
+        import owned_child
+        child = SimpleNamespace(pid=123)
+        helper = os.fsencode(os.path.abspath(owned_child.__file__))
+        for command, starting in ((b'', True), (b'\0', True),
+                                  (b'python\0' + helper + b'\0', True),
+                                  (b'ffplay\0-nodisp\0', False)):
+            with self.subTest(command=command), patch('owned_child.sys.platform', 'linux'), \
+                    patch('builtins.open', mock_open(read_data=command)):
+                self.assertEqual(owned_child.starting(child), starting)
+        with patch('owned_child.sys.platform', 'linux'), patch('builtins.open', side_effect=OSError):
+            self.assertTrue(owned_child.starting(child))
 
 
 class PlaybackTests(unittest.TestCase):
@@ -98,6 +137,25 @@ class PlaybackTests(unittest.TestCase):
     def test_paused_stop_resumes_before_termination(self):
         self.player.play(self.track);self.player.pause();p=self.player.process
         self.player.stop();self.assertIn(signal.SIGCONT,p.signals)
+
+    def test_startup_pause_waits_for_owned_cleanup_and_can_be_cancelled(self):
+        self.player.play(self.track)
+        child = self.player.process
+        with patch('player.child_starting', return_value=True):
+            self.player.pause()
+            self.assertTrue(self.player.paused)
+            self.assertEqual(child.signals, [])
+            self.player.finished()
+            self.assertEqual(child.signals, [])
+            self.player.pause()
+            self.assertFalse(self.player.paused)
+            self.assertEqual(child.signals, [])
+            self.player.pause()
+        with patch('player.child_starting', return_value=False):
+            self.player.finished()
+        self.assertEqual(child.signals, [signal.SIGSTOP])
+        self.player.pause()
+        self.assertEqual(child.signals, [signal.SIGSTOP, signal.SIGCONT])
 
     def test_failed_decode_does_not_auto_advance(self):
         self.player.play(self.track);self.player.process.returncode=1
@@ -138,6 +196,47 @@ class DecoderTests(unittest.TestCase):
 
 @unittest.skipUnless(sys.platform=='linux','Linux parent-death signal integration')
 class ParentDeathTests(unittest.TestCase):
+    def test_startup_pause_still_dies_with_its_parent(self):
+        import subprocess,time
+        module = str(Path(__file__).resolve().parents[1])
+        with tempfile.TemporaryDirectory() as t:
+            ready = Path(t)/'paused'
+            parent_code = (
+                f'import sys;sys.path.insert(0,{module!r});'
+                'import subprocess,time,pathlib;from player import Player,Track;'
+                'from owned_child import command;'
+                'p=Player();p.track=Track(pathlib.Path("/fixture"),"fixture",duration=60);'
+                'p.process=subprocess.Popen(command([sys.executable,"-I","-B","-c",'
+                '"import time;time.sleep(60)"]));'
+                'p.started=p.clock();print(p.process.pid,flush=True);p.pause();'
+                'deadline=time.monotonic()+15\n'
+                'while time.monotonic()<deadline:\n'
+                ' p.finished()\n'
+                ' state=pathlib.Path(f"/proc/{p.process.pid}/stat").read_text().rsplit(") ",1)[1].split()[0]\n'
+                f' if state=="T":pathlib.Path({str(ready)!r}).write_text("paused");break\n'
+                ' time.sleep(.01)\n'
+                'time.sleep(60)'
+            )
+            parent = subprocess.Popen([sys.executable,'-I','-B','-c',parent_code],stdout=subprocess.PIPE,text=True)
+            child = int(parent.stdout.readline())
+            try:
+                deadline = time.monotonic()+16
+                while not ready.exists() and time.monotonic()<deadline:time.sleep(.01)
+                self.assertTrue(ready.exists(), 'Child never reached an owned pause')
+                parent.kill();parent.wait(timeout=2)
+                deadline = time.monotonic()+3
+                while time.monotonic()<deadline:
+                    try:state=Path(f'/proc/{child}/stat').read_text().rsplit(') ',1)[1].split()[0]
+                    except FileNotFoundError:break
+                    if state=='Z':break
+                    time.sleep(.01)
+                else:self.fail('Paused startup child survived its parent')
+            finally:
+                if parent.poll() is None:parent.kill();parent.wait(timeout=2)
+                parent.stdout.close()
+                try:os.kill(child,signal.SIGKILL)
+                except ProcessLookupError:pass
+
     def test_abrupt_parent_death_closes_exec_decoder(self):
         import os,subprocess,time
         helper=Path(__file__).resolve().parents[1]/'owned_child.py'
@@ -148,7 +247,7 @@ class ParentDeathTests(unittest.TestCase):
             parent=subprocess.Popen([sys.executable,'-I','-c',parent_code],stdout=subprocess.PIPE,text=True)
             child=int(parent.stdout.readline())
             try:
-                end=time.monotonic()+3
+                end=time.monotonic()+16
                 while not ready.exists() and time.monotonic()<end:time.sleep(.01)
                 self.assertTrue(ready.exists())
                 parent.kill();parent.wait(timeout=2)

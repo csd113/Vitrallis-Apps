@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1 — 2026-10-03
+
+- Request interface statistics from ip so Network throughput and history receive real RX/TX counters on PocketCHIP.
+
 ## 0.4.0 — 2026-10-02
 
 - Present System Monitor with CPU, RAM, storage, temperature, GPU and network overview.

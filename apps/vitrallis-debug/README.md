@@ -1,6 +1,6 @@
 # System Monitor
 
-Current source package: **0.4.0** · [Changelog](CHANGELOG.md).
+Current source package: **0.4.1** · [Changelog](CHANGELOG.md).
 
 System Monitor preserves the stable **io.vitrallis.debug** identity and package
 slug so installed upgrades keep their association. It now starts with a compact
@@ -44,7 +44,7 @@ telemetry logs or package-local writes. User content is never uninstall-owned.
 
 **Physical PocketCHIP/App Center validation is intentionally deferred to a later
 dedicated integration pass.** The historical evidence below applies to its dated
-builds, not the new 0.4.0 monitor. Actual Mali/Lima readings, GPU Pulse, physical
+builds, not the prepared monitor release. Actual Mali/Lima readings, GPU Pulse, physical
 input, compositor pacing and installation/update/repair still need that pass.
 
 ## Retained diagnostics and historical hardware evidence
@@ -254,7 +254,7 @@ and [CPU sysfs ABI](https://github.com/torvalds/linux/blob/master/Documentation/
 
 ## Publication
 
-The prepared source package is version 0.4.0; publication is a separate source-first step. The repository catalog pins the published
+The prepared source package is version 0.4.1; publication is a separate source-first step. The repository catalog pins the published
 source commit and its file hashes through the two-commit publication workflow.
 App Center receives an update only after the corresponding catalog publication
 is merged into the configured catalog branch.

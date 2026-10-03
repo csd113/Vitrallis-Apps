@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.4 — 2026-10-03
+
+- Allow bounded slow media inspection and first-frame startup while preserving decoder stall detection after playback begins.
+- Defer uncached hardware codec probing so playback can start with the software backend.
+- Exclude consumer queue backpressure from decoder stall timing and match the management page version to this release.
+
 ## 0.4.3 — 2026-10-02
 
 - Keep settings, media and uploads in Shell-provided persistent AppData, separate from replaceable app files.

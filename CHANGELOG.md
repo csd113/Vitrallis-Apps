@@ -10,6 +10,18 @@ and place new records in the newest date section. See the
 
 ## 2026-10-03
 
+- Updated `io.vitrallis.music` `0.1.1`: Extend cancellable metadata probing, defer startup pause through empty Linux exec transitions until owned-child cleanup is armed, and read Vorbis stream tags.
+- Updated `io.vitrallis.debug` `0.4.1`: Request network interface byte statistics so RX/TX histories receive actual counters.
+- Updated `io.vitrallis.fireflyfield` `0.3.2`: Cache sprite coordinates and opacity and reduce per-frame vertex packing work.
+- Updated `io.vitrallis.mediacarousel` `0.4.4`: Allow bounded slow startup, defer uncached hardware probes, and preserve decoder stall detection without counting queue backpressure.
+
+Enable installation for all eight catalog apps following the October 3 managed
+lifecycle audit and the maintainer's publication instruction. Updated compatibility
+notes distinguish exact managed versions from source repairs and retain unresolved
+speaker output, physical input/scanout, GPU accuracy, Firefly FPS, Carousel cold
+startup and injected-fault Repair checks. The earlier release records below retain
+their original publication state.
+
 - Updated `io.vitrallis.calculator` `0.1.1`: Correct the disabled catalog gate, suppress package-local bytecode writes and handle idle Linux termination. [App changelog](apps/calculator/CHANGELOG.md).
 - Added `io.vitrallis.music` `0.1.0`: Add local streaming playback, metadata/artwork, folder browsing and keyboard/touch controls. [App changelog](apps/music/CHANGELOG.md).
 - Added `io.vitrallis.sketch` `0.1.0`: Add keyboard/touch drawing, bounded undo/redo and atomic PNG saves. [App changelog](apps/sketch/CHANGELOG.md).

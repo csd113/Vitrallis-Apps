@@ -189,7 +189,7 @@ def _probe_backend(ffmpeg, codec, mode, cancel):
     return dict(MISSING, reason='; '.join(notes) or 'no candidate method for this platform')
 
 
-def video_backend(codec, ffmpeg=None, cancel=None):
+def video_backend(codec, ffmpeg=None, cancel=None, allow_probe=True):
     """{'method', 'name', 'verified', 'reason'} for one codec; safe to call often."""
     ffmpeg = ffmpeg if ffmpeg is not None else executable_key('ffmpeg')
     if not ffmpeg or not codec:
@@ -199,6 +199,8 @@ def video_backend(codec, ffmpeg=None, cancel=None):
     cached = _BACKEND_CACHE.get(key)
     if cached is not None:
         return dict(cached)
+    if not allow_probe:
+        return dict(MISSING, reason="Hardware detection pending; using software decoding")
     result = _probe_backend(ffmpeg, codec, mode, cancel)
     _BACKEND_CACHE[key] = result
     return dict(result)

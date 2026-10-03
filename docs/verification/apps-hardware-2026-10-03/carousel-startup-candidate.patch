@@ -1,0 +1,165 @@
+--- a/apps/vitrallis-media-carousel/media.py
++++ b/apps/vitrallis-media-carousel/media.py
+@@ -211,7 +211,7 @@
+     return True
+
+
+-def ffprobe_json(fd, entries, tags=False, timeout=10):
++def ffprobe_json(fd, entries, tags=False, timeout=35):
+     """Run FFprobe on an already-open descriptor without touching the path."""
+     binary = shutil.which("ffprobe")
+     if not binary:
+--- a/apps/vitrallis-media-carousel/multimedia.py
++++ b/apps/vitrallis-media-carousel/multimedia.py
+@@ -189,7 +189,7 @@
+     return dict(MISSING, reason='; '.join(notes) or 'no candidate method for this platform')
+
+
+-def video_backend(codec, ffmpeg=None, cancel=None):
++def video_backend(codec, ffmpeg=None, cancel=None, allow_probe=True):
+     """{'method', 'name', 'verified', 'reason'} for one codec; safe to call often."""
+     ffmpeg = ffmpeg if ffmpeg is not None else executable_key('ffmpeg')
+     if not ffmpeg or not codec:
+@@ -199,6 +199,8 @@
+     cached = _BACKEND_CACHE.get(key)
+     if cached is not None:
+         return dict(cached)
++    if not allow_probe:
++        return dict(MISSING, reason="Hardware detection pending; using software decoding")
+     result = _probe_backend(ffmpeg, codec, mode, cancel)
+     _BACKEND_CACHE[key] = result
+     return dict(result)
+--- a/apps/vitrallis-media-carousel/player.py
++++ b/apps/vitrallis-media-carousel/player.py
+@@ -38,6 +38,7 @@
+ # queue is bounded by bytes rather than by a frame count.
+ VIDEO_QUEUED_BYTES = 3 * 1024 * 1024
+ VIDEO_STALL_SECONDS = 10.0
++VIDEO_STARTUP_SECONDS = 30.0
+ VIDEO_CHANNEL_COUNT = 3
+
+
+@@ -247,7 +248,7 @@
+     """
+
+     def __init__(self, processes, stream, size, fps, repeats=1, hwaccel=None, loop=False,
+-                 stall=VIDEO_STALL_SECONDS):
++                 stall=VIDEO_STALL_SECONDS, startup=VIDEO_STARTUP_SECONDS):
+         self.processes = processes
+         self.stream = stream
+         self.size = (max(1, int(size[0])), max(1, int(size[1])))
+@@ -258,6 +259,7 @@
+         self.hwaccel = hwaccel
+         self.loop = bool(loop)
+         self.stall = float(stall)
++        self.startup = float(startup)
+         self.depth = max(1, min(VIDEO_QUEUE_MAX, VIDEO_QUEUE_BYTES // max(1, self.frame_bytes)))
+         self.ahead = max(1, VIDEO_QUEUED_BYTES // max(1, self.frame_bytes))
+         self.queue = queue.Queue(maxsize=self.depth)
+@@ -297,7 +299,7 @@
+         frame = bytearray(self.frame_bytes)
+         view = memoryview(frame)
+         filled = 0
+-        deadline = time.monotonic() + self.stall
++        deadline = time.monotonic() + self.startup
+         try:
+             while not self.cancel.is_set():
+                 if not select.select([fd], [], [], 0.2)[0]:
+@@ -318,6 +320,8 @@
+                     self.produced += 1
+                     if not self._offer(("frame", bytes(frame))):
+                         return
++                    # Time waiting for the bounded consumer is not a decoder stall.
++                    deadline = time.monotonic() + self.stall
+         except (OSError, ValueError):
+             if not self.cancel.is_set():
+                 self._fail("WebM decoder pipe failed")
+@@ -626,7 +630,7 @@
+         repeats = max(1, int(settings["repeats"]))
+         budget = max(1, int(round(float(details.get("duration", 0)) * fps))) * repeats
+         budget = min(budget, int(MAX_VIDEO_SECONDS * MAX_VIDEO_FPS) + 1)
+-        backend = video_backend(details.get("codec"), cancel=cancel)
++        backend = video_backend(details.get("codec"), cancel=cancel, allow_probe=False)
+         self._report_decoder(details.get("codec"), backend)
+         candidates = [backend['method']] if backend['verified'] else [None]
+         if backend['verified']:
+--- a/apps/vitrallis-media-carousel/tests/test_video_stream.py
++++ b/apps/vitrallis-media-carousel/tests/test_video_stream.py
+@@ -125,7 +125,7 @@
+         source.write_bytes(b"stub")
+         stream = source.open("rb")
+         self.addCleanup(stream.close)
+-        video = VideoStream(processes, stream, (8, 8), 10, repeats=1, stall=0.2)
++        video = VideoStream(processes, stream, (8, 8), 10, repeats=1, stall=0.2, startup=0.2)
+         video.process = processes.start([sys.executable, "-B", "-c", "import time; time.sleep(30)"],
+                                         stdout=subprocess.PIPE, bufsize=0)
+         video.started = True
+@@ -136,6 +136,23 @@
+                 pass
+         self.assertIn("stalled", str(error.exception))
+         video.close()
++        self.assertEqual(processes.active, set())
++
++    def test_startup_budget_allows_a_slow_valid_first_frame(self):
++        processes = Processes()
++        self.addCleanup(processes.close)
++        stream = self.stream(b"stub")
++        video = VideoStream(processes, stream, (8, 8), 10, stall=0.2, startup=16)
++        video.process = processes.start([sys.executable, "-B", "-c",
++            "import sys,time; time.sleep(.4); sys.stdout.buffer.write(bytes(8*8*3)); sys.stdout.buffer.flush()"],
++            stdout=subprocess.PIPE, bufsize=0)
++        video.started = True
++        video.thread = threading.Thread(target=video._read, name="carousel-video-read")
++        video.thread.start()
++        try:
++            self.assertEqual(len(self.collect(video)), 1)
++        finally:
++            video.close()
+         self.assertEqual(processes.active, set())
+
+     def test_a_truncated_frame_reports_corruption(self):
+@@ -215,6 +232,19 @@
+         self.assertEqual({round(frame[3], 4) for frame in frames}, {0.1})
+
+     @unittest.skipUnless(ffmpeg_ready(), "Optional system FFmpeg unavailable")
++    def test_uncached_hardware_detection_never_gates_playback(self):
++        item = self.add_video(rate=10, duration=0.4)
++        decoder = Decoder(self.library)
++        self.addCleanup(decoder.close)
++        with patch("multimedia._BACKEND_CACHE", {}), patch("multimedia._probe_backend",
++                side_effect=AssertionError("Playback must not start a hardware probe")) as probe:
++            decoder.request(item, (64, 32), dict(DEFAULTS, repeats=1))
++            events = self.events(decoder)
++        self.assertEqual(events[-1][1], "done")
++        self.assertTrue(any(event[1] == "frame" for event in events))
++        probe.assert_not_called()
++
++    @unittest.skipUnless(ffmpeg_ready(), "Optional system FFmpeg unavailable")
+     def test_a_broken_hardware_backend_falls_back_to_software(self):
+         item = self.add_video(rate=10, duration=0.4)
+         decoder = Decoder(self.library)
+@@ -239,7 +269,7 @@
+         self.addCleanup(decoder.close)
+         probed = threading.Event()
+
+-        def cancelled(codec, ffmpeg=None, cancel=None):
++        def cancelled(codec, ffmpeg=None, cancel=None, allow_probe=True):
+             probed.set()
+             raise DetectionCancelled()
+
+@@ -332,3 +362,15 @@
+
+     def test_backend_for_a_missing_codec_is_software(self):
+         self.assertIsNone(video_backend(None)["method"])
++
++
++class InspectionStartupTests(unittest.TestCase):
++    def test_valid_metadata_child_may_take_more_than_ten_seconds(self):
++        from media import ffprobe_json
++        real_run = subprocess.run
++        def slow_probe(*args, **kwargs):
++            return real_run([sys.executable, '-I', '-B', '-c',
++                'import time; time.sleep(10.1); print("{\\"streams\\": []}")'],
++                timeout=kwargs['timeout'], capture_output=True)
++        with patch('media.shutil.which', return_value='/fixture/ffprobe'), patch('media.subprocess.run', side_effect=slow_probe):
++            self.assertEqual(ffprobe_json(0, 'stream=codec_name'), {'streams': []})

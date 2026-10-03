@@ -16,6 +16,25 @@ def command(arguments):
     return arguments
 
 
+def starting(process):
+    """The Linux helper must arm parent-death cleanup before it can be stopped.
+
+    Popen returns after the first exec into Python. This helper then arms prctl
+    before the second exec, which removes its path from the process arguments.
+    Reading only this owned child's arguments avoids waiting on the UI thread.
+    """
+    if sys.platform != 'linux':
+        return False
+    try:
+        with open(f'/proc/{process.pid}/cmdline', 'rb') as stream:
+            arguments = stream.read(8192).split(b'\0')
+    except OSError:
+        return True
+    # Linux can expose an empty cmdline during exec. Absence of the helper
+    # is meaningful only once a nonempty replacement command is visible.
+    return not any(arguments) or os.fsencode(os.path.abspath(__file__)) in arguments
+
+
 def main():
     if len(sys.argv) < 3:
         return 2

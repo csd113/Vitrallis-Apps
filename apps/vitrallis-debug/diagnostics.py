@@ -484,7 +484,7 @@ class SystemCollector:
         sensors = discover_sensors(self.sys_root, self.read_text)
         network = None
         if include_network:
-            raw_addresses = self.runner(["ip", "-j", "address", "show"])
+            raw_addresses = self.runner(["ip", "-j", "-s", "address", "show"])
             raw_routes = self.runner(["ip", "-j", "route", "show", "default"])
             if raw_addresses is None:
                 errors["network"] = "Local ip utility unavailable or denied"

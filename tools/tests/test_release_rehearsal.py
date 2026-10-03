@@ -1,6 +1,7 @@
 """Rehearse the four-app release in a disposable Git fixture, without publication."""
 import json
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -61,11 +62,24 @@ class ReleaseRehearsal(unittest.TestCase):
                     '--compatibility-notes','Requires Python 3.11+ and system Tk. Physical PocketCHIP/App Center verification deferred.',
                     '--write')
             notes=repo/'CHANGELOG.md'
-            notes.write_text(notes.read_text().replace('# Catalog changelog\n','# Catalog changelog\n\n## 2026-10-02\n\n'
-                '- Updated `io.vitrallis.calculator` `0.1.1`: Disable direct-launch package bytecode writes.\n'
-                '- Added `io.vitrallis.music` `0.1.0`: Add local streaming playback and keyboard music browsing.\n'
-                '- Added `io.vitrallis.sketch` `0.1.0`: Add touch and keyboard drawing with atomic PNG saves.\n'
-                '- Updated `io.vitrallis.debug` `0.4.0`: Add System Monitor overview, processes and diagnostics reports.\n',1))
+            # The fixture copies current working packages, including later fixes.
+            # Its catalog history must describe those generated versions too.
+            generated=json.loads((repo/'apps.json').read_text())
+            releases=[]
+            dates=[]
+            for entry in generated['apps']:
+                if entry['source']['commit']!=source:continue
+                changelog=(repo/entry['source']['path']/'CHANGELOG.md').read_text()
+                heading=re.search(r'^## [^\n]+ — (\d{4}-\d{2}-\d{2})$',changelog,re.MULTILINE)
+                self.assertIsNotNone(heading)
+                dates.append(heading.group(1))
+                summary=re.search(r'^- (.+)$',changelog,re.MULTILINE)
+                self.assertIsNotNone(summary)
+                action='Added' if entry['id'] in ('io.vitrallis.music','io.vitrallis.sketch') else 'Updated'
+                releases.append(f"- {action} `{entry['id']}` `{entry['version']}`: {summary.group(1)}\n")
+            self.assertEqual(len(releases),4)
+            notes.write_text(notes.read_text().replace('# Catalog changelog\n',
+                '# Catalog changelog\n\n## '+max(dates)+'\n\n'+''.join(releases),1))
             run('git','add','apps.json','CHANGELOG.md')
             run('git','commit','--quiet','-m','Fixture generated catalog and release history')
             run(sys.executable,str(ROOT/'tools/validate_catalog.py'),'--repo',str(repo),'--catalog',str(repo/'apps.json'),*mappings)
