@@ -55,9 +55,10 @@ manifest v1**. Runtime requirements and device verification vary by app; see
 | [Music](apps/music/README.md) | Browse local music, play tracks, and see song information and album artwork. |
 | [Sketch](apps/sketch/README.md) | Draw with touch or keys, undo strokes, and save lossless PNG sketches. |
 
-Music, Sketch and the System Monitor update are prepared source packages awaiting
-source-first catalog publication. `apps.json` identifies the currently pinned
-versions. Physical PocketCHIP/App Center validation is intentionally deferred to
+This branch pins all eight apps in `apps.json`, including Music, Sketch and the
+System Monitor update. Source commits are published before generated catalog pins;
+App Center receives these versions after the draft PR is merged into its configured
+catalog branch. Music and Sketch remain installation-disabled pending device checks. Physical PocketCHIP/App Center validation is intentionally deferred to
 a later dedicated integration pass; local tests do not certify hardware behavior.
 
 [`apps.json`](apps.json) records advertised versions, publisher enablement, and

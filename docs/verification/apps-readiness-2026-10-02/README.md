@@ -26,7 +26,7 @@ saved data to remove or migrate.
 
 The official updater now enables the existing pin and records the limits in its
 compatibility note. This metadata correction preserves its source bytes/version.
-**It does not yet advertise the new 0.1.1 source.** That source disables direct-launch
+**This described the initial preparation state; the October 3 branch now pins 0.1.1.** That source disables direct-launch
 bytecode writes and fixes an additional Linux lifecycle bug: idle Tk can defer
 Python TERM handlers indefinitely. A 250 ms callback returns to Python without
 redrawing, permitting prompt signal exit. The original pin passed macOS staging;
@@ -35,8 +35,8 @@ the Linux idle failure was discovered later and fixed in the prepared source.
 Regression tooling verifies the original disabled gate, incomplete/wrong inventories,
 missing imports and read-only writes. Prepared 0.1.1 passes app-local dependency
 provisioning, isolated imports from another CWD, repeated read-only GUI launch and
-TERM on macOS and Linux/Xvfb. Publication of 0.1.1 remains required before its Linux
-lifecycle fix reaches App Center.
+TERM on macOS and Linux/Xvfb. The October 3 source/catalog publication includes 0.1.1; its Linux lifecycle fix
+reaches the default App Center catalog after merge.
 
 ## Music
 
@@ -216,10 +216,10 @@ The Python package contract does not specify a native advisory safe-close inbox
 adapter. TERM/INT are verified; real background-timeout delivery remains a later
 integration check, not a new invented protocol. No device session was used.
 
-## Repository state and release steps
+## October 2 preparation state and intended release steps
 
 Prepared versions: Calculator **0.1.1**, Music **0.1.0**, Sketch **0.1.0**, System
-Monitor **0.4.0**. Current real catalog still has six apps and its old source/version
+Monitor **0.4.0**. At initial preparation, the shared working catalog had six apps and its old source/version
 pins, with only Calculator eligibility/compatibility metadata corrected. Music and
 Sketch are ready for generated entries; the offline rehearsal defaults new entries
 to disabled until client readiness is reviewed. Neither fixture SHA nor dirty-tree
@@ -262,22 +262,22 @@ from 69 to 118 (+49); tooling from 74 to 84 (+10), including opt-in staged cases
 
 Audited against the original objective, without treating disposable release
 fixtures as published artifacts. The numbered items below correspond to its
-final acceptance criteria. Source/catalog publication is in progress; completion still requires the
-actual pins and committed release checks below.
+final acceptance criteria. The October 3 source commit is published and its generated pins are prepared.
+Final committed policy/CI results are recorded with the draft PR.
 
 | Criterion | Authoritative evidence | Current result |
 | --- | --- | --- |
-| 1. Calculator root cause and package-side fix | Original pinned catalog gate, official updater diff, prepared main.py | Proven locally; 0.1.1 source publication pending |
+| 1. Calculator root cause and package-side fix | Original pinned catalog gate, official updater diff, prepared main.py | Proven locally; published 0.1.1 source pinned in this branch |
 | 2. Calculator staged regression | test_simulate_install.py gate/inventory/import fixtures; host/Linux repeated staged launch | Passed |
-| 3. Music complete catalog-ready app | Package validator, manifest/README, 21 app tests, staged workflow | Source ready; real catalog entry pending |
-| 4. Sketch complete catalog-ready app | Package validator, manifest/README, 17 host app tests, staged workflow | Source ready; real catalog entry pending |
-| 5. Debug evolved into System Monitor | Stable manifest ID, Monitor entry point, current-facing README/assets name | Implemented; catalog name/version pending |
+| 3. Music complete catalog-ready app | Package validator, manifest/README, 21 app tests, staged workflow | Published source and generated branch catalog entry; disabled pending device checks |
+| 4. Sketch complete catalog-ready app | Package validator, manifest/README, 17 host app tests, staged workflow | Published source and generated branch catalog entry; disabled pending device checks |
+| 5. Debug evolved into System Monitor | Stable manifest ID, Monitor entry point, current-facing README/assets name | Implemented; branch catalog name/version updated |
 | 6. Monitor resources and diagnostics | monitor_ui.py, monitoring.py, preserved diagnostics/GPU modules, 75 tests | Locally verified with explicit unavailable states |
 | 7. Read-only staged operation | Immutable payload workflows, simulator import/GUI/inventory checks | Passed on host and Linux within documented simulation boundary |
 | 8. External documents/state | storage.py path checks and atomic writes; package replacement/removal workflows | Passed |
 | 9. Deliberate 480×272 validation | Native geometry/text bounds, keyboard/pointer tests, visual preview review | Passed locally; physical presentation deferred |
-| 10. Relevant validation | Exact commands and results above; latest package/compile/diff checks and release rehearsal | Passed within reported scope; final committed release checks pending |
-| 11. Consistent release catalog/package metadata | Current six-pin validation; disposable eight-pin source-first rehearsal | Prepared versions validate; actual new pins/root release records pending |
+| 10. Relevant validation | Exact commands and results above; latest package/compile/diff checks and release rehearsal | Local suites passed; final committed policy/CI checked before handoff |
+| 11. Consistent release catalog/package metadata | Current six-pin validation; disposable eight-pin source-first rehearsal | Generated actual source pins and matching root records; committed policy checked before handoff |
 | 12. No Shell modifications | This goal's file list and tool actions; integration findings recorded separately | Boundary preserved |
 | 13. No physical PocketCHIP access | Disposable host/container tests only; no SSH/device operations | Boundary preserved |
 | 14. No hardware-certification claim | Explicit limitations throughout app READMEs and this report | Preserved |
@@ -322,3 +322,33 @@ four documented host-only skips), the complete 84-test tooling suite including
 staged GUI workflows, four-package validation, current six-pin catalog validation,
 external-cache Python compilation and `git diff --check`. The affected-runtime
 preview selected exactly Calculator, Music, Sketch and System Monitor.
+
+## October 3 source and catalog publication
+
+- Published source: `d04bcbcb10f75c960552ebe9ce80cf4131b221de`, on
+  `codex/four-app-readiness`. GitHub's commit API and the remote branch both
+  confirmed availability before inventory generation.
+- Generated each of the four entries with `tools/update_catalog.py --write`
+  using that published full SHA. The branch catalog contains eight apps:
+  Calculator 0.1.1, Music 0.1.0, Sketch 0.1.0 and System Monitor 0.4.0 plus the
+  four unchanged existing entries. A structural comparison verified that every
+  unrelated entry and flag is byte-for-byte unchanged as JSON data.
+- Calculator is enabled to correct the original publisher gate. Music and Sketch
+  remain disabled for device review. System Monitor retains its prior flag;
+  enablement is not hardware certification.
+- Root release records use October 3; app source changelogs retain their October 2
+  preparation dates and all historical entries. The default `main` catalog is
+  unchanged until PR merge. No merge, release tag or device operation is included.
+- The shared checkout remains dirty and unchanged by this publication; concurrent
+  Bitcoin/Carousel/Places/Firefly work is excluded. The isolated worktree is the
+  authoritative published version of this four-app candidate.
+- The release rehearsal passed again after the source commit, exercising its
+  new pre-Music baseline selection. It still creates commits only in a fixture.
+
+Final committed validation uses the unchanged base
+`b321a957ef05516f3883000536d632f5aed51db1`:
+`python3 -B tools/validate_catalog.py`,
+`python3 -B tools/validate_changelogs.py --base b321a957ef05516f3883000536d632f5aed51db1`,
+and `git diff --check`. Required Python 3.11/3.13 and Changelog policy jobs must
+pass on the final draft PR head; their authoritative outcomes are attached to
+that PR and reported in the handoff.

@@ -90,9 +90,9 @@
     },
     {
       "id": "io.vitrallis.calculator",
-      "installable": false,
+      "installable": true,
       "name": "Calculator",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
@@ -100,18 +100,18 @@
         "audio": false,
         "storage": false
       },
-      "description": "Decimal calculator with keyboard navigation, percent and parentheses for PocketCHIP.",
-      "compatibility_notes": "Requires Python 3.11+ and system Tkinter; device install/update/repair and compositor verification pending.",
+      "description": "Decimal arithmetic, parentheses and keyboard navigation for PocketCHIP.",
+      "compatibility_notes": "Requires Python 3.11+ and system Tkinter. Publisher-disabled catalog gate corrected; read-only staged imports, repeated GUI launch and idle TERM passed on macOS/Linux. Physical PocketCHIP/App Center install, update, repair and compositor validation deferred.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "0ebb648e06958b4971686ff8c30aad7ec41b14e4",
+        "commit": "d04bcbcb10f75c960552ebe9ce80cf4131b221de",
         "path": "apps/calculator"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 235,
-          "sha256": "f19439384ed44a1f0b7d6ff008d1a3929584663ec3e2160f0d1d095110f85075"
+          "size": 548,
+          "sha256": "3050fad9ae2fd9e3abe8294786c8e6f59735ffaeeb779551588b271710039310"
         },
         {
           "path": "LICENSE",
@@ -120,13 +120,13 @@
         },
         {
           "path": "README.md",
-          "size": 1628,
-          "sha256": "8a3747bf60c929827e14e820566e86fe3af5ec382cedf1136785752d3b1a4999"
+          "size": 2724,
+          "sha256": "f7dd6ae637b387446523771339ee1daf348a7334f03630478c863c1e2563505c"
         },
         {
           "path": "app.toml",
           "size": 188,
-          "sha256": "4e5ce282e2aab7cc7872bf84c57b753e42a8641f4840613a6119a1551aec13b9"
+          "sha256": "d8e6b57c9b95d3a7b1ba37b9b76aa451abd4a33fa76c361e90cb42bca4d84f54"
         },
         {
           "path": "assets/README.md",
@@ -145,8 +145,8 @@
         },
         {
           "path": "main.py",
-          "size": 5225,
-          "sha256": "8ad33d06af3f342e65e14e463819f034f47337e1fa50b008f044e192d59519d9"
+          "size": 5658,
+          "sha256": "6921670641ef8eb58c7cde00ff33a8eb62f4585cab7155560238f0041b0074e6"
         },
         {
           "path": "requirements.txt",
@@ -158,27 +158,27 @@
     {
       "id": "io.vitrallis.debug",
       "installable": true,
-      "name": "Vitrallis Debug",
-      "version": "0.3.2",
+      "name": "System Monitor",
+      "version": "0.4.0",
       "runtime": "python",
       "entry": "main.py",
       "permissions": {
         "network": false,
         "audio": false,
-        "storage": false
+        "storage": true
       },
-      "description": "Offline Linux hardware and driver diagnostics with CPU/GPU graphs and a hardware-rendered Pulse.",
-      "compatibility_notes": "Requires Linux, Python 3.8+ and system Tkinter. Pulse additionally requires X11/XWayland, EGL/GLES2 and a compatible hardware driver. Real Lima utilization, GPU frequency, keyboard controls and overlay performance were tested on PocketCHIP. GPU access and tear-free presentation require the Shell PocketCHIP platform setup with its private trace reader and VSync compositor. Managed App Center update to this version was not physically exercised.",
+      "description": "Monitor CPU, memory, storage, temperature, GPU, network and processes, with optional diagnostics.",
+      "compatibility_notes": "Requires Linux, Python 3.11+ and system Tk. Optional EGL Pulse requires X11/XWayland, EGL/GLES2 and device drivers. Stable io.vitrallis.debug identity retained; proc/sysfs fixtures and read-only staged workflows passed. Physical App Center, Mali/Lima and compositor validation deferred.",
       "source": {
         "repository": "csd113/Vitrallis-Apps",
-        "commit": "0ebb648e06958b4971686ff8c30aad7ec41b14e4",
+        "commit": "d04bcbcb10f75c960552ebe9ce80cf4131b221de",
         "path": "apps/vitrallis-debug"
       },
       "files": [
         {
           "path": "CHANGELOG.md",
-          "size": 2529,
-          "sha256": "6288fe61f47bac56ff15d33d7ec1132720d27c7cd77f2d46cbd835041d403d7b"
+          "size": 3161,
+          "sha256": "3efc8171b973000fe02a0d71b339b7824bd6002abdd6c984aff5468e9de16478"
         },
         {
           "path": "LICENSE",
@@ -187,28 +187,28 @@
         },
         {
           "path": "README.md",
-          "size": 15252,
-          "sha256": "cf0812bd33d34021fa243a0495c5c9f9c06b190c453fa7bbbf9f5f4cc92969ae"
+          "size": 18412,
+          "sha256": "24f7b2aa49ab4b4463adea5440c2d9d0f63d10303c12c8b550091dec6f1fd44a"
         },
         {
           "path": "app.toml",
-          "size": 188,
-          "sha256": "71817419900e7a0002f0d7794e5e3d3a2c787e902ca649affa9301c3cd08bbbb"
+          "size": 186,
+          "sha256": "41a1ee9468e15898a834331b225195795d5e63fea8735e3ca793ebc9627f7a1a"
         },
         {
           "path": "assets/README.md",
-          "size": 559,
-          "sha256": "8601e827c9910c66e7e0693fd63ae10f65695e0b93bb404a0c233382e6289188"
+          "size": 558,
+          "sha256": "5c78995cdc199a35f2e6762da3d322c8e1a682e7d3762b63d07b35e8a74d3bb4"
         },
         {
           "path": "demo.py",
-          "size": 1729,
-          "sha256": "2cbf3b87ab07680a878374d124b44b2534e73d388ef8eb9954a9fcb71669e5be"
+          "size": 2484,
+          "sha256": "b56409431261e4c3e8359e3c956a0aaf8a72b9ff055b6a135e263ebf7ee9f810"
         },
         {
           "path": "diagnostics.py",
-          "size": 21494,
-          "sha256": "8991bda42b3202db419b6dfb26e6e35d3ac641c0d697250986d8b6e51c8f8a8b"
+          "size": 21557,
+          "sha256": "e4de40d0931ab1bae8cca0fda15e8f40a49d0f054345afbcba19d61d8be60a17"
         },
         {
           "path": "gpu.py",
@@ -222,8 +222,8 @@
         },
         {
           "path": "hardware.py",
-          "size": 17143,
-          "sha256": "9f51a97d9b4ac71b759cb152b2cd46da5af22e2948ec76bb98cba53d65a02901"
+          "size": 17215,
+          "sha256": "92b9a2211fe4787d9fd78ccd8ec224acc7fa4589a8f38c173ae76d93b89ad087"
         },
         {
           "path": "icon.png",
@@ -232,8 +232,23 @@
         },
         {
           "path": "main.py",
-          "size": 2038,
-          "sha256": "a37a554ba2d5ef7a2a68a5c48a951777c07f93ad84c01206e7ccdd7a471504ce"
+          "size": 2089,
+          "sha256": "7d480d5f61fe2b485b9bf2df2cd5eded8f5df7b11275fdbfa57759ceb2d6e3da"
+        },
+        {
+          "path": "monitor_ui.py",
+          "size": 12518,
+          "sha256": "66c63a92e37f1f5eea338df142517ef57eb4ab8a59204e2e17871230a5723bcf"
+        },
+        {
+          "path": "monitoring.py",
+          "size": 5998,
+          "sha256": "856c839630adf95ce7491ad14e7289510318bc4c6c63020ace26b0a70870da9e"
+        },
+        {
+          "path": "owned_child.py",
+          "size": 1188,
+          "sha256": "104ccad615722292d533c895507e46b267db82630a87b470f651e3ee4bf43a2e"
         },
         {
           "path": "requirements.txt",
@@ -241,9 +256,14 @@
           "sha256": "90dab4c59b94e4ef4e210579f701a3179df2b9ee3517539e4a76c88c654f2aa4"
         },
         {
+          "path": "storage.py",
+          "size": 3810,
+          "sha256": "9042b76cf9be3f8fdc8d8b07f972b787ffad65b3983c7bbd7ae8fe7047abc722"
+        },
+        {
           "path": "ui.py",
-          "size": 36532,
-          "sha256": "6c187b924d4e0a0a58d231c91d5d7837f067be3e2178f9d727d46bca7050156e"
+          "size": 36535,
+          "sha256": "a1166a2c0b0e545d8f01e91a5484a17b716186a789947c195b3f9550f483ad48"
         }
       ]
     },
@@ -1537,6 +1557,155 @@
           "path": "web_server.py",
           "size": 30808,
           "sha256": "1ba33874d9384cc5610a6d033352da3955fd9b7b477b967d6c91078c6ace9c39"
+        }
+      ]
+    },
+    {
+      "id": "io.vitrallis.music",
+      "installable": false,
+      "name": "Music",
+      "version": "0.1.0",
+      "runtime": "python",
+      "entry": "main.py",
+      "permissions": {
+        "network": false,
+        "audio": true,
+        "storage": true
+      },
+      "description": "Browse local music, play tracks, and view song information and album artwork.",
+      "compatibility_notes": "Requires Python 3.11+, system Tk 8.6, Pillow >=10.4,<13 and system ffplay/ffprobe/ffmpeg. Local read-only staged workflows and decoder controls passed; ARMv7 codecs, speaker output and actual App Center lifecycle validation deferred.",
+      "source": {
+        "repository": "csd113/Vitrallis-Apps",
+        "commit": "d04bcbcb10f75c960552ebe9ce80cf4131b221de",
+        "path": "apps/music"
+      },
+      "files": [
+        {
+          "path": "CHANGELOG.md",
+          "size": 328,
+          "sha256": "b397a529eb2ebfc2377847fe0234bda9b21af136d5923a895475a54c1c525160"
+        },
+        {
+          "path": "LICENSE",
+          "size": 1105,
+          "sha256": "2dd5ab27f2b99034fd0f8e464f095f431f5c90ade71df3c660fb575c2ae154cd"
+        },
+        {
+          "path": "README.md",
+          "size": 4778,
+          "sha256": "99703ea5a90e21ab3deecbaff539706f50572600cc23d2ea1a9bfaec9b69228e"
+        },
+        {
+          "path": "app.toml",
+          "size": 176,
+          "sha256": "4e0a99e26b343e0317d0d78faf9ad7d28b7b47920316fe69c3eedacd43b5263c"
+        },
+        {
+          "path": "assets/README.md",
+          "size": 171,
+          "sha256": "acb5d47fe592f93837727f7d07f335bbc6c520bff2d95a9144147c1a26808dd3"
+        },
+        {
+          "path": "icon.png",
+          "size": 837,
+          "sha256": "b6a210e173a44d7095cbf3cff4f21a5e1857ab8d981ace344a6ea30e4aa064ae"
+        },
+        {
+          "path": "main.py",
+          "size": 15631,
+          "sha256": "3c480d250de6bfa3bf7bad5d6f27b6b3d5c1592091c6686e52bc73374377ef46"
+        },
+        {
+          "path": "owned_child.py",
+          "size": 1188,
+          "sha256": "104ccad615722292d533c895507e46b267db82630a87b470f651e3ee4bf43a2e"
+        },
+        {
+          "path": "player.py",
+          "size": 9687,
+          "sha256": "1edf7605325540cda1a4555f20a3e58609b94431e053f2419d33ceafeace1497"
+        },
+        {
+          "path": "requirements.txt",
+          "size": 61,
+          "sha256": "0b26e7d07299d0dae457a373dd15d2f2e984b4de8ea7cdf3247c28a72a088704"
+        },
+        {
+          "path": "storage.py",
+          "size": 3810,
+          "sha256": "9042b76cf9be3f8fdc8d8b07f972b787ffad65b3983c7bbd7ae8fe7047abc722"
+        }
+      ]
+    },
+    {
+      "id": "io.vitrallis.sketch",
+      "installable": false,
+      "name": "Sketch",
+      "version": "0.1.0",
+      "runtime": "python",
+      "entry": "main.py",
+      "permissions": {
+        "network": false,
+        "audio": false,
+        "storage": true
+      },
+      "description": "Draw with touch or keys, undo strokes, and save lossless PNG sketches.",
+      "compatibility_notes": "Requires Python 3.11+, system Tk 8.6 and Pillow >=10.4,<13. Local 480x272 input, atomic PNG saves and read-only staged workflows passed; physical touch/compositor and actual App Center lifecycle validation deferred.",
+      "source": {
+        "repository": "csd113/Vitrallis-Apps",
+        "commit": "d04bcbcb10f75c960552ebe9ce80cf4131b221de",
+        "path": "apps/sketch"
+      },
+      "files": [
+        {
+          "path": "CHANGELOG.md",
+          "size": 424,
+          "sha256": "f6129412904f876452c57a4cf5501aefe02f4c07601ddc4ae8fe10089b671441"
+        },
+        {
+          "path": "LICENSE",
+          "size": 1105,
+          "sha256": "2dd5ab27f2b99034fd0f8e464f095f431f5c90ade71df3c660fb575c2ae154cd"
+        },
+        {
+          "path": "README.md",
+          "size": 4249,
+          "sha256": "8605d93547efa4c26a2999aba0588a657994750a8952747d545ab21e8ba403bb"
+        },
+        {
+          "path": "app.toml",
+          "size": 179,
+          "sha256": "8e185a0dcdcf0781f139b16024cc4f56038fef57ff2129eb9cc539a0bdfa8972"
+        },
+        {
+          "path": "assets/README.md",
+          "size": 172,
+          "sha256": "7dd4e4118dc8b3b532014b0812bef9ffcef66cfaf8bd328485e836fc4edea286"
+        },
+        {
+          "path": "drawing.py",
+          "size": 3763,
+          "sha256": "f30443e886899f76a937e1ffa5817c10974680740fcea0c47952efe16517cb25"
+        },
+        {
+          "path": "icon.png",
+          "size": 1112,
+          "sha256": "8305640082f2cc1177d5819f434252e5053ecc12c17b45f5751805bba98bfa59"
+        },
+        {
+          "path": "main.py",
+          "size": 13164,
+          "sha256": "474e760a8cfb9a420e5f000cabfa14990fa92539d58409d4198f4952f08bfa7b"
+        },
+        {
+          "path": "requirements.txt",
+          "size": 61,
+          "sha256": "0b26e7d07299d0dae457a373dd15d2f2e984b4de8ea7cdf3247c28a72a088704"
+        },
+        {
+          "path": "storage.py",
+          "size": 3810,
+          "sha256": "9042b76cf9be3f8fdc8d8b07f972b787ffad65b3983c7bbd7ae8fe7047abc722"
         }
       ]
     }
