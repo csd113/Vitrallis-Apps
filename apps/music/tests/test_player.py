@@ -91,6 +91,22 @@ class FakeProcess:
     def wait(self,timeout=None):self.waits+=1;return self.returncode
 
 
+class OwnedChildTests(unittest.TestCase):
+    def test_empty_exec_transition_cannot_authorize_startup_pause(self):
+        from unittest.mock import mock_open
+        import owned_child
+        child = SimpleNamespace(pid=123)
+        helper = os.fsencode(os.path.abspath(owned_child.__file__))
+        for command, starting in ((b'', True), (b'\0', True),
+                                  (b'python\0' + helper + b'\0', True),
+                                  (b'ffplay\0-nodisp\0', False)):
+            with self.subTest(command=command), patch('owned_child.sys.platform', 'linux'), \
+                    patch('builtins.open', mock_open(read_data=command)):
+                self.assertEqual(owned_child.starting(child), starting)
+        with patch('owned_child.sys.platform', 'linux'), patch('builtins.open', side_effect=OSError):
+            self.assertTrue(owned_child.starting(child))
+
+
 class PlaybackTests(unittest.TestCase):
     def setUp(self):
         self.now=[10.0];self.spawned=[];self.arguments=[]

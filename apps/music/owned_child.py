@@ -30,7 +30,9 @@ def starting(process):
             arguments = stream.read(8192).split(b'\0')
     except OSError:
         return True
-    return os.fsencode(os.path.abspath(__file__)) in arguments
+    # Linux can expose an empty cmdline during exec. Absence of the helper
+    # is meaningful only once a nonempty replacement command is visible.
+    return not any(arguments) or os.fsencode(os.path.abspath(__file__)) in arguments
 
 
 def main():
