@@ -10,7 +10,7 @@ import time
 
 API = 'https://mempool.space/api/'
 MAX_MONEY = 21_000_000 * 100_000_000
-WATCH_FILE = Path.home() / '.config/pocket-bitcoin/watch.json'
+WATCH_FILE = Path(os.environ.get('VITRALLIS_APP_DATA_DIR', str(Path.home() / 'Documents/Vitrallis/AppData/io.vitrallis.bitcoindashboard'))) / 'watch.json'
 BASE58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 BECH32 = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l'
 
@@ -165,12 +165,15 @@ def validate_watch(rows):
 
 def load_watch(path=WATCH_FILE):
     try:
+        from storage_paths import private_parent
+        private_parent(path, create=False)
         descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
     except FileNotFoundError:
         return []
     with os.fdopen(descriptor, 'rb') as stream:
         info = os.fstat(stream.fileno())
-        if not stat.S_ISREG(info.st_mode) or info.st_size > 16384:
+        if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+                or info.st_uid != os.getuid() or info.st_size > 16384):
             raise ValueError('Invalid watch-list file')
         data = stream.read(16385)
     if len(data) > 16384:
@@ -180,7 +183,8 @@ def load_watch(path=WATCH_FILE):
 
 def save_watch(rows, path=WATCH_FILE):
     rows = validate_watch(rows)  # Validate complete replacement before mutation.
-    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    from storage_paths import private_parent
+    private_parent(path)
     info = path.parent.lstat()
     if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
         raise OSError('Unsafe watch-list directory')

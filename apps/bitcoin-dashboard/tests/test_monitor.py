@@ -51,7 +51,7 @@ class MonitorTests(unittest.TestCase):
 
     def test_atomic_watch_persistence_and_hazards(self):
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / 'private/watch.json'
+            path = Path(directory).resolve() / 'private/watch.json'
             rows = [{'label': 'Genesis', 'address': ADDRESS}]
             self.assertEqual(monitor.load_watch(path), [])
             monitor.save_watch(rows, path)

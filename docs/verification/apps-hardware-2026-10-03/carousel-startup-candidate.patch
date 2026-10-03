@@ -2,8 +2,8 @@
 +++ b/apps/vitrallis-media-carousel/media.py
 @@ -211,7 +211,7 @@
      return True
- 
- 
+
+
 -def ffprobe_json(fd, entries, tags=False, timeout=10):
 +def ffprobe_json(fd, entries, tags=False, timeout=35):
      """Run FFprobe on an already-open descriptor without touching the path."""
@@ -13,8 +13,8 @@
 +++ b/apps/vitrallis-media-carousel/multimedia.py
 @@ -189,7 +189,7 @@
      return dict(MISSING, reason='; '.join(notes) or 'no candidate method for this platform')
- 
- 
+
+
 -def video_backend(codec, ffmpeg=None, cancel=None):
 +def video_backend(codec, ffmpeg=None, cancel=None, allow_probe=True):
      """{'method', 'name', 'verified', 'reason'} for one codec; safe to call often."""
@@ -37,11 +37,11 @@
  VIDEO_STALL_SECONDS = 10.0
 +VIDEO_STARTUP_SECONDS = 30.0
  VIDEO_CHANNEL_COUNT = 3
- 
- 
+
+
 @@ -247,7 +248,7 @@
      """
- 
+
      def __init__(self, processes, stream, size, fps, repeats=1, hwaccel=None, loop=False,
 -                 stall=VIDEO_STALL_SECONDS):
 +                 stall=VIDEO_STALL_SECONDS, startup=VIDEO_STARTUP_SECONDS):
@@ -116,11 +116,11 @@
 +        finally:
 +            video.close()
          self.assertEqual(processes.active, set())
- 
+
      def test_a_truncated_frame_reports_corruption(self):
 @@ -215,6 +232,19 @@
          self.assertEqual({round(frame[3], 4) for frame in frames}, {0.1})
- 
+
      @unittest.skipUnless(ffmpeg_ready(), "Optional system FFmpeg unavailable")
 +    def test_uncached_hardware_detection_never_gates_playback(self):
 +        item = self.add_video(rate=10, duration=0.4)
@@ -141,14 +141,14 @@
 @@ -239,7 +269,7 @@
          self.addCleanup(decoder.close)
          probed = threading.Event()
- 
+
 -        def cancelled(codec, ffmpeg=None, cancel=None):
 +        def cancelled(codec, ffmpeg=None, cancel=None, allow_probe=True):
              probed.set()
              raise DetectionCancelled()
- 
+
 @@ -332,3 +362,15 @@
- 
+
      def test_backend_for_a_missing_codec_is_software(self):
          self.assertIsNone(video_backend(None)["method"])
 +

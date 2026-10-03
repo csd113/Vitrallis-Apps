@@ -38,6 +38,7 @@ VIDEO_QUEUE_MAX = 12
 # queue is bounded by bytes rather than by a frame count.
 VIDEO_QUEUED_BYTES = 3 * 1024 * 1024
 VIDEO_STALL_SECONDS = 10.0
+VIDEO_STARTUP_SECONDS = 30.0
 VIDEO_CHANNEL_COUNT = 3
 
 
@@ -247,7 +248,7 @@ class VideoStream:
     """
 
     def __init__(self, processes, stream, size, fps, repeats=1, hwaccel=None, loop=False,
-                 stall=VIDEO_STALL_SECONDS):
+                 stall=VIDEO_STALL_SECONDS, startup=VIDEO_STARTUP_SECONDS):
         self.processes = processes
         self.stream = stream
         self.size = (max(1, int(size[0])), max(1, int(size[1])))
@@ -258,6 +259,7 @@ class VideoStream:
         self.hwaccel = hwaccel
         self.loop = bool(loop)
         self.stall = float(stall)
+        self.startup = float(startup)
         self.depth = max(1, min(VIDEO_QUEUE_MAX, VIDEO_QUEUE_BYTES // max(1, self.frame_bytes)))
         self.ahead = max(1, VIDEO_QUEUED_BYTES // max(1, self.frame_bytes))
         self.queue = queue.Queue(maxsize=self.depth)
@@ -297,7 +299,7 @@ class VideoStream:
         frame = bytearray(self.frame_bytes)
         view = memoryview(frame)
         filled = 0
-        deadline = time.monotonic() + self.stall
+        deadline = time.monotonic() + self.startup
         try:
             while not self.cancel.is_set():
                 if not select.select([fd], [], [], 0.2)[0]:
@@ -318,6 +320,8 @@ class VideoStream:
                     self.produced += 1
                     if not self._offer(("frame", bytes(frame))):
                         return
+                    # Time waiting for the bounded consumer is not a decoder stall.
+                    deadline = time.monotonic() + self.stall
         except (OSError, ValueError):
             if not self.cancel.is_set():
                 self._fail("WebM decoder pipe failed")
@@ -626,7 +630,7 @@ class Decoder:
         repeats = max(1, int(settings["repeats"]))
         budget = max(1, int(round(float(details.get("duration", 0)) * fps))) * repeats
         budget = min(budget, int(MAX_VIDEO_SECONDS * MAX_VIDEO_FPS) + 1)
-        backend = video_backend(details.get("codec"), cancel=cancel)
+        backend = video_backend(details.get("codec"), cancel=cancel, allow_probe=False)
         self._report_decoder(details.get("codec"), backend)
         candidates = [backend['method']] if backend['verified'] else [None]
         if backend['verified']:

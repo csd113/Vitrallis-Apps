@@ -1,11 +1,9 @@
 # Bitcoin Dashboard
 
 A lightweight Bitcoin dashboard for the PocketCHIP's **480 × 272** display,
-built with Python and Tkinter. Current native package version: **1.3.0**.
+built with Python and Tkinter. Current native package version: **1.3.1**.
 
 [Changelog](CHANGELOG.md) · [Native package contract](../../docs/creating-apps.md)
-
-![Bitcoin CAD v1.0.0 running on PocketCHIP; v1.2.0 also adds Settings and card detail views](assets/dashboard.png)
 
 ## Network and watch pages
 
@@ -23,7 +21,7 @@ confirmed and pending balances in exact satoshis, three recent transaction
 summaries (confirmed/pending and net address movement), and last successful
 refresh time. Address validation checks Base58Check or Bech32/Bech32m checksums,
 witness versions/lengths and mainnet prefixes before saving or requesting data.
-The watch list lives in `~/.config/pocket-bitcoin/watch.json`, written atomically
+The watch list lives in `~/Documents/Vitrallis/AppData/io.vitrallis.bitcoindashboard/watch.json`, written atomically
 only on edits. An unreadable list is preserved and edits are blocked until repaired.
 Balance/activity caches are bounded to watched addresses and live only in RAM.
 
@@ -88,7 +86,11 @@ python3 apps/bitcoin-dashboard/main.py
 An absolute path works from any working directory. The packaged `icon.png` is
 resolved relative to the script. Importing the module does not start the GUI,
 fetch data or write files. Close the app with Home or Escape to return to its
-launcher. Installed package files are read-only.
+launcher. Installed package files are replaceable. Persistent settings and watch addresses
+use `VITRALLIS_APP_DATA_DIR`, defaulting to
+`~/Documents/Vitrallis/AppData/io.vitrallis.bitcoindashboard`; updates and ordinary
+uninstall preserve this data. Session network caches remain in the volatile user
+runtime directory.
 
 Use the [native publication workflow](../../docs/publishing-apps.md) for updates.
 See the current [runtime integration guide](../../docs/runtime-integration.md)
@@ -100,7 +102,7 @@ does not include a runtime or installation script.
 - **Network: true.** Fetches public HTTPS market and network data from CoinGecko
   and Blockchain.com. An optional `COINGECKO_DEMO_API_KEY` is sent only to CoinGecko.
 - **Storage: true.** Settings are saved to
-  `~/.config/pocket-bitcoin/settings.json` only when the highlight toggle changes.
+  `~/Documents/Vitrallis/AppData/io.vitrallis.bitcoindashboard/settings.json` only when the highlight toggle changes.
   Session data is cached at `/run/user/<uid>/pocket-bitcoin.json` using private,
   atomic writes when that directory is available and safe. These are the app's
   existing private storage locations, separate from the installed package.

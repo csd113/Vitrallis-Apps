@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.2 — 2026-10-03
+
+- Reduce sprite packing work by caching texture coordinates and per-slot opacity, retaining depth order and vertex rounding.
+- Pack unrotated sprites directly and reject invalid names or capacity before changing vertex buffers.
+
 ## 0.3.1 — 2026-10-01
 
 - Replace the App Center icon with optimized transparent GPT-generated artwork readable at small launcher sizes.

@@ -211,7 +211,7 @@ def webm_header(stream):
     return True
 
 
-def ffprobe_json(fd, entries, tags=False, timeout=10):
+def ffprobe_json(fd, entries, tags=False, timeout=35):
     """Run FFprobe on an already-open descriptor without touching the path."""
     binary = shutil.which("ffprobe")
     if not binary:
