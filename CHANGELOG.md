@@ -10,6 +10,7 @@ and place new records in the newest date section. See the
 
 ## 2026-10-02
 
+- Updated `io.vitrallis.liminalrust` `0.11.2`: Preserve settings, custom levels and cache in private AppData, validate storage paths and retain the matched Rust runtime notices. [App changelog](apps/places-pocketchip/CHANGELOG.md).
 - Updated `io.vitrallis.bitcoindashboard` `1.3.1`: Keep settings and watch-only addresses in private persistent AppData and reject unsafe storage paths. [App changelog](apps/bitcoin-dashboard/CHANGELOG.md).
 - Updated `io.vitrallis.mediacarousel` `0.4.3`: Separate saved media, uploads and settings from replaceable app files and validate storage roots before writes. [App changelog](apps/vitrallis-media-carousel/CHANGELOG.md).
 
