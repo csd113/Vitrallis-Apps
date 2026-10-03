@@ -1,8 +1,56 @@
-# Vitrallis Debug
+# System Monitor
 
-Current package: **0.3.2** · [Changelog](CHANGELOG.md).
+Current source package: **0.4.0** · [Changelog](CHANGELOG.md).
 
-Vitrallis Debug is an offline instrument panel for a 480×272 Vitrallis/PocketCHIP
+System Monitor preserves the stable **io.vitrallis.debug** identity and package
+slug so installed upgrades keep their association. It now starts with a compact
+user-facing overview rather than raw diagnostics. Python **3.11+** and system Tk
+8.6 are required; Linux `/proc`, sysfs, and the optional `ip` utility provide
+read-only monitoring. No new pip dependencies are required. The package now
+declares storage for optional diagnostic reports; audio and network remain false.
+
+## Monitor surfaces and controls
+
+- **1 Overview:** CPU usage/load/frequency, used/available RAM and swap, root
+  capacity/free space, temperature, GPU load/frequency and uptime/kernel/architecture.
+  Four bounded 60-sample histories remain in memory.
+- **2 Processes:** PID, name, CPU and RAM percentages. S cycles CPU/memory/name
+  sorting; Up/Down and Page Up/Down page the six-row list. Touch page/sort buttons
+  provide the same actions. There are no process-killing controls.
+- **3 Network:** connection/interface, local IP, hostname, RX/TX rates and bounded
+  history; kernel Wi-Fi quality/signal appears when available. It never configures
+  the network or accesses Wi-Fi credentials.
+- **4 Diagnostics:** retained CPU/GPU/thermal/memory/network details, hardware and
+  bound-driver identity, sensor sources and the optional eight-second hardware
+  EGL Pulse. CPU details include OS/runtime; memory details include Root and
+  Documents storage capacity. Tab/Shift+Tab, arrows, Enter/Space and touch navigate
+  cards/Pulse. Escape cancels Pulse, closes details, then returns to Overview.
+  S saves an explicit-field report. No environment dump or process command lines
+  are exported, avoiding passwords, tokens and private keys.
+
+1–4 select sections from anywhere. Tab/Shift+Tab focus section buttons and Exit;
+Enter/Space activates. Escape from Overview and Exit close normally. Sampling runs
+in one worker approximately once per second; `/proc` scans are bounded. Process
+CPU is relative to one logical CPU (multicore totals can exceed 100%), first/reset
+samples are unavailable, and PID start identity prevents reuse spikes. Values are
+not inferred from animation FPS. Missing, malformed or denied interfaces produce
+unavailable states; no root access or runtime privilege escalation is requested. Optional Linux
+probe children use parent-death cleanup so termination cannot leave a probe running.
+
+Reports use the launcher `VITRALLIS_DOCUMENTS_DIR`, falling back to
+**`$HOME/Documents/Vitrallis/AppData/io.vitrallis.debug/Documents/`**. They are atomically saved with unique
+names and persist independently of the installed package. There are no continuous
+telemetry logs or package-local writes. User content is never uninstall-owned.
+
+**Physical PocketCHIP/App Center validation is intentionally deferred to a later
+dedicated integration pass.** The historical evidence below applies to its dated
+builds, not the new 0.4.0 monitor. Actual Mali/Lima readings, GPU Pulse, physical
+input, compositor pacing and installation/update/repair still need that pass.
+
+## Retained diagnostics and historical hardware evidence
+
+
+System Monitor is an offline instrument panel for a 480×272 Vitrallis/PocketCHIP
 profile. Version 0.3.1 retains the X11 process identity so Vitrallis Shell can
 focus and resume its window. It presents expandable Network, CPU, GPU, Temperature
 and Memory cards using local Linux system interfaces. Hardware and driver
@@ -206,14 +254,14 @@ and [CPU sysfs ABI](https://github.com/torvalds/linux/blob/master/Documentation/
 
 ## Publication
 
-The prepared source package is version 0.3.2. The repository catalog pins the published
+The prepared source package is version 0.4.0; publication is a separate source-first step. The repository catalog pins the published
 source commit and its file hashes through the two-commit publication workflow.
 App Center receives an update only after the corresponding catalog publication
 is merged into the configured catalog branch.
 
 ## Artwork and licensing
 
-`icon.png` is original raster artwork created for Vitrallis Debug: a dark diagnostic
+`icon.png` is original raster artwork created for System Monitor: a dark diagnostic
 chip with a mint pulse trace. The app has no external assets. This repository has
 an MIT license for project-owned content; see the root LICENSE and
 THIRD_PARTY_NOTICES.md for scope and dependency terms.

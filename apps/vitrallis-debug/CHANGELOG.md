@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0 — 2026-10-02
+
+- Present System Monitor with CPU, RAM, storage, temperature, GPU and network overview.
+- Add bounded process sampling, CPU/memory/name sorting and network throughput history.
+- Retain hardware identities, detailed sensors and the optional EGL GPU Pulse under Diagnostics.
+- Save explicit, secret-free diagnostic reports into launcher-provided Documents while preserving the stable io.vitrallis.debug identity.
+- Tie optional Linux diagnostic probe processes to their owner with parent-death cleanup.
+- Refresh the current-facing package name and documentation while preserving historical release entries.
+
 ## 0.3.2 — 2026-10-01
 
 - Replace the App Center icon with optimized transparent GPT-generated artwork readable at small launcher sizes.

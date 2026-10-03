@@ -2,7 +2,7 @@
 
 Audit date: **2026-09-20**. Project-owned code, documentation and original artwork
 are offered under the root [MIT License](LICENSE), at the owner's direction.
-This grants no rights to third-party material or the unresolved items below.
+This grants no rights to separately licensed third-party material.
 Copyright remains with the respective contributors; no assignment is implied.
 
 [Dependency inventory](docs/dependency-licenses.md) records exact cached crate
@@ -13,6 +13,16 @@ applicable binary distribution documentation. An MIT/Apache alternative permits
 choosing MIT; an AND expression requires both terms. Apache-only components retain
 their license and applicable NOTICE/attribution requirements. These files do not
 relicense dependencies or certify that existing artifacts contain their notices.
+
+## Owner-provided provenance update — 2026-10-02
+
+The repository owner confirmed: “All of the apps were made by codex, all of the
+assets too.” This records the owner's provenance confirmation for project app
+code and bundled artwork, including Firefly's hand-coded `FONT` bitmap table and
+the Bitcoin dashboard screenshot. The September 20 authorship questions for those
+project materials are resolved by that confirmation. Project-owned material
+remains covered by the existing owner-directed MIT grant. Dependency license and
+notice records below remain applicable to separately licensed components.
 
 ## Apps, fonts and imported content
 
@@ -34,16 +44,14 @@ relicense dependencies or certify that existing artifacts contain their notices.
   dated image-generation record; its sprites and generated icon are recorded as
   original. These records are evidence of the stated preparation, not a claim
   of exclusive copyright in generated imagery.
-- `apps/bitcoin-dashboard/assets/dashboard.png` is imported from
-  PocketChip-Bitcoin-Display. Its asset README identifies the source, but contains
-  no upstream license or permission. GitHub's license endpoint returned 404 on
-  the audit date. That does not prove no permission exists; redistribution rights
-  are unresolved, and this screenshot is excluded from the MIT grant. Confirm
-  the provenance and terms of any code carried over from that project as well;
-  shared repository ownership alone is not evidence of rights to imported work.
-- Firefly's hand-coded `FONT` bitmap table has no explicit source attribution.
-  Confirm original authorship or record its source/license before representing
-  the entire app as provenance-cleared. This audit does not infer copying.
+- `apps/bitcoin-dashboard/assets/dashboard.png` is a historical screenshot from
+  PocketChip-Bitcoin-Display, as identified by its asset README. The owner's
+  October 2 Codex-authorship confirmation supplies the previously missing
+  provenance statement for this project asset and project app code. Preserve
+  that source history if the screenshot remains in a package.
+- Firefly's hand-coded `FONT` bitmap table is covered by the owner's October 2
+  confirmation that Codex created the apps and their assets. No external font
+  source is asserted; the previous request to confirm authorship is resolved.
 
 ## Publication boundary
 
@@ -54,5 +62,5 @@ project-owned source under this grant; it does not turn old packages into
 notice-complete releases. The next authorized app publication must include the
 applicable full license/notices inside each package (root files are not included
 by app-local inventories), update shipped documentation and regenerate pins with
-the required version/changelog changes. Do not redistribute the unresolved
-screenshot under MIT or claim rights that the repository does not establish.
+the required version/changelog changes. The October 2 owner confirmation updates
+project-material provenance; it does not replace third-party dependency notices.

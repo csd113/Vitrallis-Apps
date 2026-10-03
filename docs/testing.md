@@ -159,3 +159,25 @@ test commands above with `CARGO_TARGET_DIR` outside the package. Install the
 host development dependencies documented by that app. Package validation checks
 the shipped target ELF independently from host tests. Device presentation and
 performance remain separate from host tests.
+
+
+## Package-side install simulation
+
+`python3 tools/simulate_install.py --app io.vitrallis.calculator --gui --provision`
+checks one selected catalog pin/inventory, stages a read-only payload, creates a
+disposable system-site app-local venv, checks declared requirements and Tk through
+isolated Python, imports the entry from another working directory, launches twice
+and checks TERM exit and unchanged payload bytes. `--package apps/music` instead
+checks unpublished working source. `--gui` needs a desktop; without it only syntax,
+runtime and import checks run. `--provision` explicitly permits pip downloads into
+the disposable runtime; no system distributions are changed. The audit accepts a
+conservative distribution/specifier-only requirements subset and rejects URLs,
+paths, options and extras before provisioning. Venv support and pip are required.
+
+The runtime tree is sibling to the read-only application payload for this audit;
+App Center uses its installer-owned `runtime/<requirements hash>` subtree. Neither
+layout permits app-created data beside shipped source. `--audit-unavailable`
+checks a disabled payload but reports it unavailable rather than bypassing catalog
+eligibility. Tests model corrupt inventories, missing dependencies/imports,
+read-only writes and external Documents/state. This is a package validator, not a
+copy of Shell installer transactions, launcher registration or device certification.

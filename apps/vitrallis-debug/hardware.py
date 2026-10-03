@@ -30,7 +30,8 @@ def read_text(path: Path) -> Optional[str]:
 def run_probe(arguments: list[str]) -> Optional[str]:
     """Bound execution and retained output without a shell or persistent files."""
     try:
-        process = subprocess.Popen(arguments, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+        from owned_child import command as owned_command
+        process = subprocess.Popen(owned_command(arguments), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                    stderr=subprocess.DEVNULL)
     except OSError:
         return None

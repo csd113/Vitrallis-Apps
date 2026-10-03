@@ -30,7 +30,7 @@ class LayoutTests(unittest.TestCase):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         for name in ('SETTINGS', 'CACHE'):
-            patcher = patch.object(bitcoin, name, Path(directory.name) / (name + '.json'))
+            patcher = patch.object(bitcoin, name, Path(directory.name).resolve() / (name + '.json'))
             patcher.start()
             self.addCleanup(patcher.stop)
         # Reclaim closed Tk objects on the UI thread before the next test can
@@ -494,10 +494,7 @@ class LayoutTests(unittest.TestCase):
         self.assertTrue(app.closed)
 
     def test_optional_broken_icon_does_not_prevent_startup(self):
-        with patch.object(bitcoin.Path, 'is_file', return_value=True), \
-             patch.object(bitcoin.Path, 'stat') as info, \
-             patch.object(bitcoin.tk, 'PhotoImage', side_effect=tk.TclError('bad icon')):
-            info.return_value.st_size = 10
+        with patch.object(bitcoin.tk, 'PhotoImage', side_effect=tk.TclError('bad icon')):
             app = self.make_app()
             self.assertTrue(app.root.winfo_exists())
 
@@ -506,7 +503,7 @@ class LayoutTests(unittest.TestCase):
         app = None
         try:
             with tempfile.TemporaryDirectory() as directory, \
-                 patch.object(bitcoin, 'SETTINGS', Path(directory) / 'settings.json'), \
+                 patch.object(bitcoin, 'SETTINGS', Path(directory).resolve() / 'settings.json'), \
                  patch.object(ChartApp, 'refresh_all'), \
                  patch.object(ChartApp, 'refresh_chain'):
                 app = ChartApp(root)

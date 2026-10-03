@@ -134,9 +134,10 @@ python3 tools/update_catalog.py \
 Identity, version, entry and permissions come exclusively from `app.toml`.
 The application also displays its version in `main.py`; update that display
 constant with the manifest and run the package tests before committing source.
-The existing Bitcoin entry is enabled, and the updater preserves that flag unless
-explicitly overridden. For a new target or an unverified integration, keep
-installation disabled until the required checks pass. See
+The current Bitcoin entry is installation-disabled pending certification. The
+updater preserves the existing installable flag unless explicitly overridden. For
+a new target or an unverified integration, keep installation disabled until the
+required checks pass. Check `apps.json` for the actual advertised flag and see
 [runtime integration](runtime-integration.md) for current catalog status.
 
 ## Graphical presentation requirement
