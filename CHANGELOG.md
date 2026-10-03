@@ -19,6 +19,15 @@ Music and Sketch remain installation-disabled pending the dedicated device pass.
 Calculator's publisher gate is corrected; System Monitor retains its existing
 flag. Local staged evidence does not certify physical PocketCHIP/App Center behavior.
 
+## 2026-10-02
+
+- Updated `io.vitrallis.liminalrust` `0.11.2`: Preserve settings, custom levels and cache in private AppData, validate storage paths and retain the matched Rust runtime notices. [App changelog](apps/places-pocketchip/CHANGELOG.md).
+- Updated `io.vitrallis.bitcoindashboard` `1.3.1`: Keep settings and watch-only addresses in private persistent AppData and reject unsafe storage paths. [App changelog](apps/bitcoin-dashboard/CHANGELOG.md).
+- Updated `io.vitrallis.mediacarousel` `0.4.3`: Separate saved media, uploads and settings from replaceable app files and validate storage roots before writes. [App changelog](apps/vitrallis-media-carousel/CHANGELOG.md).
+
+Existing installation flags are preserved. Physical lifecycle certification for
+these new packages remains in progress.
+
 ## 2026-10-01
 
 - Added `io.vitrallis.calculator` `0.1.0`: Add a keyboard-first decimal calculator with precedence, parentheses, percent, bounded input and optimized artwork. [App changelog](apps/calculator/CHANGELOG.md).
