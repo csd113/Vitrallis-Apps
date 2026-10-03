@@ -1,4 +1,4 @@
-"""Canvas presentation and interaction model for Vitrallis Debug."""
+"""Canvas presentation and interaction model for System Monitor diagnostics."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -388,7 +388,7 @@ class Dashboard:
 
     def _overview(self) -> None:
         width = max(400, self.canvas.winfo_width())
-        self._text(10, 9, "VITRALLIS  /  DEBUG", width-175, size=13, bold=True)
+        self._text(10, 9, "DIAGNOSTICS", width-175, size=13, bold=True)
         stale = self.last_snapshot_at is not None and self.clock()-self.last_snapshot_at >= 3
         status = "DEMO · FIXTURE DATA" if self.demo else "STALE" if stale else "LOCAL · LIVE" if self.snapshot else "COLLECTING"
         self._text(width-10, 10, status, 155, size=10, color=WARN if self.demo or stale else ACCENT, anchor="ne")

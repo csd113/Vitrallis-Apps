@@ -8,6 +8,17 @@ use America/Vancouver time. App IDs remain stable; each app ships its own
 and place new records in the newest date section. See the
 [changelog policy](docs/changelog-policy.md) for the required submission format.
 
+## 2026-10-03
+
+- Updated `io.vitrallis.calculator` `0.1.1`: Correct the disabled catalog gate, suppress package-local bytecode writes and handle idle Linux termination. [App changelog](apps/calculator/CHANGELOG.md).
+- Added `io.vitrallis.music` `0.1.0`: Add local streaming playback, metadata/artwork, folder browsing and keyboard/touch controls. [App changelog](apps/music/CHANGELOG.md).
+- Added `io.vitrallis.sketch` `0.1.0`: Add keyboard/touch drawing, bounded undo/redo and atomic PNG saves. [App changelog](apps/sketch/CHANGELOG.md).
+- Updated `io.vitrallis.debug` `0.4.0`: Present System Monitor with processes, bounded resource graphs and saved diagnostics while retaining the stable app identity. [App changelog](apps/vitrallis-debug/CHANGELOG.md).
+
+Music and Sketch remain installation-disabled pending the dedicated device pass.
+Calculator's publisher gate is corrected; System Monitor retains its existing
+flag. Local staged evidence does not certify physical PocketCHIP/App Center behavior.
+
 ## 2026-10-01
 
 - Added `io.vitrallis.calculator` `0.1.0`: Add a keyboard-first decimal calculator with precedence, parentheses, percent, bounded input and optimized artwork. [App changelog](apps/calculator/CHANGELOG.md).

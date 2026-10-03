@@ -1,4 +1,4 @@
-"""Linux hardware identity and offline diagnostic collection for Vitrallis Debug.
+"""Linux hardware identity and offline diagnostic collection for System Monitor.
 
 Imports are deliberately side-effect free.  All filesystem and command access is
 performed only when a collector method is called, making the parsing code usable
@@ -21,6 +21,7 @@ from typing import Callable, Iterable, List, Optional
 
 from hardware import HardwareCollector, HardwareInfo
 from gpu_metrics import LimaProvider
+from owned_child import command as owned_command
 
 
 MAX_HISTORY = 60
@@ -47,7 +48,7 @@ def _local_command(arguments: list[str]) -> Optional[str]:
     """Run an optional local utility without a shell or unbounded retained output."""
     try:
         result = subprocess.run(
-            arguments, check=False, shell=False, timeout=1.5,
+            owned_command(arguments), check=False, shell=False, timeout=1.5,
             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         )
     except (OSError, subprocess.SubprocessError):

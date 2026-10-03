@@ -29,9 +29,14 @@ not a sandbox, and system package changes can affect an app-local environment.
 Dependency downloads require network access and a usable distribution/wheel or
 build prerequisites for the target. Refresh alone does not install dependencies.
 
-Installed packages use `$XDG_DATA_HOME/vitrallis/apps/<id>` (normally
-`~/.local/share/vitrallis/apps/<id>`), with native launchers registered by Shell.
-Settings and saves use each app's documented location outside the package.
+Installed packages use `$HOME/Documents/Vitrallis/Apps/<id>`, with native launchers registered by Shell.
+The launcher starts in `$HOME/Documents/Vitrallis/AppData/<id>` and exports
+`VITRALLIS_APP_ID`, `VITRALLIS_APP_DIR`, `VITRALLIS_APP_DATA_DIR` and
+`VITRALLIS_DOCUMENTS_DIR` (AppData/Documents). Persistent settings, saves and
+media belong in AppData; update, repair and normal uninstall preserve them.
+Resolve shipped assets from the entry's location or APP_DIR. Disposable caches
+may use XDG_CACHE_HOME. These locations are user-owned; new data directories
+are private (0700). Permissions are declarations, not a sandbox.
 Rust packages select a precompiled Linux ELF payload for the device ABI; App Center
 runs neither Cargo nor pip for them. A runtime accepting a target triple does not
 mean this catalog publishes a payload for it.
@@ -62,7 +67,10 @@ is not installation certification.
 | App | Runtime and prerequisites | Dated evidence and limits |
 | --- | --- | --- |
 | [Bitcoin Dashboard](../apps/bitcoin-dashboard/README.md) | Python 3.8+, Tk 8.6; no pip dependencies | Catalog records PocketCHIP native installation/focus; that note supplies no test date and is not fresh validation |
-| [Vitrallis Debug](../apps/vitrallis-debug/README.md) | Linux, Python 3.8+, Tk; Pulse needs X11/XWayland, EGL/GLES2 and hardware drivers | September 19 staged-source telemetry/keyboard/overlay checks; managed update to 0.3.0 not exercised |
+| [System Monitor](../apps/vitrallis-debug/README.md) | Linux, Python 3.11+, Tk; Pulse needs X11/XWayland, EGL/GLES2 and hardware drivers | October 2–3 proc/sysfs fixtures, 480×272 input and read-only staged launch; actual 0.4.0 App Center/Lima validation deferred |
+| [Calculator](../apps/calculator/README.md) | Python 3.11+, system Tk; no pip requirements | October 2–3 staged provisioning/import/repeated TERM checks; physical 0.1.1 install/update/repair deferred |
+| [Music](../apps/music/README.md) | Python 3.11+, Tk, Pillow >=10.4,<13; system FFplay/FFprobe/FFmpeg | October 2–3 bounded library, null/dummy decoder and staged checks; installation disabled pending device validation |
+| [Sketch](../apps/sketch/README.md) | Python 3.11+, Tk, Pillow >=10.4,<13 | October 2–3 input/PNG durability and staged checks; installation disabled pending device validation |
 | [Vitrallis Media Carousel](../apps/vitrallis-media-carousel/README.md) | Python 3.9+, Tk 8.6; automatic Pillow >=10.4,<13 and qrcode >=7.4,<9; optional system ffmpeg/ffprobe | September 19 staged playback/uploads/keyboard and codec checks; managed update to catalog 0.2.1 not physically exercised |
 | [Firefly Field](../apps/firefly-field/README.md) | Python 3.8+, system SDL2 2.0+ and video driver; SDL 2.0.18+ enables batching; no pip dependencies | September 19 physical Mali/Lima rendering measurements; managed update to 0.3.0 not exercised |
 
@@ -103,3 +111,29 @@ or consent. Checksums are integrity metadata from the publisher, not independent
 signatures. See the [catalog trust boundaries](catalog-format.md#verification-and-trust-boundaries)
 and [security policy](../SECURITY.md). Client implementation changes belong in the
 client repository and require review there.
+
+
+## October 2 package-side readiness pass
+
+Calculator's original catalog entry was publisher-disabled, rather than invalid.
+The original payload passed macOS staged provisioning/import/GUI checks; prepared
+0.1.1 also fixes Linux idle termination and passed repeated read-only launch on
+both platforms. Calculator 0.1.1, Music 0.1.0, Sketch 0.1.0 and System Monitor 0.4.0
+now have published source and generated catalog pins in this draft PR branch.
+They reach the default App Center catalog only after merge. Music and Sketch
+remain disabled pending dedicated device validation. See the [local verification record](verification/apps-readiness-2026-10-02/README.md).
+
+The current [Shell storage contract](https://github.com/csd113/Vitrallis-Shell/blob/main/docs/settings-storage.md)
+exports `VITRALLIS_APP_ID` and `VITRALLIS_DOCUMENTS_DIR`; its canonical fallback is
+`$HOME/Documents/Vitrallis/AppData/<stable-app-id>/Documents/` in the current
+local integration contract above. Music libraries, Sketch drawings and saved
+System Monitor reports use the exported Documents path. Preferences use the
+exported AppData root (config/), with XDG reserved for disposable caches; caches/temp
+files never belong to the source/package payload. The public upstream storage guide
+may still describe the previous path while parallel Shell release work is pending.
+An invalid launcher identity or unsafe storage path fails closed.
+
+Physical PocketCHIP/App Center validation is intentionally deferred to a later
+dedicated integration pass. No Shell changes or physical-device access are part
+of this work. Playback output, Lima readings, actual launcher focus/timeout,
+update/repair/removal/reinstall and synchronized scanout remain device checks.
