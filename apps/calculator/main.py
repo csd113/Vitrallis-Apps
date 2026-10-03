@@ -3,13 +3,14 @@
 from pathlib import Path
 import signal
 import sys
+sys.dont_write_bytecode = True
 try:
     import tkinter as tk
 except ImportError:
     tk = None
 from calculation import Calculator
 
-VERSION = '0.1.0'
+VERSION = '0.1.1'
 BG, PANEL, INK, MUTED, ACCENT = '#0c121b', '#172331', '#f1f5fa', '#a3b3c5', '#60d6ac'
 KEYS = ('C', 'Backspace', '%', '/', '7', '8', '9', '*', '4', '5', '6', '-',
         '1', '2', '3', '+', '±', '0', '.', '=')
@@ -50,6 +51,13 @@ class App:
         except tk.TclError:
             pass
         self.draw()
+        self.signal_job = root.after(250, self.poll_signals)
+
+    def poll_signals(self):
+        # Linux Tk can defer Python signals while idle. Return to Python without
+        # drawing or polling files so TERM is handled promptly on a static view.
+        if not self.closed:
+            self.signal_job = self.root.after(250, self.poll_signals)
 
     def button(self, label, key):
         button = tk.Button(self.root, text=label, command=lambda: self.press(key),
@@ -99,6 +107,7 @@ class App:
     def close(self):
         if not self.closed:
             self.closed = True
+            self.root.after_cancel(self.signal_job)
             self.root.destroy()
 
 

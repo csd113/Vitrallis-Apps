@@ -1,7 +1,7 @@
 manifest_version = 1
-name = "System Monitor"
-id = "io.vitrallis.debug"
-version = "0.4.0"
+name = "Sketch"
+id = "io.vitrallis.sketch"
+version = "0.1.0"
 runtime = "python"
 entry = "main.py"
 
