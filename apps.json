@@ -363,7 +363,7 @@
       "id": "io.vitrallis.liminalrust",
       "installable": true,
       "name": "Places",
-      "version": "0.11.1",
+      "version": "0.11.2",
       "runtime": "rust",
       "binaries": {
         "armv7-unknown-linux-gnueabihf": "bin/armv7-unknown-linux-gnueabihf/app"
@@ -377,7 +377,7 @@
       "compatibility_notes": "Requires PocketCHIP ARMv7 hard-float Linux, glibc 2.36+, SDL2 2.32+, Mali/Lima OpenGL ES 2.0 and X11. In Details, trust the csd113/Places source before installing. Native Rust installation, update and repair use the verified Shell App Manager lifecycle.",
       "source": {
         "repository": "csd113/Places",
-        "commit": "b208b4647d20b1e2a9cf75f733afe1d207b8301d",
+        "commit": "368dd1f0c45ca81a0e7f29041eb4bbfe33846b70",
         "path": "apps/places-pocketchip"
       },
       "files": [
@@ -388,18 +388,18 @@
         },
         {
           "path": "CHANGELOG.md",
-          "size": 159209,
-          "sha256": "92f24c55efff7980c536363bc20adc6472466305d28665daa29fa21bd66e68a6"
+          "size": 159970,
+          "sha256": "a01a3252bff70a4c4aa030b5bff4c0c13291378d5a18095bb78a82480fd57b7b"
         },
         {
           "path": "Cargo.lock",
           "size": 12338,
-          "sha256": "f574970981c8cd1bdca25935caaabca1e14eebe87d2d41fd905af4871f561227"
+          "sha256": "63eae1cf4c53cf91031b4b57abc7022886dfe974d5c0700886a423339c71dd80"
         },
         {
           "path": "Cargo.toml",
           "size": 1590,
-          "sha256": "faa285db30eada4b843e7ba5e4994e82ed175c49d85c4bc8984ed0929d0fc0f8"
+          "sha256": "0a0cf338108646599b92b76ac952633e64046691a8b487eb310304311ad234f5"
         },
         {
           "path": "LICENSE",
@@ -408,18 +408,23 @@
         },
         {
           "path": "README.md",
-          "size": 2211,
-          "sha256": "2b3e0f0b4958bbbfd485e7e64ec5d54b29ee6465b6032801cc94238a206112a4"
+          "size": 2643,
+          "sha256": "a78da0bc7babcdb534601f19a57708f24b9746339d7b95698856b03e3fcdc994"
         },
         {
           "path": "THIRD_PARTY_LICENSES.txt",
-          "size": 324588,
-          "sha256": "4224fa37e02cbc3aac4653cf519af0f135a50850e66f793ae1dc9034d8c71641"
+          "size": 394703,
+          "sha256": "908d836e3753d96ebaf83aef779d5778caf4a41a22a4173f6d4b436aa5d989ff"
+        },
+        {
+          "path": "THIRD_PARTY_NOTICES.md",
+          "size": 7430,
+          "sha256": "76254994d982bf732dbaa9a3b9f6df0cd0096d02b58175e11b540d66e62fb9ac"
         },
         {
           "path": "app.toml",
           "size": 249,
-          "sha256": "1727cc04e1926467854ec4622e45937c853698a5051b9c206c59ca85da246007"
+          "sha256": "b72fb66373752c9cf2441b4754a4891928031974c0a9608c9388e19e4f99b432"
         },
         {
           "path": "assets/README.md",
@@ -813,8 +818,8 @@
         },
         {
           "path": "assets/environment/pool/README.md",
-          "size": 7491,
-          "sha256": "77e240747874243bdb51be279d23a19f1499f656371c1a824c4ed7269f55d993"
+          "size": 7738,
+          "sha256": "f3e24ba031b00caaae3cf5c8822687f4d5478ca4ce3a6f6a9a6111649178bd0a"
         },
         {
           "path": "assets/environment/pool/decals/no_diving_01.png",
@@ -913,8 +918,13 @@
         },
         {
           "path": "bin/armv7-unknown-linux-gnueabihf/app",
-          "size": 2077792,
-          "sha256": "788ef0745f803c6f80aec0c81c6a00a64a100079acdf4cb16078b298cc7e8fde"
+          "size": 2071872,
+          "sha256": "39c7431b4775c84d2c8f5ccab03fcedbace11c54c0bf9532a01029428fd986a6"
+        },
+        {
+          "path": "clippy.toml",
+          "size": 407,
+          "sha256": "39d8c3e35fe93d3147261a9288d0c3b8cf8b0f9d2a8bd0875e84fc0482d77324"
         },
         {
           "path": "icon.png",
@@ -933,13 +943,13 @@
         },
         {
           "path": "src/assets.rs",
-          "size": 69452,
-          "sha256": "69691a17692cdf243c4a36e630c00fc09f00890ee9d46db2c9fe3b5a8ae45956"
+          "size": 71006,
+          "sha256": "98a3c8dac9871210206f4a24b208cfb2dceae8fcc2a1bdd1a82e1f8032b79ea8"
         },
         {
           "path": "src/assets/tests.rs",
-          "size": 37300,
-          "sha256": "a087540767f84c8a380d9230c2408898cec05894bc4bae403a285a151c3a3f69"
+          "size": 39208,
+          "sha256": "a42e42a2eaa43790461dd2c7359d2da81f4f445c88c44576c4cccbabf0106de3"
         },
         {
           "path": "src/bench.rs",
@@ -983,8 +993,8 @@
         },
         {
           "path": "src/game/tests.rs",
-          "size": 34800,
-          "sha256": "c525fe3c7216a85aac31d81690d127893f98cfb9154d0381185d3d430ad0446f"
+          "size": 34812,
+          "sha256": "c1986564bd9012344ff2e6ec818345c5187bc5855bb14c46d75709a8af77d56a"
         },
         {
           "path": "src/gltf.rs",
@@ -993,8 +1003,8 @@
         },
         {
           "path": "src/gltf/tests.rs",
-          "size": 39746,
-          "sha256": "af04bc48d7878086be77afcdb41afbd2cbde8ce4d7e43759d11488ffb5e6de23"
+          "size": 39747,
+          "sha256": "9d85027a7947b4c616655ba0a034c373d4d1b8d31bd91de17b4f60d9fea40718"
         },
         {
           "path": "src/input.rs",
@@ -1008,13 +1018,13 @@
         },
         {
           "path": "src/level.rs",
-          "size": 173716,
-          "sha256": "cc9937be444f4c7c99b7a359c353f25c4c103dc984816a0ebd3f940b7504f54c"
+          "size": 173733,
+          "sha256": "0498a0e506fcdccadbc043f4072bf9ac96800717d68d0e894188d76df4635402"
         },
         {
           "path": "src/level/tests.rs",
-          "size": 42249,
-          "sha256": "8fdb57af6c0cff38e4cec6a9166e500aa568d63142202723af6006adc001866d"
+          "size": 42251,
+          "sha256": "b04a42e8323f14b2e90c2d792cf82a53d763bb9184f0aad2b8e9c711ecbd18e3"
         },
         {
           "path": "src/lighting.rs",
@@ -1023,13 +1033,13 @@
         },
         {
           "path": "src/lighting/bake.rs",
-          "size": 83269,
-          "sha256": "01aafff470eccddd1eeaa412ea30a7db0b6c642004aeb903f25751c7f9835c64"
+          "size": 83275,
+          "sha256": "fb4b8b73792bc417c85090464a9fdf01372ac817cd0e524519e41d15e4a9faf7"
         },
         {
           "path": "src/lighting/bake/range_audit.rs",
-          "size": 23021,
-          "sha256": "c983c4fc9139abbc00fa76e0a168ce85253abfe83355ac57c827b1b549089eb6"
+          "size": 23027,
+          "sha256": "c1c51c2f28841d9160a0cce0f124c09c02681feaefa572d75f1b614f8cc05933"
         },
         {
           "path": "src/lighting/color.rs",
@@ -1053,8 +1063,8 @@
         },
         {
           "path": "src/lighting/lightmap/cache.rs",
-          "size": 12094,
-          "sha256": "9520956b8c815ad744db46bff2f78946f1216134df94f325678902bffbb1ad80"
+          "size": 12204,
+          "sha256": "34d3e564cecefad623c26bbc266a49f1a636b14491fcc9b00c9c66d60eb10c3b"
         },
         {
           "path": "src/lighting/lightmap/continuity.rs",
@@ -1063,8 +1073,8 @@
         },
         {
           "path": "src/lighting/lightmap/fill.rs",
-          "size": 21824,
-          "sha256": "257fbf755c5ea6fd0d6ac6476609b4301ad45137f738a3771fc85e1af720f5a5"
+          "size": 21825,
+          "sha256": "879eab0ec6ec5d6af8a4fbc3bec468fa7147e7dc0e428fc55afc9bc05af3b6f1"
         },
         {
           "path": "src/lighting/lightmap/mod.rs",
@@ -1079,7 +1089,7 @@
         {
           "path": "src/lighting/lightmap/tests.rs",
           "size": 29040,
-          "sha256": "4326532e5eec695f936141aa9f5b3ccd50d15ead8a8f1f1284d4665e5c3fc31d"
+          "sha256": "d009a7b1677330992d71659a53ac0459985ffbecc4fabce42814a489f6c0ed54"
         },
         {
           "path": "src/lighting/math.rs",
@@ -1088,8 +1098,8 @@
         },
         {
           "path": "src/lighting/occlusion.rs",
-          "size": 73799,
-          "sha256": "43390f7c0ec3cc4a69acebf8f1fc03c3da5234eabfa9041eaa5a9cbd7be8bbe5"
+          "size": 73804,
+          "sha256": "230279c427ce3a9029148d44448666cdb004fb2564979e247cb746b30ed28d87"
         },
         {
           "path": "src/lighting/tests.rs",
@@ -1113,8 +1123,8 @@
         },
         {
           "path": "src/lighting_audit_cases.rs",
-          "size": 76364,
-          "sha256": "b36d4256455c82a56acee6409285c652c9502c14761171a557faed36c3eeb2fa"
+          "size": 76367,
+          "sha256": "ec09f06c1add790c32dd260686e09cde8f15d2dae9827944baa35ab222a20710"
         },
         {
           "path": "src/lighting_isolation.rs",
@@ -1123,13 +1133,13 @@
         },
         {
           "path": "src/lighting_leak_audit.rs",
-          "size": 18196,
-          "sha256": "424b947037de1f25cddbbcb79389222ab97dfd33835f9a2cc95c39c20f316bfb"
+          "size": 18244,
+          "sha256": "aa656b395c509e2c50324e9e255357093648b7def310dd6c9e6f5d50ff523a9f"
         },
         {
           "path": "src/lighting_parity.rs",
-          "size": 16097,
-          "sha256": "652c992ecd6c4f65148b91b4853cc1117b92fb980efaa8ab42801b98649031e1"
+          "size": 16193,
+          "sha256": "f60f192052e9c0205ec2dd0167d8e721cf9865ed48e71346a77cce8316782287"
         },
         {
           "path": "src/lighting_partition_audit.rs",
@@ -1148,8 +1158,8 @@
         },
         {
           "path": "src/loader/tests.rs",
-          "size": 80168,
-          "sha256": "0ce801a1a722d00d463bfe04b8dc78bc5294e67662638e5c237668537acca61b"
+          "size": 80305,
+          "sha256": "fb6f435740bce345e625eb11dc2d8a627620c7c446e5a2ef6b26baf4a2a7f982"
         },
         {
           "path": "src/logging.rs",
@@ -1158,8 +1168,8 @@
         },
         {
           "path": "src/main.rs",
-          "size": 61798,
-          "sha256": "3f9a9b2062c1c47ae83aa238c5d81e14357d6bea76bdeacc44cd59b6e77d6d2f"
+          "size": 61973,
+          "sha256": "9b89df9cdcbfa8784d7a926f1899b74e1f5fc143b7c5b126308cf00ffdaa4c8f"
         },
         {
           "path": "src/materials.rs",
@@ -1223,13 +1233,18 @@
         },
         {
           "path": "src/perf.rs",
-          "size": 15471,
-          "sha256": "76268bbdb545414af3dc5277ab0bfbbf0dffe30394652d1fbd0a9d284c480050"
+          "size": 15495,
+          "sha256": "c0e93aee3f34ce70254bd40de8024d080ab53fd45f191a4def3cdeac66fed45a"
         },
         {
           "path": "src/perf/tests.rs",
           "size": 5835,
           "sha256": "4697e396ffaeef052380a4c5e84ff558b0f523ec605d326f12f9b717bbe1ee0d"
+        },
+        {
+          "path": "src/persistence.rs",
+          "size": 7607,
+          "sha256": "45dbe16a27b01bafd011848140243cce9bfaf88f23664fe2c04db916c73f7225"
         },
         {
           "path": "src/props.rs",
@@ -1268,8 +1283,8 @@
         },
         {
           "path": "src/render/architecture.rs",
-          "size": 85651,
-          "sha256": "2ab96eb01780b9a7bf7cbfe0bdf828017ce25e3b2fa70868a52a5be6ee8b420d"
+          "size": 85609,
+          "sha256": "518e62f48b0ba0c0dfa8edbaf588e034a6eb1404a313332028af76cdcd5ef5ee"
         },
         {
           "path": "src/render/atmosphere.rs",
@@ -1283,8 +1298,8 @@
         },
         {
           "path": "src/render/dynamic.rs",
-          "size": 48788,
-          "sha256": "697f987193a74c351c3247b67ec4baacd19026a4d13aa9d9ba909be422a296e7"
+          "size": 48798,
+          "sha256": "117daa8151b2f73bbef63828886fd97802b22485f6dede89490afe5418a5159d"
         },
         {
           "path": "src/render/fixtures.rs",
@@ -1293,8 +1308,8 @@
         },
         {
           "path": "src/render/geometry.rs",
-          "size": 58688,
-          "sha256": "00b21e3b049a83655e2e0f7df5a5e5d57044f9533212f1e53339938f70c84991"
+          "size": 58700,
+          "sha256": "8f75b175443b2af7ca4352b72834582c4c3e3c0c5aa3ececb52f8b5b74b2ad43"
         },
         {
           "path": "src/render/mesh.rs",
@@ -1324,7 +1339,7 @@
         {
           "path": "src/render/tests.rs",
           "size": 249498,
-          "sha256": "f972e5f725e3609f869a50e22dec52341f3dbbcd44257d9e58abe27aad1b00de"
+          "sha256": "66ac493f900120265b0f686d749129d35b4f11902bce7586427b1686702862f5"
         },
         {
           "path": "src/render/view.rs",
@@ -1333,13 +1348,13 @@
         },
         {
           "path": "src/settings.rs",
-          "size": 32646,
-          "sha256": "5902bf9efe4972e6689047d0458b87f72d3d98f779e75cb0ff63a480f2740308"
+          "size": 32960,
+          "sha256": "09f6a73d0ba6a81ac94e78e056bb8ca23151183738334cec77448d99194312cd"
         },
         {
           "path": "src/settings/tests.rs",
-          "size": 20404,
-          "sha256": "cf530e4b6a71c909a32d74f21a0e44f42b5ef9dd45925cccaba392693ea7c815"
+          "size": 20563,
+          "sha256": "ec047d8167ccf2d059e4aec1889e15cec4d9731b30cf08aaf1d66583c36dbf04"
         },
         {
           "path": "src/spatial.rs",
