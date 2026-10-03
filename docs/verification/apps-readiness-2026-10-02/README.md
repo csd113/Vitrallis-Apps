@@ -352,3 +352,19 @@ Final committed validation uses the unchanged base
 and `git diff --check`. Required Python 3.11/3.13 and Changelog policy jobs must
 pass on the final draft PR head; their authoritative outcomes are attached to
 that PR and reported in the handoff.
+
+### Fresh-checkout CI regression
+
+The source-only CI run exposed one tooling failure: the rehearsal had relied on
+an external Places object already present in this Mac's Apps object store. CI
+correctly clones Places separately, so the fixture could not resolve that pin.
+The rehearsal now uses a fresh non-shared clone and fixture-only source mappings
+from verified byte-identical local mirrors. It asserts the original inventory
+before recording the snapshot, supplies those mappings to every official updater
+and validator, and remains offline. Production catalog entries, app bytes,
+versions and the published source pin are unchanged by this test fix.
+
+The corrected fresh, non-shared rehearsal passed locally (one test, 71.273 s).
+The complete suite on the committed catalog had passed all 84 host tests before
+this fixture correction. The final CI rerun verifies the correction on both
+supported Python versions; app package bytes still exactly match published d04bcbc.
