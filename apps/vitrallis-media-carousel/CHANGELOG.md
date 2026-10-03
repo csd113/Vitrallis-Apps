@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.3 — 2026-10-02
+
+- Keep settings, media and uploads in Shell-provided persistent AppData, separate from replaceable app files.
+- Validate all storage roots before creating directories; retain disposable images in the cache directory.
+
 ## 0.4.2 — 2026-10-01
 
 - Fit collection names and long status tokens by measured pixels on the PocketCHIP display.

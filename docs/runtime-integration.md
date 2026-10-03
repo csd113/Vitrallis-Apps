@@ -29,9 +29,14 @@ not a sandbox, and system package changes can affect an app-local environment.
 Dependency downloads require network access and a usable distribution/wheel or
 build prerequisites for the target. Refresh alone does not install dependencies.
 
-Installed packages use `$XDG_DATA_HOME/vitrallis/apps/<id>` (normally
-`~/.local/share/vitrallis/apps/<id>`), with native launchers registered by Shell.
-Settings and saves use each app's documented location outside the package.
+Installed packages use `$HOME/Documents/Vitrallis/Apps/<id>`, with native launchers registered by Shell.
+The launcher starts in `$HOME/Documents/Vitrallis/AppData/<id>` and exports
+`VITRALLIS_APP_ID`, `VITRALLIS_APP_DIR`, `VITRALLIS_APP_DATA_DIR` and
+`VITRALLIS_DOCUMENTS_DIR` (AppData/Documents). Persistent settings, saves and
+media belong in AppData; update, repair and normal uninstall preserve them.
+Resolve shipped assets from the entry's location or APP_DIR. Disposable caches
+may use XDG_CACHE_HOME. These locations are user-owned; new data directories
+are private (0700). Permissions are declarations, not a sandbox.
 Rust packages select a precompiled Linux ELF payload for the device ABI; App Center
 runs neither Cargo nor pip for them. A runtime accepting a target triple does not
 mean this catalog publishes a payload for it.

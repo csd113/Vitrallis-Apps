@@ -4,7 +4,7 @@ A locally managed slideshow for the screen running Vitrallis. Upload from your
 phone/computer, organize collections, then select one in the native Python app.
 Playback does not open a browser.
 
-**0.4.2** · `io.vitrallis.mediacarousel` · manifest v1.
+**0.4.3** · `io.vitrallis.mediacarousel` · manifest v1.
 
 [Changelog](CHANGELOG.md).
 
@@ -264,18 +264,18 @@ used macOS, Python 3.13.5, Tk 8.6, Pillow 12.1.0 and FFmpeg 9.0.1.
 
 ## Storage and durability
 
-The current contract has no storage SDK; this uses the documented **XDG convention
-assumption**, under the stable app ID:
+The launcher supplies `VITRALLIS_APP_DATA_DIR`. Standalone launches default to
+`~/Documents/Vitrallis/AppData/io.vitrallis.mediacarousel`. Persistent state
+survives app update, repair and ordinary uninstall.
 
-| Content | Default location |
+| Content | Location |
 | --- | --- |
-| Settings | `~/.config/io.vitrallis.mediacarousel/settings.json` |
-| Library metadata | `~/.local/share/io.vitrallis.mediacarousel/library.json` |
-| Random-ID media blobs | `~/.local/share/io.vitrallis.mediacarousel/media/` |
-| Temporary uploads | `~/.local/share/io.vitrallis.mediacarousel/uploads/` |
-| Reserved cache (currently empty) | `~/.cache/io.vitrallis.mediacarousel/` |
+| Settings | `Config/settings.json` |
+| Library metadata | `library.json` |
+| Random-ID media blobs | `media/` |
+| Temporary uploads | `uploads/` |
+| Reserved cache (currently empty) | `$XDG_CACHE_HOME/io.vitrallis.mediacarousel/` (default `~/.cache/io.vitrallis.mediacarousel/`) |
 
-`XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_CACHE_HOME` replace those base directories.
 Paths must be absolute, without traversal/symlink components, outside the package.
 App-owned directories must belong to the launching user with mode 0700. Invalid
 or denied storage fails closed without switching locations. On macOS use resolved

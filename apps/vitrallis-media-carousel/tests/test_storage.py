@@ -259,17 +259,17 @@ class PathTests(StorageCase):
             with self.assertRaises(ValueError):
                 identifier(value)
 
-    def test_xdg_must_be_absolute_without_link_or_traversal(self):
+    def test_app_data_must_be_absolute_without_link_or_traversal(self):
         link = self.base / "linked"
         link.symlink_to(self.paths.data, target_is_directory=True)
         for value in ("relative", str(self.base) + "/../bad", str(link)):
             with self.subTest(value=value), self.assertRaises(ValueError):
-                Paths({"HOME": str(self.base), "XDG_DATA_HOME": value})
+                Paths({"HOME": str(self.base), "VITRALLIS_APP_DATA_DIR": value})
 
-    def test_all_xdg_paths_validated_before_any_directory_creation(self):
+    def test_all_storage_paths_validated_before_any_directory_creation(self):
         target = self.base / "new-config"
         with self.assertRaises(ValueError):
-            Paths({"HOME": str(self.base), "XDG_CONFIG_HOME": str(target), "XDG_DATA_HOME": "../unsafe"})
+            Paths({"HOME": str(self.base), "VITRALLIS_APP_DATA_DIR": str(target), "XDG_CACHE_HOME": "../unsafe"})
         self.assertFalse(target.exists())
 
     def test_symlink_media_and_metadata_rejected_without_mutation(self):
