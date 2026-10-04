@@ -62,6 +62,50 @@ class GuiSmokeTests(unittest.TestCase):
         dashboard._begin_pulse(); dashboard.close()
         self.assertTrue(dashboard.closed)
 
+    def test_slow_collection_does_not_retain_closed_tk_dashboard(self):
+        import gc
+        import threading
+        import weakref
+        import tkinter as tk
+        from ui import Dashboard
+
+        entered, release, closed = threading.Event(), threading.Event(), threading.Event()
+        class SlowCollector:
+            def collect(self):
+                entered.set()
+                if not release.wait(10):
+                    raise TimeoutError('Test collection was not released')
+                return object()
+
+            def close(self):
+                closed.set()
+
+        root = tk.Tk(); root.withdraw()
+        dashboard = Dashboard(root, tk, SlowCollector())
+        reference = weakref.ref(dashboard)
+        results = dashboard.results
+        root.update()
+        worker = dashboard.worker
+        try:
+            self.assertTrue(entered.wait(2), 'Collection did not start')
+            dashboard.close()
+            self.assertFalse(closed.is_set(), 'Close must not wait for collection')
+            del dashboard
+            gc.collect()
+            self.assertIsNone(reference(), 'Background collection retained the closed Tk dashboard')
+        finally:
+            # Keep an old implementation alive on the main thread during failed
+            # regression cleanup, so the diagnostic assertion can be reported.
+            retained = reference()
+            release.set()
+            if worker is not None:
+                worker.join(5)
+            if retained is not None:
+                retained.close()
+        self.assertFalse(worker.is_alive())
+        self.assertTrue(closed.is_set())
+        self.assertTrue(results.empty(), 'A completed collection published after close')
+
 
 class FakeRenderer:
     def set_metrics(self, lines):

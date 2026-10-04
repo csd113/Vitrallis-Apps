@@ -36,6 +36,28 @@ def performance_lines(sample, stale=False):
             "GPU " + (f"{frequency / 1000000:.0f} MHZ" if frequency is not None else "-- MHZ"))
 
 
+def _collect_once(collector, results, accepting):
+    # Collection can finish after close. Keep Tk objects out of this worker's
+    # references so their finalizers always remain on the GUI thread.
+    try:
+        sample = collector.collect()
+        if accepting.is_set():
+            try:
+                results.put_nowait(sample)
+            except queue.Full:
+                try: results.get_nowait()
+                except queue.Empty: pass
+                try: results.put_nowait(sample)
+                except queue.Full: pass
+    except Exception:  # A category failure must never take down the display.
+        pass
+    finally:
+        if not accepting.is_set():
+            close = getattr(collector, "close", None)
+            if close:
+                close()
+
+
 @dataclass
 class PulseState:
     active: bool = False
@@ -119,7 +141,8 @@ class Dashboard:
         self.stale_categories: set[str] = set()
         self.results: queue.Queue[Snapshot] = queue.Queue(maxsize=1)
         self.worker: Optional[threading.Thread] = None
-        self.accept_results = True
+        self.accept_results = threading.Event()
+        self.accept_results.set()
         self.closed = False
         self.after_ids: set[str] = set()
         self.renderer_factory = renderer_factory
@@ -182,7 +205,9 @@ class Dashboard:
             for history in (self.cpu_history, self.gpu_history, self.temp_history, self.memory_history):
                 history.add(None)
         if self.worker is None or not self.worker.is_alive():
-            self.worker = threading.Thread(target=self._collect_once, name="vitrallis-metrics", daemon=True)
+            self.worker = threading.Thread(target=_collect_once,
+                                           args=(self.collector, self.results, self.accept_results),
+                                           name="vitrallis-metrics", daemon=True)
             self.worker.start()
         if self.model.pulse.active and self.renderer is not None:
             stale = self.last_snapshot_at is None or self.clock() - self.last_snapshot_at > 3
@@ -192,25 +217,6 @@ class Dashboard:
                 self._pulse_failed(error)
         self._render()
         self._schedule(1000, self._tick)
-
-    def _collect_once(self) -> None:
-        try:
-            sample = self.collector.collect()
-            if self.accept_results:
-                try:
-                    self.results.put_nowait(sample)
-                except queue.Full:
-                    try: self.results.get_nowait()
-                    except queue.Empty: pass
-                    try: self.results.put_nowait(sample)
-                    except queue.Full: pass
-        except Exception:  # A category failure must never take down the display.
-            pass
-        finally:
-            if not self.accept_results:
-                close = getattr(self.collector, "close", None)
-                if close:
-                    close()
 
     def _drain_results(self) -> bool:
         newest = None
@@ -646,7 +652,8 @@ class Dashboard:
 
     def close(self) -> None:
         if self.closed: return
-        self.closed, self.accept_results = True, False
+        self.closed = True
+        self.accept_results.clear()
         if self.worker is None or not self.worker.is_alive():
             close = getattr(self.collector, "close", None)
             if close:

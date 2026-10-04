@@ -16,7 +16,10 @@ class MonitorUITests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.paths=Paths('io.vitrallis.debug',{'HOME':str(Path(self.temp.name).resolve())})
-        self.root=tk.Tk();self.root.geometry('480x272')
+        self.root=tk.Tk()
+        # Exercise toolkit resizing independently of a tiling desktop's rules.
+        self.root.overrideredirect(True)
+        self.root.geometry('480x272')
         with patch('monitor_ui.Paths',return_value=self.paths):self.app=Monitor(self.root,tk,DemoCollector(),demo=True)
         self.addCleanup(self.app.close)
         self.app.snapshot=DemoCollector().collect()
