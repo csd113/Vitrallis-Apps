@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.1 — 2026-10-02
+
+- Store settings and watch-only addresses in Shell-provided persistent AppData.
+- Validate private storage paths before reads or writes and reject unsafe links and permissions.
+- Remove the obsolete version 1.0.0 documentation screenshot.
+
 ## 1.3.0 — 2026-10-01
 
 - Keep native macOS button labels readable during desktop verification.

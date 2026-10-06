@@ -46,12 +46,19 @@ manifest v1**. Runtime requirements and device verification vary by app; see
 <!-- App rows are derived from apps.json; refresh names, descriptions and links when catalog membership changes. -->
 | App | What it does |
 | --- | --- |
-| [Calculator](apps/calculator/README.md) | Decimal arithmetic, parentheses and keyboard navigation for PocketCHIP; installation awaits device verification. |
+| [Calculator](apps/calculator/README.md) | Decimal arithmetic, parentheses and keyboard navigation for PocketCHIP. |
 | [Bitcoin Dashboard](apps/bitcoin-dashboard/README.md) | Bitcoin network and watch-only address pages, plus the preserved CAD chart. |
-| [Vitrallis Debug](apps/vitrallis-debug/README.md) | Offline network, CPU, temperature, and memory diagnostics for the PocketCHIP. |
+| [System Monitor](apps/vitrallis-debug/README.md) | CPU, memory, storage, temperature, GPU, network and processes, with optional diagnostics. |
 | [Vitrallis Media Carousel](apps/vitrallis-media-carousel/README.md) | Native media slideshow with LAN uploads, named collections and shared settings. |
 | [Places](apps/places-pocketchip/README.md) | A native first-person exploration game for PocketCHIP, replacing the older Liminal package. |
 | [Firefly Field](apps/firefly-field/README.md) | A calm, fullscreen pixel-art firefly meadow rendered through SDL2. |
+| [Music](apps/music/README.md) | Browse local music, play tracks, and see song information and album artwork. |
+| [Sketch](apps/sketch/README.md) | Draw with touch or keys, undo strokes, and save lossless PNG sketches. |
+
+Music, Sketch and the System Monitor update are prepared source packages awaiting
+source-first catalog publication. `apps.json` identifies the currently pinned
+versions. Physical PocketCHIP/App Center validation is intentionally deferred to
+a later dedicated integration pass; local tests do not certify hardware behavior.
 
 [`apps.json`](apps.json) records advertised versions, publisher enablement, and
 compatibility notes. Enablement is not hardware certification; source publication

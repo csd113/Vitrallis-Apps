@@ -20,10 +20,24 @@ class DemoCollector:
         ) if include_network else None
         sensor = TemperatureSensor("SoC thermal sensor", "cpu_thermal", 47.2,
                                    "/sys/class/thermal/thermal_zone9/temp", 95.0, True)
-        return Snapshot(time.monotonic(), 37.4, {"cpu0": 31.2, "cpu1": 43.6},
+        sample = Snapshot(time.monotonic(), 37.4, {"cpu0": 31.2, "cpu1": 43.6},
                         "Allwinner R8 ARM Cortex-A8 demonstration CPU name", 1,
                         Frequency(1008.0, "measured", "/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_cur_freq"),
                         [("policy0", 200.0, 1008.0)],
                         Memory(512_000, 280_000, 120_000, 20_000, 100_000, 0, 0), [sensor], network, {}, gpu=GpuReading("Demo GPU", 24.6, "Explicit demo fixture"),
                         hardware=HardwareInfo((DeviceIdentity("ARM Cortex-A8", "Explicit demo fixture"),),
                                               (DeviceIdentity("Demo GPU", "Explicit demo fixture"),)))
+
+        from monitoring import Disk, Process
+        sample.disks = [Disk("Root", 4*1024**3, 2*1024**3, 2*1024**3)]
+        sample.processes = [Process(421, "Music", 10, 10, 4096, 4.1, 1.3),
+                            Process(122, "vitrallis-shell", 10, 10, 4096, 2.2, 3.4),
+                            Process(318, "System Monitor", 10, 10, 4096, 1.8, 1.2)]
+        sample.network_rates = {"wlan-demo": (8192, 1024)}
+        sample.wireless = {"wlan-demo": (65, -42)}
+        sample.os_name = "Debian 13 · explicit demonstration fixture"
+        sample.runtime = "Python / Tk · demonstration fixture"
+        sample.architecture = "armv7l"
+        sample.uptime_seconds = 8300
+        sample.load_averages = (0.22, 0.15, 0.1)
+        return sample

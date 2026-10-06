@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Vitrallis Debug launcher; importing this module has no runtime side effects."""
+"""System Monitor launcher; importing this module has no runtime side effects."""
 from __future__ import annotations
 
 import sys
@@ -17,14 +17,14 @@ def main(argv=None) -> int:
     try:
         import tkinter as tk
     except ImportError:
-        print("Vitrallis Debug requires system Tkinter.", file=sys.stderr)
+        print("System Monitor requires system Tkinter.", file=sys.stderr)
         return 1
     try:
         root = tk.Tk()
     except tk.TclError:
-        print("Vitrallis Debug needs a graphical desktop with Tkinter.", file=sys.stderr)
+        print("System Monitor needs a graphical desktop with Tkinter.", file=sys.stderr)
         return 1
-    root.title("Vitrallis Debug")
+    root.title("System Monitor · Demo" if args == ["--demo"] else "System Monitor")
     if root.tk.call("tk", "windowingsystem") == "x11":
         # Tk publishes _NET_WM_PID when the client hostname is set.
         root.wm_client(root.tk.call("info", "hostname"))
@@ -33,19 +33,19 @@ def main(argv=None) -> int:
     dashboard = None
     handlers = {}
     try:
-        from ui import Dashboard
+        from monitor_ui import Monitor
         collector = None
         if args == ["--demo"]:
             from demo import DemoCollector
             collector = DemoCollector()
-        dashboard = Dashboard(root, tk, collector, demo=args == ["--demo"])
+        dashboard = Monitor(root, tk, collector, demo=args == ["--demo"])
         for signum in (signal.SIGTERM, signal.SIGINT):
             handlers[signum] = signal.signal(signum, lambda *_: dashboard.close())
         root.mainloop()
     except Exception as error:
         try: root.destroy()
         except tk.TclError: pass
-        print(f"Vitrallis Debug could not start: {error}", file=sys.stderr)
+        print(f"System Monitor could not start: {error}", file=sys.stderr)
         return 1
     finally:
         for signum, handler in handlers.items():

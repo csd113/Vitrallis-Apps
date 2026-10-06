@@ -8,6 +8,15 @@ use America/Vancouver time. App IDs remain stable; each app ships its own
 and place new records in the newest date section. See the
 [changelog policy](docs/changelog-policy.md) for the required submission format.
 
+## 2026-10-02
+
+- Updated `io.vitrallis.liminalrust` `0.11.2`: Preserve settings, custom levels and cache in private AppData, validate storage paths and retain the matched Rust runtime notices. [App changelog](apps/places-pocketchip/CHANGELOG.md).
+
+Enable the already-published Calculator payload after identifying its original
+publisher-disabled catalog gate and verifying a read-only staged runtime and
+repeated GUI/TERM launch. Physical PocketCHIP/App Center validation is intentionally
+deferred; this metadata change does not advertise a new package version.
+
 ## 2026-10-01
 
 - Added `io.vitrallis.calculator` `0.1.0`: Add a keyboard-first decimal calculator with precedence, parentheses, percent, bounded input and optimized artwork. [App changelog](apps/calculator/CHANGELOG.md).
