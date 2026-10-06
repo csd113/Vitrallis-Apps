@@ -125,7 +125,7 @@ class VideoStreamTests(StorageCase):
         source.write_bytes(b"stub")
         stream = source.open("rb")
         self.addCleanup(stream.close)
-        video = VideoStream(processes, stream, (8, 8), 10, repeats=1, stall=0.2)
+        video = VideoStream(processes, stream, (8, 8), 10, repeats=1, stall=0.2, startup=0.2)
         video.process = processes.start([sys.executable, "-B", "-c", "import time; time.sleep(30)"],
                                         stdout=subprocess.PIPE, bufsize=0)
         video.started = True
@@ -136,6 +136,23 @@ class VideoStreamTests(StorageCase):
                 pass
         self.assertIn("stalled", str(error.exception))
         video.close()
+        self.assertEqual(processes.active, set())
+
+    def test_startup_budget_allows_a_slow_valid_first_frame(self):
+        processes = Processes()
+        self.addCleanup(processes.close)
+        stream = self.stream(b"stub")
+        video = VideoStream(processes, stream, (8, 8), 10, stall=0.2, startup=16)
+        video.process = processes.start([sys.executable, "-B", "-c",
+            "import sys,time; time.sleep(.4); sys.stdout.buffer.write(bytes(8*8*3)); sys.stdout.buffer.flush()"],
+            stdout=subprocess.PIPE, bufsize=0)
+        video.started = True
+        video.thread = threading.Thread(target=video._read, name="carousel-video-read")
+        video.thread.start()
+        try:
+            self.assertEqual(len(self.collect(video)), 1)
+        finally:
+            video.close()
         self.assertEqual(processes.active, set())
 
     def test_a_truncated_frame_reports_corruption(self):
@@ -215,6 +232,19 @@ class VideoDecoderTests(StorageCase):
         self.assertEqual({round(frame[3], 4) for frame in frames}, {0.1})
 
     @unittest.skipUnless(ffmpeg_ready(), "Optional system FFmpeg unavailable")
+    def test_uncached_hardware_detection_never_gates_playback(self):
+        item = self.add_video(rate=10, duration=0.4)
+        decoder = Decoder(self.library)
+        self.addCleanup(decoder.close)
+        with patch("multimedia._BACKEND_CACHE", {}), patch("multimedia._probe_backend",
+                side_effect=AssertionError("Playback must not start a hardware probe")) as probe:
+            decoder.request(item, (64, 32), dict(DEFAULTS, repeats=1))
+            events = self.events(decoder)
+        self.assertEqual(events[-1][1], "done")
+        self.assertTrue(any(event[1] == "frame" for event in events))
+        probe.assert_not_called()
+
+    @unittest.skipUnless(ffmpeg_ready(), "Optional system FFmpeg unavailable")
     def test_a_broken_hardware_backend_falls_back_to_software(self):
         item = self.add_video(rate=10, duration=0.4)
         decoder = Decoder(self.library)
@@ -239,7 +269,7 @@ class VideoDecoderTests(StorageCase):
         self.addCleanup(decoder.close)
         probed = threading.Event()
 
-        def cancelled(codec, ffmpeg=None, cancel=None):
+        def cancelled(codec, ffmpeg=None, cancel=None, allow_probe=True):
             probed.set()
             raise DetectionCancelled()
 
@@ -332,3 +362,15 @@ class LookaheadBoundTests(unittest.TestCase):
 
     def test_backend_for_a_missing_codec_is_software(self):
         self.assertIsNone(video_backend(None)["method"])
+
+
+class InspectionStartupTests(unittest.TestCase):
+    def test_valid_metadata_child_may_take_more_than_ten_seconds(self):
+        from media import ffprobe_json
+        real_run = subprocess.run
+        def slow_probe(*args, **kwargs):
+            return real_run([sys.executable, '-I', '-B', '-c',
+                'import time; time.sleep(10.1); print("{\\"streams\\": []}")'],
+                timeout=kwargs['timeout'], capture_output=True)
+        with patch('media.shutil.which', return_value='/fixture/ffprobe'), patch('media.subprocess.run', side_effect=slow_probe):
+            self.assertEqual(ffprobe_json(0, 'stream=codec_name'), {'streams': []})

@@ -8,14 +8,37 @@ use America/Vancouver time. App IDs remain stable; each app ships its own
 and place new records in the newest date section. See the
 [changelog policy](docs/changelog-policy.md) for the required submission format.
 
+## 2026-10-03
+
+- Updated `io.vitrallis.music` `0.1.1`: Extend cancellable metadata probing, defer startup pause through empty Linux exec transitions until owned-child cleanup is armed, and read Vorbis stream tags.
+- Updated `io.vitrallis.debug` `0.4.1`: Request network interface byte statistics so RX/TX histories receive actual counters.
+- Updated `io.vitrallis.fireflyfield` `0.3.2`: Cache sprite coordinates and opacity and reduce per-frame vertex packing work.
+- Updated `io.vitrallis.mediacarousel` `0.4.4`: Allow bounded slow startup, defer uncached hardware probes, and preserve decoder stall detection without counting queue backpressure.
+
+Enable installation for all eight catalog apps following the October 3 managed
+lifecycle audit and the maintainer's publication instruction. Updated compatibility
+notes distinguish exact managed versions from source repairs and retain unresolved
+speaker output, physical input/scanout, GPU accuracy, Firefly FPS, Carousel cold
+startup and injected-fault Repair checks. The earlier release records below retain
+their original publication state.
+
+- Updated `io.vitrallis.calculator` `0.1.1`: Correct the disabled catalog gate, suppress package-local bytecode writes and handle idle Linux termination. [App changelog](apps/calculator/CHANGELOG.md).
+- Added `io.vitrallis.music` `0.1.0`: Add local streaming playback, metadata/artwork, folder browsing and keyboard/touch controls. [App changelog](apps/music/CHANGELOG.md).
+- Added `io.vitrallis.sketch` `0.1.0`: Add keyboard/touch drawing, bounded undo/redo and atomic PNG saves. [App changelog](apps/sketch/CHANGELOG.md).
+- Updated `io.vitrallis.debug` `0.4.0`: Present System Monitor with processes, bounded resource graphs and saved diagnostics while retaining the stable app identity. [App changelog](apps/vitrallis-debug/CHANGELOG.md).
+
+Music and Sketch remain installation-disabled pending the dedicated device pass.
+Calculator's publisher gate is corrected; System Monitor retains its existing
+flag. Local staged evidence does not certify physical PocketCHIP/App Center behavior.
+
 ## 2026-10-02
 
 - Updated `io.vitrallis.liminalrust` `0.11.2`: Preserve settings, custom levels and cache in private AppData, validate storage paths and retain the matched Rust runtime notices. [App changelog](apps/places-pocketchip/CHANGELOG.md).
+- Updated `io.vitrallis.bitcoindashboard` `1.3.1`: Keep settings and watch-only addresses in private persistent AppData and reject unsafe storage paths. [App changelog](apps/bitcoin-dashboard/CHANGELOG.md).
+- Updated `io.vitrallis.mediacarousel` `0.4.3`: Separate saved media, uploads and settings from replaceable app files and validate storage roots before writes. [App changelog](apps/vitrallis-media-carousel/CHANGELOG.md).
 
-Enable the already-published Calculator payload after identifying its original
-publisher-disabled catalog gate and verifying a read-only staged runtime and
-repeated GUI/TERM launch. Physical PocketCHIP/App Center validation is intentionally
-deferred; this metadata change does not advertise a new package version.
+Existing installation flags are preserved. Physical lifecycle certification for
+these new packages remains in progress.
 
 ## 2026-10-01
 

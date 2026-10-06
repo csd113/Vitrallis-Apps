@@ -11,10 +11,13 @@ import subprocess
 import tempfile
 import threading
 import time
-from owned_child import command as owned_command
+from owned_child import command as owned_command, starting as child_starting
 
 EXTENSIONS = frozenset(('.mp3', '.flac', '.ogg', '.oga', '.wav'))
 MAX_TRACKS, MAX_ENTRIES, MAX_DEPTH = 4000, 20000, 16
+# ARMv7 cold FFmpeg startup took over ten seconds in the device audit.
+# Probes run off the UI thread and close() can still kill them immediately.
+MEDIA_TIMEOUT_SECONDS = 20
 
 
 def scan(root, cancelled=lambda: False):
@@ -46,7 +49,7 @@ def scan(root, cancelled=lambda: False):
     return sorted(tracks, key=lambda p: (str(p.relative_to(root)).casefold(), str(p))), warning
 
 
-def bounded_command(arguments, limit=65536, timeout=4):
+def bounded_command(arguments, limit=65536, timeout=MEDIA_TIMEOUT_SECONDS):
     # Spool untrusted decoder output outside the package, retaining only a bound.
     with tempfile.TemporaryFile() as output:
         result = subprocess.run(arguments, stdin=subprocess.DEVNULL, stdout=output,
@@ -82,7 +85,7 @@ class Probe:
         self.closed = False
         self.children = set()
 
-    def __call__(self, arguments, limit=65536, timeout=4):
+    def __call__(self, arguments, limit=65536, timeout=MEDIA_TIMEOUT_SECONDS):
         with tempfile.TemporaryFile() as output:
             with self.lock:
                 if self.closed:
@@ -123,9 +126,15 @@ def metadata(path, command=None):
         if not tool:
             return Track(path, path.stem, error='Install system FFmpeg for metadata and playback')
         data = json.loads(command([tool, '-v', 'error', '-protocol_whitelist', 'file,pipe', '-show_entries',
-                          'format=duration:format_tags=title,artist,album:stream=codec_type:stream_disposition=attached_pic',
+                          'format=duration:format_tags=title,artist,album:stream=codec_type:stream_tags=title,artist,album:stream_disposition=attached_pic',
                           '-of', 'json', str(path)]))
         tags = {key.lower(): value for key, value in data.get('format', {}).get('tags', {}).items()}
+        # Vorbis places these tags on its audio stream instead of the container.
+        # Container tags retain precedence; artwork/video stream labels do not.
+        for stream in data.get('streams', []):
+            if stream.get('codec_type') == 'audio':
+                for key, value in stream.get('tags', {}).items():
+                    tags.setdefault(key.lower(), value)
         duration = float(data.get('format', {}).get('duration', 0))
         if not math.isfinite(duration) or duration < 0:
             duration = 0
@@ -150,6 +159,7 @@ class Player:
         self.process = None
         self.track = None
         self.volume, self.paused, self.offset, self.started = 70, False, 0.0, 0.0
+        self.pause_pending = False
         self.error = ''
 
     def position(self):
@@ -168,6 +178,7 @@ class Player:
                 self.process.wait(timeout=2)
             self.process = None
         self.paused = False
+        self.pause_pending = False
 
     def play(self, track, offset=0.0):
         self.stop()
@@ -194,12 +205,16 @@ class Player:
         if not self.process or self.process.poll() is not None:
             return
         if self.paused:
-            self.process.send_signal(signal.SIGCONT)
+            if not self.pause_pending:
+                self.process.send_signal(signal.SIGCONT)
+            self.pause_pending = False
             self.started = self.clock()
             self.paused = False
         else:
             self.offset = self.position()
-            self.process.send_signal(signal.SIGSTOP)
+            self.pause_pending = child_starting(self.process)
+            if not self.pause_pending:
+                self.process.send_signal(signal.SIGSTOP)
             self.paused = True
 
     def seek(self, offset):
@@ -219,12 +234,18 @@ class Player:
                 self.pause()
 
     def finished(self):
-        if not self.process or self.process.poll() is None:
+        if not self.process:
+            return False
+        if self.process.poll() is None:
+            if self.pause_pending and not child_starting(self.process):
+                self.process.send_signal(signal.SIGSTOP)
+                self.pause_pending = False
             return False
         result = self.process.returncode
         self.offset = self.position()
         self.process.wait()
         self.process = None
+        self.paused = self.pause_pending = False
         if result:
             self.error = 'Playback failed; check media and audio device'
         return result == 0

@@ -1,7 +1,7 @@
 # Music
 
 A local music player designed for the 480×272 PocketCHIP keyboard and touchscreen.
-Version **0.1.0** uses Python 3.11+, Tk 8.6, Pillow and the system FFmpeg tools
+Version **0.1.1** uses Python 3.11+, Tk 8.6, Pillow and the system FFmpeg tools
 (`ffplay`, `ffprobe`, `ffmpeg`). On Debian 13, Tk and FFmpeg are system prerequisites;
 App Center provisions the declared Pillow distribution in its app-local runtime.
 The app never runs apt or installs software at startup. Missing FFmpeg produces
@@ -10,6 +10,9 @@ an actionable status while the library remains browsable.
 MP3, FLAC, OGG/Vorbis and WAV stream through one owned FFplay process; there is no
 whole-song decoded buffer. Metadata supplies title, artist, album and duration.
 Missing tags use filenames and Unknown artist/album; corrupt tracks show an error.
+Vorbis audio-stream tags fill missing container title, artist and album fields.
+Metadata and artwork probes allow up to twenty seconds for cold ARMv7 FFmpeg
+startup, remain off the UI thread, and can be cancelled immediately on exit.
 Embedded artwork is decoded to at most 112×112 and only the current image is held.
 Decoder/probe protocol whitelists permit only local file/pipe input, so disguised
 playlists cannot initiate internet requests. No accounts or streaming services are used. Permissions declare
@@ -54,8 +57,10 @@ lifecycle. Playback remains owned by that app; no daemon is created. Exit, TERM
 and INT stop/resume-if-paused, terminate and reap the decoder and cancel probes.
 On Linux, decoder/probe children also request a parent-death SIGKILL through a
 small exec helper, covering an unexpectedly killed parent without unsafe threaded
-pre-exec hooks. Pausing/seeking/volume use POSIX process controls; seek and volume
-restart the stream at the retained position, so a brief audible gap is possible.
+pre-exec hooks. Startup pauses wait asynchronously for the helper to arm cleanup
+before stopping it; resume cancels an outstanding pause. Pausing/seeking/volume use POSIX process controls; seek and volume
+restart the stream at the retained position, so an audible gap is possible; cold
+FFmpeg startup on PocketCHIP can take several seconds.
 
 Tk composes off-screen and redraws from events and bounded playback status updates.
 Per-window VSync is unavailable through Tk; synchronized presentation relies on the

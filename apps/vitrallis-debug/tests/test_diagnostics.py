@@ -68,6 +68,26 @@ class MemoryTemperatureTests(unittest.TestCase):
 
 
 class NetworkTests(unittest.TestCase):
+    def test_collector_requests_interface_statistics_for_throughput(self):
+        import json
+        calls = []
+        stats = [{"ifname": "usb0", "operstate": "UP",
+                  "addr_info": [{"family": "inet", "local": "192.0.2.1", "prefixlen": 24}],
+                  "stats64": {"rx": {"bytes": 1024}, "tx": {"bytes": 2048}}}]
+
+        def runner(arguments):
+            calls.append(arguments)
+            # Real ip omits stats64 unless -s is requested.
+            return json.dumps(stats) if arguments == ["ip", "-j", "-s", "address", "show"] else "[]"
+
+        collector = d.SystemCollector(sys_root=Path("/missing"), runner=runner,
+                                      read_text=lambda _: None,
+                                      hardware_collector=d.HardwareCollector(sys_root=Path("/missing"),
+                                                                            runner=lambda _: None, reader=lambda _: None))
+        sample = collector.collect()
+        self.assertEqual((sample.network.primary.rx_bytes, sample.network.primary.tx_bytes), (1024, 2048))
+        self.assertIn(["ip", "-j", "-s", "address", "show"], calls)
+
     def test_default_route_multiple_interfaces_and_ipv6_only(self):
         addresses = '[{"ifname":"lo","operstate":"UNKNOWN","addr_info":[{"family":"inet","local":"127.0.0.1","prefixlen":8}]},{"ifname":"usb0","operstate":"UP","addr_info":[{"family":"inet6","local":"2001:db8::1","prefixlen":64}]}]'
         routes = '[{"dst":"default","gateway":"2001:db8::ff","dev":"usb0"}]'
